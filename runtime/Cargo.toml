@@ -1,0 +1,20 @@
+[package]
+name = "runtime"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+path = "lib.rs"
+
+[dependencies]
+deno_core.workspace = true
+deno_webidl.workspace = true
+deno_web.workspace = true
+deno_url.workspace = true
+deno_console.workspace = true
+deno_tls.workspace = true
+deno_fetch.workspace = true
+
+tokio.workspace = true
+reqwest.workspace = true
