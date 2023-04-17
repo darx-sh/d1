@@ -3,6 +3,7 @@ use deno_core::anyhow::Error;
 use std::path::PathBuf;
 use std::rc::Rc;
 
+mod db;
 mod module_loader;
 mod permissions;
 
@@ -70,5 +71,35 @@ impl DarxRuntime {
         let r = result.await?;
         println!("result: {:?}", r);
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_run() {
+        let tenant_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("examples/tenants/7ce52fdc14b16017");
+        let mut darx_runtime = DarxRuntime::new(tenant_path);
+
+        darx_runtime
+            .run("foo.js")
+            .await
+            .expect("foo.js should not result an error");
+        darx_runtime
+            .run("bar.js")
+            .await
+            .expect("bar.js should not result an error");
+    }
+
+    #[tokio::test]
+    async fn test_private() {
+        let tenant_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("examples/tenants/7ce52fdc14b16017");
+        let mut darx_runtime = DarxRuntime::new(tenant_path);
+        let r = darx_runtime.run("load_private.js").await;
+        assert!(r.is_err());
     }
 }

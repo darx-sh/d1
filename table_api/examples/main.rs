@@ -1,6 +1,6 @@
-use crate::catalog::{init_catalog, CatalogRef};
-use crate::table_api::list_entity;
 use anyhow::Result;
+use table_api::catalog::{init_catalog, CatalogRef};
+use table_api::list_entity;
 
 use axum::routing::get;
 use axum::Router;

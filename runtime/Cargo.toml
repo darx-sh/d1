@@ -17,4 +17,6 @@ deno_tls.workspace = true
 deno_fetch.workspace = true
 
 tokio.workspace = true
-reqwest.workspace = true
+sqlx.workspace = true
+serde.workspace = true
+serde_json.workspace = true

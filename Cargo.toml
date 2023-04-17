@@ -21,27 +21,12 @@ deno_web = {version = "0.128.0"}
 deno_webidl = { version = "0.97.0"}
 deno_tls = { version = "0.84.0" }
 
-#deno_core = { version = "0.179.0" }
-#deno_console = { version = "0.97.0" }
-#deno_fetch = { version = "0.121.0" }
-#deno_url = { version = "0.97.0" }
-#deno_tls = { version = "0.84.0"}
-#deno_webidl = { version = "0.97.0" }
-#deno_web = { version = "0.128.0" }
-#
-
-
+clap = { version = "4.1.8", features = ["derive"] }
 tokio = { version = "1.25.0", features = ["full"] }
-reqwest = { version = "0.11.6", features = ["json", "stream"] }
-
-#table_api = { path = "table_api" }
-#clap = { version = "4.1.8", features = ["derive"] }
-#axum = { version = "0.6"}
-#sqlx = { version = "0.6.2", features = ["runtime-tokio-native-tls", "mysql", "offline"]}
-#anyhow = { version = "1"}
-#thiserror = { version = "1"}
-#futures = { version = "0.3" }
-#serde = {version = "1.0.157", features = ["derive"]}
-##deno_core = "0.171.0"
-#deno_runtime = "0.99.0"
-#rusqlite = { version = "0.28.0", features = ["bundled"] }
+axum = { version = "0.6"}
+sqlx = { version = "0.6.2", features = ["runtime-tokio-native-tls", "mysql", "offline", "json"]}
+anyhow = { version = "1"}
+thiserror = { version = "1"}
+futures = { version = "0.3" }
+serde = {version = "1.0.157", features = ["derive"]}
+serde_json = { version = "1.0" }
