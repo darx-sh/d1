@@ -1,19 +1,30 @@
 use deno_core::error::AnyError;
 use deno_core::url::Url;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-pub struct Permissions;
+pub struct Permissions {
+    tenant_dir: PathBuf,
+}
 
 impl Permissions {
-    pub fn new() -> Self {
-        Self
+    pub fn new(options: Options) -> Self {
+        Self {
+            tenant_dir: options.tenant_dir,
+        }
     }
+}
+
+pub struct Options {
+    pub tenant_dir: PathBuf,
 }
 
 deno_core::extension!(
     darx_permissions,
-    state = |state| {
-        state.put::<Permissions>(Permissions::new());
+    options = {
+        options: Options,
+    },
+    state = |state, options| {
+        state.put::<Permissions>(Permissions::new(options.options));
     }
 );
 
