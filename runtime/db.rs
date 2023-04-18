@@ -1,20 +1,58 @@
+use deno_core::error::AnyError;
+use deno_core::{op, ResourceId};
+use deno_core::{OpState, Resource};
 use serde::{Deserialize, Serialize};
 use serde_json;
 use sqlx::database::HasValueRef;
 use sqlx::error::BoxDynError;
-use sqlx::mysql::MySqlTypeInfo;
-use sqlx::{Decode, MySql, Type, TypeInfo, ValueRef};
+use sqlx::mysql::{MySqlArguments, MySqlTypeInfo};
+use sqlx::{Column, Decode, MySql, MySqlPool, Row, Type, TypeInfo, ValueRef};
+use std::borrow::Cow;
+use std::cell::RefCell;
 use std::collections::HashMap;
+use std::rc::Rc;
 
-// deno_core::extension!(darx_db, ops = [op_db_query], esm = ["js/db.js"],);
+deno_core::extension!(
+    darx_db,
+    deps = [darx_bootstrap],
+    ops = [op_db_fetch_all],
+    esm = ["js/01_db.js"]
+);
+
+#[op]
+pub async fn op_db_fetch_all(
+    state: Rc<RefCell<OpState>>,
+    query_str: String,
+    params: Vec<serde_json::Value>,
+) -> Result<Vec<DarxRow>, AnyError> {
+    let pool = state.borrow().borrow::<MySqlPool>().clone();
+
+    let mut query = sqlx::query(&query_str);
+    for param in params {
+        query = query.bind(param);
+    }
+    let rows = query.fetch_all(&pool).await?;
+    let mut drows = vec![];
+    rows.iter().for_each(|row| {
+        let num_columns = row.len();
+        let mut drow = DarxRow(HashMap::new());
+        let columns = row.columns();
+        for i in 0..num_columns {
+            let v: DarxColumnValue = row.try_get(i).unwrap();
+            drow.0.insert(columns[i].name().to_string(), v);
+        }
+        drows.push(drow);
+    });
+    Ok(drows)
+}
 
 #[derive(Serialize, Deserialize)]
-struct ColumnValue(serde_json::Value);
+struct DarxColumnValue(serde_json::Value);
 
 #[derive(Serialize, Deserialize)]
-struct Row(HashMap<String, ColumnValue>);
+struct DarxRow(HashMap<String, DarxColumnValue>);
 
-impl Type<MySql> for ColumnValue {
+impl Type<MySql> for DarxColumnValue {
     fn type_info() -> MySqlTypeInfo {
         // it is not used in decode.
         todo!()
@@ -25,7 +63,7 @@ impl Type<MySql> for ColumnValue {
     }
 }
 
-impl Decode<'_, MySql> for ColumnValue {
+impl Decode<'_, MySql> for DarxColumnValue {
     fn decode(
         value: <MySql as HasValueRef<'_>>::ValueRef,
     ) -> Result<Self, BoxDynError> {
@@ -128,36 +166,23 @@ impl Decode<'_, MySql> for ColumnValue {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{create_db_pool, DarxRuntime};
     use deno_core::anyhow::Result;
     use deno_core::futures::TryStreamExt;
     use serde_json;
     use sqlx::{Column, MySqlPool, Row};
+    use std::path::PathBuf;
 
     #[tokio::test]
-    async fn test_fetch() -> Result<()> {
-        let pool =
-            MySqlPool::connect("mysql://root:12345678@localhost:3306/test")
-                .await?;
-
+    async fn test_db_query() -> Result<()> {
+        let pool = create_db_pool().await;
         sqlx::query("CREATE TABLE IF NOT EXISTS test (id INT NOT NULL AUTO_INCREMENT, name VARCHAR(255) NOT NULL, PRIMARY KEY (id))")
             .execute(&pool)
             .await?;
-
-        let q = sqlx::query("SELECT * FROM test");
-
-        let rows = q.fetch_all(&pool).await?;
-
-        rows.iter().for_each(|row| {
-            let num_columns = row.len();
-            let mut my_row = Row(HashMap::new());
-            let columns = row.columns();
-            for i in 0..num_columns {
-                let v: ColumnValue = row.try_get(i).unwrap();
-                my_row.0.insert(columns[i].name().to_string(), v);
-            }
-            println!("my_row: {}", serde_json::to_string(&my_row).unwrap());
-        });
-
+        let tenant_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("examples/tenants/7ce52fdc14b16017");
+        let mut darx_runtime = DarxRuntime::new(pool, tenant_path);
+        darx_runtime.run("run_query.js").await?;
         Ok(())
     }
 }

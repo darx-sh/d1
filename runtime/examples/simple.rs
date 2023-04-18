@@ -1,7 +1,7 @@
 use deno_core::anyhow::{Context, Error};
 use deno_core::include_js_files;
 use deno_core::url::Url;
-use runtime::{darx_main_js, DarxRuntime};
+use runtime::{darx_bootstrap, DarxRuntime};
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
