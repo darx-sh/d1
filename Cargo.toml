@@ -1,6 +1,7 @@
 [workspace]
 members = [
-    "table_api",
+    "types",
+#    "table_api",
     "custom_api",
     "cli",
     "runtime",
@@ -10,6 +11,8 @@ members = [
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [workspace.dependencies]
+darx_types = { path = "./types" }
+
 # Deno related crates from v1.32.3
 # https://github.com/denoland/deno/blob/v1.32.3/Cargo.toml
 deno_core = { version  = "0.179.0" }
@@ -24,7 +27,8 @@ deno_tls = { version = "0.84.0" }
 clap = { version = "4.1.8", features = ["derive"] }
 tokio = { version = "1.25.0", features = ["full"] }
 axum = { version = "0.6"}
-sqlx = { version = "0.6.2", features = ["runtime-tokio-native-tls", "mysql", "offline", "json"]}
+mysql_async = { version = "0.32" }
+
 anyhow = { version = "1"}
 thiserror = { version = "1"}
 futures = { version = "0.3" }

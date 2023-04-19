@@ -17,3 +17,5 @@ anyhow.workspace = true
 thiserror.workspace = true
 futures.workspace = true
 serde.workspace = true
+
+darx_datum.workspace = true

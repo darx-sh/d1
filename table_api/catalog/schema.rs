@@ -1,19 +1,6 @@
 use anyhow::{anyhow, Result};
 use serde::Serialize;
 
-#[derive(Clone, Debug, PartialEq, Serialize)]
-pub enum Datum {
-    Null,
-    Int8(i8),
-    Int16(i16),
-    Int32(i32),
-    Int64(i64),
-    Float32(f32),
-    Float64(f64),
-    String(String),
-    Bytes(Vec<u8>),
-}
-
 #[derive(Clone, Debug, PartialEq)]
 pub enum ScalarType {
     ///

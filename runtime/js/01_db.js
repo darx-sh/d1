@@ -16,6 +16,10 @@ class DBQuery {
   fetchAll() {
     return core.opAsync("op_db_fetch_all", this.queryString, this.params);
   }
+
+  exec() {
+    return core.opAsync("op_db_exec", this.queryString, this.params);
+  }
 }
 /**
  * @param {string} queryString

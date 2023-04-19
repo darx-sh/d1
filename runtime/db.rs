@@ -1,12 +1,12 @@
+use darx_types::{XColumn, XDatum, XRow, XValue};
 use deno_core::error::AnyError;
-use deno_core::{op, ResourceId};
-use deno_core::{OpState, Resource};
+use deno_core::op;
+use deno_core::OpState;
+use mysql_async::prelude::WithParams;
+use mysql_async::prelude::{Query, Queryable};
+use mysql_async::Column;
 use serde::{Deserialize, Serialize};
 use serde_json;
-use sqlx::database::HasValueRef;
-use sqlx::error::BoxDynError;
-use sqlx::mysql::{MySqlArguments, MySqlTypeInfo};
-use sqlx::{Column, Decode, MySql, MySqlPool, Row, Type, TypeInfo, ValueRef};
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -15,7 +15,7 @@ use std::rc::Rc;
 deno_core::extension!(
     darx_db,
     deps = [darx_bootstrap],
-    ops = [op_db_fetch_all],
+    ops = [op_db_fetch_all, op_db_exec],
     esm = ["js/01_db.js"]
 );
 
@@ -24,144 +24,71 @@ pub async fn op_db_fetch_all(
     state: Rc<RefCell<OpState>>,
     query_str: String,
     params: Vec<serde_json::Value>,
-) -> Result<Vec<DarxRow>, AnyError> {
-    let pool = state.borrow().borrow::<MySqlPool>().clone();
-
-    let mut query = sqlx::query(&query_str);
-    for param in params {
-        query = query.bind(param);
-    }
-    let rows = query.fetch_all(&pool).await?;
-    let mut drows = vec![];
-    rows.iter().for_each(|row| {
-        let num_columns = row.len();
-        let mut drow = DarxRow(HashMap::new());
-        let columns = row.columns();
-        for i in 0..num_columns {
-            let v: DarxColumnValue = row.try_get(i).unwrap();
-            drow.0.insert(columns[i].name().to_string(), v);
+) -> Result<Vec<XRow>, AnyError> {
+    let pool = state.borrow().borrow::<mysql_async::Pool>().clone();
+    let mut conn = pool.get_conn().await?;
+    let params: Vec<XDatum> = params.into_iter().map(|v| v.into()).collect();
+    let query = query_str.with(params);
+    let v: Vec<mysql_async::Row> = query.fetch(&mut conn).await?;
+    let mut rows = vec![];
+    for row in v {
+        let mut xrow = XRow(vec![]);
+        let columns = row.columns_ref();
+        for i in 0..columns.len() {
+            let cname = columns[i].name_str();
+            let ty = columns[i].column_type();
+            let datum: XDatum = row.as_ref(i).unwrap().into();
+            let column = XColumn {
+                name: cname.to_string(),
+                value: XValue { datum, ty },
+            };
+            xrow.0.push(column);
         }
-        drows.push(drow);
-    });
-    Ok(drows)
+        rows.push(xrow);
+    }
+    Ok(rows)
 }
 
-#[derive(Serialize, Deserialize)]
-struct DarxColumnValue(serde_json::Value);
+#[op]
+pub async fn op_db_exec(
+    state: Rc<RefCell<OpState>>,
+    query_str: String,
+    params: Vec<serde_json::Value>,
+) -> Result<MySqlExecResult, AnyError> {
+    let pool = state.borrow().borrow::<mysql_async::Pool>().clone();
+    let mut conn = pool.get_conn().await?;
+    let params: Vec<XDatum> = params.into_iter().map(|v| v.into()).collect();
+    // let query = query_str.with(params);
 
-#[derive(Serialize, Deserialize)]
-struct DarxRow(HashMap<String, DarxColumnValue>);
-
-impl Type<MySql> for DarxColumnValue {
-    fn type_info() -> MySqlTypeInfo {
-        // it is not used in decode.
-        todo!()
-    }
-
-    fn compatible(_ty: &MySqlTypeInfo) -> bool {
-        true
-    }
+    let result = conn.exec_iter(query_str, params).await?;
+    Ok(MySqlExecResult {
+        rows_affected: result.affected_rows(),
+        last_insert_id: result.last_insert_id().unwrap_or(0),
+    })
 }
 
-impl Decode<'_, MySql> for DarxColumnValue {
-    fn decode(
-        value: <MySql as HasValueRef<'_>>::ValueRef,
-    ) -> Result<Self, BoxDynError> {
-        let type_info = value.type_info().to_mut().clone();
-        // todo: these type conversion are not tested
-        match type_info.name() {
-            "BOOLEAN" => {
-                let v = serde_json::Value::Bool(
-                    <bool as Decode<MySql>>::decode(value)?,
-                );
-                Ok(Self(v))
-            }
-            // uint
-            "TINYINT UNSIGNED" | "SMALLINT UNSIGNED" | "INT UNSIGNED"
-            | "MEDIUMINT UNSIGNED" | "BIGINT UNSIGNED" => {
-                let v = serde_json::Value::Number(
-                    <u64 as Decode<MySql>>::decode(value)?.into(),
-                );
-                Ok(Self(v))
-            }
-            // int
-            "TINYINT" | "SMALLINT" | "INT" | "MEDIUMINT" | "BIGINT" => {
-                let v = serde_json::Value::Number(
-                    <i64 as Decode<MySql>>::decode(value)?.into(),
-                );
-                Ok(Self(v))
-            }
-            // float
-            "FLOAT" | "DOUBLE" => {
-                let number =
-                    serde_json::Number::from_f64(
-                        <f64 as Decode<MySql>>::decode(value)?,
-                    )
-                    .unwrap();
-                Ok(Self(serde_json::Value::Number(number)))
-            }
-            "NULL" => {
-                let v = serde_json::Value::Null;
-                Ok(Self(v))
-            }
-            "TIMESTAMP" | "DATE" | "TIME" | "DATETIME" | "YEAR" => {
-                let v = serde_json::Value::String(
-                    <&str as Decode<MySql>>::decode(value)?.into(),
-                );
-                Ok(Self(v))
-            }
-            "BIT" => {
-                let v = serde_json::Value::String(
-                    <&str as Decode<MySql>>::decode(value)?.into(),
-                );
-                Ok(Self(v))
-            }
-            "ENUM" => {
-                let v = serde_json::Value::String(
-                    <&str as Decode<MySql>>::decode(value)?.into(),
-                );
-                Ok(Self(v))
-            }
-            "SET" => {
-                let v = serde_json::Value::String(
-                    <&str as Decode<MySql>>::decode(value)?.into(),
-                );
-                Ok(Self(v))
-            }
-            "DECIMAL" => {
-                let v = serde_json::Value::String(
-                    <&str as Decode<MySql>>::decode(value)?.into(),
-                );
-                Ok(Self(v))
-            }
-            "GEOMETRY" => {
-                let v = serde_json::Value::String(
-                    <&str as Decode<MySql>>::decode(value)?.into(),
-                );
-                Ok(Self(v))
-            }
-            "JSON" => {
-                let s = <&str as Decode<MySql>>::decode(value)?;
-                let v: serde_json::Value = serde_json::from_str(s)?;
-                Ok(Self(v))
-            }
-            "BINARY" => {
-                let v = serde_json::Value::String(
-                    <&str as Decode<MySql>>::decode(value)?.into(),
-                );
-                Ok(Self(v))
-            }
-            "CHAR" | "VARCHAR" | "TINYTEXT" | "TEXT" | "MEDIUMTEXT"
-            | "LONGTEXT" => {
-                let v = serde_json::Value::String(
-                    <&str as Decode<MySql>>::decode(value)?.into(),
-                );
-                Ok(Self(v))
-            }
-            _ => todo!(),
-        }
-    }
+#[derive(Serialize)]
+pub struct MySqlExecResult {
+    rows_affected: u64,
+    last_insert_id: u64,
 }
+
+// impl From<MySqlQueryResult> for MySqlExecResult {
+//     fn from(result: MySqlQueryResult) -> Self {
+//         Self {
+//             rows_affected: result.rows_affected(),
+//             last_insert_id: result.last_insert_id(),
+//         }
+//     }
+// }
+
+/// JS (serde_json::Value) -> Rust (DarxColumnValue) -> SQLx::query::bind<T: Encode + Type<MySql>>()
+/// SQLx::try_get<Decode + Type<MySql>> -> Rust (DarxColumnValue) -> JS (serde_json::Value)
+// #[derive(Serialize, Deserialize)]
+// struct DarxColumnValue(serde_json::Value);
+//
+// #[derive(Serialize, Deserialize)]
+// struct DarxRow(HashMap<String, DarxColumnValue>);
 
 #[cfg(test)]
 mod tests {
@@ -169,16 +96,21 @@ mod tests {
     use crate::{create_db_pool, DarxRuntime};
     use deno_core::anyhow::Result;
     use deno_core::futures::TryStreamExt;
+    use mysql_async::prelude::Query;
     use serde_json;
-    use sqlx::{Column, MySqlPool, Row};
     use std::path::PathBuf;
 
     #[tokio::test]
     async fn test_db_query() -> Result<()> {
-        let pool = create_db_pool().await;
-        sqlx::query("CREATE TABLE IF NOT EXISTS test (id INT NOT NULL AUTO_INCREMENT, name VARCHAR(255) NOT NULL, PRIMARY KEY (id))")
-            .execute(&pool)
-            .await?;
+        let pool = create_db_pool();
+        let mut conn = pool.get_conn().await?;
+        r"CREATE TABLE IF NOT EXISTS test (
+            id INT NOT NULL AUTO_INCREMENT, 
+            name VARCHAR(255) NOT NULL, 
+            PRIMARY KEY (id)
+        )"
+        .ignore(&mut conn)
+        .await?;
         let tenant_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("examples/tenants/7ce52fdc14b16017");
         let mut darx_runtime = DarxRuntime::new(pool, tenant_path);

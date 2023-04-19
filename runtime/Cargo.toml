@@ -8,6 +8,8 @@ edition = "2021"
 path = "lib.rs"
 
 [dependencies]
+darx_types.workspace = true
+
 deno_core.workspace = true
 deno_webidl.workspace = true
 deno_web.workspace = true
@@ -17,6 +19,7 @@ deno_tls.workspace = true
 deno_fetch.workspace = true
 
 tokio.workspace = true
-sqlx.workspace = true
+mysql_async.workspace = true
+
 serde.workspace = true
 serde_json.workspace = true

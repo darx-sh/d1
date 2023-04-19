@@ -1,4 +1,5 @@
-use crate::catalog::schema::{ColumnDesc, Datum};
+use crate::catalog::schema::ColumnDesc;
+use darx_datum::Datum;
 use serde::Serialize;
 use std::collections::HashMap;
 

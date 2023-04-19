@@ -1,7 +1,7 @@
 use crate::db::darx_db;
 use crate::module_loader::TenantModuleLoader;
 use deno_core::anyhow::Error;
-use sqlx::MySqlPool;
+
 use std::path::PathBuf;
 use std::rc::Rc;
 
@@ -13,12 +13,12 @@ deno_core::extension!(darx_bootstrap, esm = ["js/00_bootstrap.js"]);
 
 pub struct DarxRuntime {
     js_runtime: deno_core::JsRuntime,
-    mysql_pool: MySqlPool,
+    pool: mysql_async::Pool,
     tenant_dir: PathBuf,
 }
 
 impl DarxRuntime {
-    pub fn new(mysql_pool: MySqlPool, tenant_dir: PathBuf) -> Self {
+    pub fn new(pool: mysql_async::Pool, tenant_dir: PathBuf) -> Self {
         let user_agent = "darx-runtime".to_string();
         let root_cert_store = deno_tls::create_default_root_cert_store();
 
@@ -56,11 +56,11 @@ impl DarxRuntime {
             });
 
         let op_state = js_runtime.op_state();
-        op_state.borrow_mut().put::<MySqlPool>(mysql_pool.clone());
+        op_state.borrow_mut().put::<mysql_async::Pool>(pool.clone());
 
         DarxRuntime {
             js_runtime,
-            mysql_pool,
+            pool,
             tenant_dir,
         }
     }
@@ -83,11 +83,8 @@ impl DarxRuntime {
     }
 }
 
-async fn create_db_pool() -> MySqlPool {
-    let pool = MySqlPool::connect("mysql://root:12345678@localhost:3306/test")
-        .await
-        .unwrap();
-    pool
+fn create_db_pool() -> mysql_async::Pool {
+    mysql_async::Pool::new("mysql://root:12345678@localhost:3306/test")
 }
 
 #[cfg(test)]
@@ -98,8 +95,7 @@ mod tests {
     async fn test_run() {
         let tenant_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("examples/tenants/7ce52fdc14b16017");
-        let mut darx_runtime =
-            DarxRuntime::new(create_db_pool().await, tenant_path);
+        let mut darx_runtime = DarxRuntime::new(create_db_pool(), tenant_path);
 
         darx_runtime
             .run("foo.js")
@@ -115,8 +111,7 @@ mod tests {
     async fn test_private() {
         let tenant_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("examples/tenants/7ce52fdc14b16017");
-        let mut darx_runtime =
-            DarxRuntime::new(create_db_pool().await, tenant_path);
+        let mut darx_runtime = DarxRuntime::new(create_db_pool(), tenant_path);
         let r = darx_runtime.run("load_private.js").await;
         assert!(r.is_err());
     }
