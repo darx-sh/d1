@@ -1,15 +1,9 @@
-use darx_types::{MySqlQueryResult, XColumn, XDatum, XRow, XValue};
+use darx_types::{MySqlQueryResult, XDatum};
 use deno_core::error::AnyError;
-use deno_core::{op, ResourceId};
-use deno_core::{OpState, Resource};
-use mysql_async::prelude::WithParams;
-use mysql_async::prelude::{Query, Queryable};
-use mysql_async::{BinaryProtocol, Column, Conn, QueryResult, ResultSetStream};
-use serde::{Deserialize, Serialize};
-use serde_json;
-use std::borrow::Cow;
+use deno_core::op;
+use deno_core::OpState;
+use mysql_async::prelude::Queryable;
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::rc::Rc;
 
 deno_core::extension!(
@@ -44,12 +38,10 @@ pub async fn op_db_query(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+
     use crate::{create_db_pool, DarxRuntime};
     use deno_core::anyhow::Result;
-    use deno_core::futures::TryStreamExt;
     use mysql_async::prelude::Query;
-    use serde_json;
     use std::path::PathBuf;
 
     #[tokio::test]
