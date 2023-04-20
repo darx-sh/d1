@@ -84,3 +84,49 @@ impl Serialize for XRow {
         map.end()
     }
 }
+
+impl From<mysql_async::Row> for XRow {
+    fn from(row: mysql_async::Row) -> Self {
+        let mut xrow = XRow(vec![]);
+        let columns = row.columns_ref();
+        for i in 0..columns.len() {
+            let cname = columns[i].name_str();
+            let ty = columns[i].column_type();
+            let datum: XDatum = row.as_ref(i).unwrap().into();
+            let column = XColumn {
+                name: cname.to_string(),
+                value: XValue { datum, ty },
+            };
+            xrow.0.push(column);
+        }
+        xrow
+    }
+}
+
+pub enum MySqlQueryResult {
+    Rows(Vec<XRow>),
+    Empty {
+        affected_rows: u64,
+        last_insert_id: Option<u64>,
+    },
+}
+
+impl Serialize for MySqlQueryResult {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            MySqlQueryResult::Rows(rows) => rows.serialize(serializer),
+            MySqlQueryResult::Empty {
+                affected_rows,
+                last_insert_id,
+            } => {
+                let mut map = serializer.serialize_map(Some(2))?;
+                map.serialize_entry("affected_rows", affected_rows)?;
+                map.serialize_entry("last_insert_id", last_insert_id)?;
+                map.end()
+            }
+        }
+    }
+}
