@@ -9,5 +9,5 @@ for (let i = 0; i < 100; i++) {
 var r2 = await db.query("SELECT COUNT(*) FROM test");
 console.log("result: ", r2);
 
-let r3 = await db.query("SELECT * from test WHERE name = ?", "barbar");
+let r3 = await db.query("SELECT * from test WHERE name = ?", "foo");
 console.log("result: ", r3);

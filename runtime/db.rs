@@ -36,10 +36,15 @@ pub async fn op_db_query(
     Ok(query_result)
 }
 
+pub fn create_db_pool() -> mysql_async::Pool {
+    mysql_async::Pool::new("mysql://root:12345678@localhost:3306/test")
+}
+
 #[cfg(test)]
 mod tests {
 
-    use crate::{create_db_pool, DarxRuntime};
+    use crate::db::create_db_pool;
+    use crate::DarxRuntime;
     use deno_core::anyhow::Result;
     use mysql_async::prelude::Query;
     use std::path::PathBuf;

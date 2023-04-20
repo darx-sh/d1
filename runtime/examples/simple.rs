@@ -1,9 +1,6 @@
-use deno_core::anyhow::{Context, Error};
-use deno_core::include_js_files;
-use deno_core::url::Url;
-use runtime::{darx_bootstrap, DarxRuntime};
-use std::path::{Path, PathBuf};
-use std::rc::Rc;
+use runtime::db::create_db_pool;
+use runtime::DarxRuntime;
+use std::path::Path;
 
 fn main() {
     let runtime = tokio::runtime::Builder::new_current_thread()
@@ -13,7 +10,7 @@ fn main() {
 
     let tenant_path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("examples/tenants/7ce52fdc14b16017");
-    let mut darx_runtime = DarxRuntime::new(tenant_path);
+    let mut darx_runtime = DarxRuntime::new(create_db_pool(), tenant_path);
 
     if let Err(error) = runtime.block_on(darx_runtime.run("foo.js")) {
         eprintln!("foo error: {}", error);

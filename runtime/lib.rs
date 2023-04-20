@@ -5,7 +5,8 @@ use deno_core::anyhow::Error;
 use std::path::PathBuf;
 use std::rc::Rc;
 
-mod db;
+pub mod db;
+
 mod module_loader;
 mod permissions;
 
@@ -13,7 +14,6 @@ deno_core::extension!(darx_bootstrap, esm = ["js/00_bootstrap.js"]);
 
 pub struct DarxRuntime {
     js_runtime: deno_core::JsRuntime,
-    pool: mysql_async::Pool,
     tenant_dir: PathBuf,
 }
 
@@ -37,8 +37,8 @@ impl DarxRuntime {
             ),
             deno_fetch::deno_fetch::init_ops_and_esm::<permissions::Permissions>(
                 deno_fetch::Options {
-                    user_agent: user_agent.clone(),
-                    root_cert_store: Some(root_cert_store.clone()),
+                    user_agent,
+                    root_cert_store: Some(root_cert_store),
                     ..Default::default()
                 },
             ),
@@ -60,7 +60,6 @@ impl DarxRuntime {
 
         DarxRuntime {
             js_runtime,
-            pool,
             tenant_dir,
         }
     }
@@ -83,13 +82,10 @@ impl DarxRuntime {
     }
 }
 
-fn create_db_pool() -> mysql_async::Pool {
-    mysql_async::Pool::new("mysql://root:12345678@localhost:3306/test")
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::db::create_db_pool;
 
     #[tokio::test]
     async fn test_run() {
