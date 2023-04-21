@@ -2,7 +2,6 @@
 members = [
     "types",
 #    "table_api",
-    "custom_api",
     "cli",
     "runtime",
 ]
@@ -28,6 +27,7 @@ clap = { version = "4.1.8", features = ["derive"] }
 tokio = { version = "1.25.0", features = ["full"] }
 axum = { version = "0.6"}
 mysql_async = { version = "0.32" }
+sea-orm = { version = "^0", features = ["sqlx-mysql", "tokio", "macros"] }
 
 anyhow = { version = "1"}
 thiserror = { version = "1"}
