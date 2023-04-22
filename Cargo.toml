@@ -1,16 +1,11 @@
-[workspace]
-members = [
-    "types",
-#    "table_api",
-    "cli",
-    "runtime",
-]
-
+[package]
+name = "darx"
+version = "0.0.1"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[workspace.dependencies]
-darx_types = { path = "./types" }
+[dependencies]
 
 # Deno related crates from v1.32.3
 # https://github.com/denoland/deno/blob/v1.32.3/Cargo.toml
@@ -27,7 +22,7 @@ clap = { version = "4.1.8", features = ["derive"] }
 tokio = { version = "1.25.0", features = ["full"] }
 axum = { version = "0.6"}
 mysql_async = { version = "0.32" }
-sea-orm = { version = "^0", features = ["sqlx-mysql", "tokio", "macros"] }
+#sea-orm = { version = "^0", features = ["sqlx-mysql", "tokio", "macros"] }
 
 anyhow = { version = "1"}
 thiserror = { version = "1"}

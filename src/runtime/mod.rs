@@ -1,14 +1,14 @@
-use crate::db::darx_db;
-use crate::module_loader::TenantModuleLoader;
+mod module_loader;
+mod permissions;
+
+mod db;
+
+use db::darx_db;
 use deno_core::anyhow::Error;
+use module_loader::TenantModuleLoader;
 
 use std::path::PathBuf;
 use std::rc::Rc;
-
-pub mod db;
-
-mod module_loader;
-mod permissions;
 
 deno_core::extension!(darx_bootstrap, esm = ["js/00_bootstrap.js"]);
 
@@ -85,8 +85,7 @@ impl DarxRuntime {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::db::create_db_pool;
-
+    use db::create_db_pool;
     #[tokio::test]
     async fn test_run() {
         let tenant_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))

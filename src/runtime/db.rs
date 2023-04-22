@@ -1,4 +1,4 @@
-use darx_types::{MySqlQueryResult, XDatum};
+use crate::types::{MySqlQueryResult, XDatum};
 use deno_core::error::AnyError;
 use deno_core::op;
 use deno_core::OpState;
@@ -42,9 +42,8 @@ pub fn create_db_pool() -> mysql_async::Pool {
 
 #[cfg(test)]
 mod tests {
-
-    use crate::db::create_db_pool;
-    use crate::DarxRuntime;
+    use super::*;
+    use crate::runtime::DarxRuntime;
     use deno_core::anyhow::Result;
     use mysql_async::prelude::Query;
     use std::path::PathBuf;
