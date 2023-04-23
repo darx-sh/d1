@@ -4,6 +4,11 @@ version = "0.0.1"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[workspace]
+members = [
+    ".",
+    "migration",
+]
 
 [dependencies]
 
@@ -22,7 +27,7 @@ clap = { version = "4.1.8", features = ["derive"] }
 tokio = { version = "1.25.0", features = ["full"] }
 axum = { version = "0.6"}
 mysql_async = { version = "0.32" }
-#sea-orm = { version = "^0", features = ["sqlx-mysql", "tokio", "macros"] }
+sea-orm = { version = "0", features = ["sqlx-mysql", "runtime-tokio-native-tls", "macros"] }
 
 anyhow = { version = "1"}
 thiserror = { version = "1"}
