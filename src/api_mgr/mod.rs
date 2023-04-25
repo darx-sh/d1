@@ -2,6 +2,9 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::Json;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
+use std::fmt::format;
+use std::io;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -14,6 +17,14 @@ pub enum ApiError {
     FunctionParameterError(String),
     #[error("Table {0} not found")]
     TableNotFound(String),
+    #[error("Internal error")]
+    Internal(anyhow::Error),
+}
+
+impl From<anyhow::Error> for ApiError {
+    fn from(err: anyhow::Error) -> Self {
+        ApiError::Internal(err)
+    }
 }
 
 impl IntoResponse for ApiError {
@@ -31,6 +42,11 @@ impl IntoResponse for ApiError {
             ApiError::TableNotFound(_) => {
                 (StatusCode::NOT_FOUND, format!("{}", self)).into_response()
             }
+            ApiError::Internal(e) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": format!("{:#}", e) })),
+            )
+                .into_response(),
         }
     }
 }

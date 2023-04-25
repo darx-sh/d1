@@ -2,6 +2,7 @@ mod api_mgr;
 mod runtime;
 mod server;
 mod types;
+mod utils;
 
 use anyhow::Result;
 

@@ -36,14 +36,11 @@ pub async fn op_db_query(
     Ok(query_result)
 }
 
-pub fn create_db_pool() -> mysql_async::Pool {
-    mysql_async::Pool::new("mysql://root:12345678@localhost:3306/test")
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::runtime::DarxRuntime;
+    use crate::runtime::DarxIsolate;
+    use crate::utils::create_db_pool;
     use deno_core::anyhow::Result;
     use mysql_async::prelude::Query;
     use std::path::PathBuf;
@@ -61,8 +58,10 @@ mod tests {
         .await?;
         let tenant_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("examples/tenants/7ce52fdc14b16017");
-        let mut darx_runtime = DarxRuntime::new(pool, tenant_path);
-        darx_runtime.run("run_query.js").await?;
+        let mut darx_runtime = DarxIsolate::new(pool, tenant_path);
+        darx_runtime
+            .load_and_eval_module_file("run_query.js")
+            .await?;
         Ok(())
     }
 }

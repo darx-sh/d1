@@ -1,0 +1,5 @@
+{
+  "dir": "api",
+  "file_name": "foo.js",
+  "code": "export default function foo() {\n  return 'foo';\n}"
+}

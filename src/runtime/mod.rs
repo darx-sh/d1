@@ -3,29 +3,29 @@ mod permissions;
 
 mod db;
 
+use anyhow::{Context, Result};
 use db::darx_db;
-use deno_core::anyhow::Error;
+use deno_core::ModuleSpecifier;
 use module_loader::TenantModuleLoader;
-
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
 deno_core::extension!(darx_bootstrap, esm = ["js/00_bootstrap.js"]);
 
-pub struct DarxRuntime {
-    js_runtime: deno_core::JsRuntime,
+pub struct DarxIsolate {
+    pub js_runtime: deno_core::JsRuntime,
     tenant_dir: PathBuf,
 }
 
-impl DarxRuntime {
-    pub fn new(pool: mysql_async::Pool, tenant_dir: PathBuf) -> Self {
+impl DarxIsolate {
+    pub fn new(pool: mysql_async::Pool, tenant_dir: impl AsRef<Path>) -> Self {
         let user_agent = "darx-runtime".to_string();
         let root_cert_store = deno_tls::create_default_root_cert_store();
 
         let extensions = vec![
             permissions::darx_permissions::init_ops_and_esm(
                 permissions::Options {
-                    tenant_dir: tenant_dir.clone(),
+                    tenant_dir: PathBuf::from(tenant_dir.as_ref()),
                 },
             ),
             deno_webidl::deno_webidl::init_ops_and_esm(),
@@ -49,7 +49,7 @@ impl DarxRuntime {
         let mut js_runtime =
             deno_core::JsRuntime::new(deno_core::RuntimeOptions {
                 module_loader: Some(Rc::new(TenantModuleLoader::new(
-                    tenant_dir.clone(),
+                    PathBuf::from(tenant_dir.as_ref()),
                 ))),
                 extensions,
                 ..Default::default()
@@ -58,26 +58,56 @@ impl DarxRuntime {
         let op_state = js_runtime.op_state();
         op_state.borrow_mut().put::<mysql_async::Pool>(pool.clone());
 
-        DarxRuntime {
+        DarxIsolate {
             js_runtime,
-            tenant_dir,
+            tenant_dir: PathBuf::from(tenant_dir.as_ref()),
         }
     }
 
-    pub async fn run(&mut self, file: &str) -> Result<(), Error> {
+    pub async fn load_and_eval_module_file(
+        &mut self,
+        file_path: &str,
+    ) -> Result<()> {
         let module_id = self
             .js_runtime
             .load_side_module(
-                &deno_core::resolve_path(file, self.tenant_dir.as_path())
-                    .unwrap(),
+                &deno_core::resolve_path(file_path, self.tenant_dir.as_path())
+                    .with_context(|| {
+                        format!("failed to resolve path: {}", file_path)
+                    })?,
                 None,
             )
             .await?;
 
-        let result = self.js_runtime.mod_evaluate(module_id);
+        let receiver = self.js_runtime.mod_evaluate(module_id);
         self.js_runtime.run_event_loop(false).await?;
-        let r = result.await?;
-        println!("js file result: {:?}", r);
+        let r = receiver
+            .await?
+            .with_context(|| format!("Couldn't execute '{}'", file_path));
+        Ok(())
+    }
+
+    pub async fn load_and_evaluate_module_code(
+        &mut self,
+        file_path: &str,
+        code: &str,
+    ) -> Result<()> {
+        let module_id = self
+            .js_runtime
+            .load_side_module(
+                &deno_core::resolve_path(file_path, self.tenant_dir.as_path())
+                    .with_context(|| {
+                        format!("failed to resolve path: {}", file_path)
+                    })?,
+                Some(code.to_string().into()),
+            )
+            .await?;
+
+        let receiver = self.js_runtime.mod_evaluate(module_id);
+        self.js_runtime.run_event_loop(false).await?;
+        let r = receiver
+            .await?
+            .with_context(|| format!("Couldn't execute '{}'", file_path));
         Ok(())
     }
 }
@@ -85,19 +115,19 @@ impl DarxRuntime {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use db::create_db_pool;
+    use crate::utils::create_db_pool;
     #[tokio::test]
     async fn test_run() {
         let tenant_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("examples/tenants/7ce52fdc14b16017");
-        let mut darx_runtime = DarxRuntime::new(create_db_pool(), tenant_path);
+        let mut darx_runtime = DarxIsolate::new(create_db_pool(), tenant_path);
 
         darx_runtime
-            .run("foo.js")
+            .load_and_eval_module_file("foo.js")
             .await
             .expect("foo.js should not result an error");
         darx_runtime
-            .run("bar.js")
+            .load_and_eval_module_file("bar.js")
             .await
             .expect("bar.js should not result an error");
     }
@@ -106,8 +136,10 @@ mod tests {
     async fn test_private() {
         let tenant_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("examples/tenants/7ce52fdc14b16017");
-        let mut darx_runtime = DarxRuntime::new(create_db_pool(), tenant_path);
-        let r = darx_runtime.run("load_private.js").await;
+        let mut darx_runtime = DarxIsolate::new(create_db_pool(), tenant_path);
+        let r = darx_runtime
+            .load_and_eval_module_file("load_private.js")
+            .await;
         assert!(r.is_err());
     }
 }
