@@ -1,5 +1,5 @@
 {
   "dir": "api",
   "file_name": "foo.js",
-  "code": "export default function foo() {\n  return 'hi from js foo';\n}"
+  "code": "export function handler() {\n  return 'hi from js foo';\n}\n console.log('I am loaded')"
 }

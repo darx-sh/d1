@@ -195,9 +195,10 @@ async fn handle_event(event: WorkerEvent) {
             // todo: use some thing real. this is just for testing
             let tenant_path =
                 PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(tenant_dir());
-            let func_name = format!("./api/{}.js", func_name);
             let mut isolate = DarxIsolate::new(db_pool, tenant_path);
-            let r = isolate.load_and_eval_module_file(&func_name).await;
+            // let func_name = format!("./api/{}.js", func_name);
+            // let r = isolate.load_and_eval_module_file(&func_name).await;
+            let r = Ok(());
             match r {
                 Ok(()) => {
                     // register the function
@@ -207,7 +208,7 @@ async fn handle_event(event: WorkerEvent) {
                         .load_and_evaluate_module_code(
                             "./register.js",
                             r#"
-                            import handler from "./api/foo.js"
+                            import {handler} from "./api/foo.js"
                             globalThis.handler = handler;
                     "#,
                         )
