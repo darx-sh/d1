@@ -10,10 +10,6 @@ http POST localhost:3000/c/modules < create_module.json
 ```
 
 ```bash
-# invoke function with POST
-http POST localhost:3000/d/api/f/foo
-
-
 # invoke function with GET
 http GET localhost:3000/d/api/f/foo
 ```
