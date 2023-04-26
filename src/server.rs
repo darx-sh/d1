@@ -196,21 +196,17 @@ async fn handle_event(event: WorkerEvent) {
             let tenant_path =
                 PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(tenant_dir());
             let mut isolate = DarxIsolate::new(db_pool, tenant_path);
-            // let func_name = format!("./api/{}.js", func_name);
-            // let r = isolate.load_and_eval_module_file(&func_name).await;
-            let r = Ok(());
+            let func_path = format!("./api/{}.js", func_name);
+            // evaluate the module here to check the syntax.
+            let r = isolate.load_and_eval_module_file(&func_path).await;
             match r {
                 Ok(()) => {
                     // register the function
-                    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                        .join("register.js");
+                    println!("{}", registry_code(&func_path));
                     isolate
                         .load_and_evaluate_module_code(
-                            "./register.js",
-                            r#"
-                            import {handler} from "./api/foo.js"
-                            globalThis.handler = handler;
-                    "#,
+                            "./registry.js",
+                            registry_code(&func_path).as_str(),
                         )
                         .await
                         .unwrap();
@@ -224,6 +220,12 @@ async fn handle_event(event: WorkerEvent) {
                     "#,
                         )
                         .unwrap();
+
+                    let script_result = isolate
+                        .js_runtime
+                        .resolve_value(script_result)
+                        .await
+                        .unwrap();
                     let mut handle_scope = isolate.js_runtime.handle_scope();
                     let script_result =
                         v8::Local::new(&mut handle_scope, script_result);
@@ -236,4 +238,14 @@ async fn handle_event(event: WorkerEvent) {
             }
         }
     }
+}
+
+fn registry_code(import_name: &str) -> String {
+    format!(
+        "
+    import {{handler}} from \"{}\";
+    globalThis.handler = handler;
+    ",
+        import_name
+    )
 }

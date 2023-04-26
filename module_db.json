@@ -1,0 +1,5 @@
+{
+  "dir": "api",
+  "file_name": "bar.js",
+  "code": "export async function handler() {\n  return await db.query('SELECT * FROM test LIMIT 10');\n}\nconsole.log('bar loaded')"
+}

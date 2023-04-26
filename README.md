@@ -14,7 +14,7 @@ cargo run -- server
 
 
 # 3. Create a JS module
-http POST localhost:3000/c/modules < create_module.json
+http POST localhost:3000/c/modules < module_simple.json
 
 # 4. Invoke function with GET
 http GET localhost:3000/d/api/f/foo

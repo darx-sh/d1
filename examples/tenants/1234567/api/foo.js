@@ -1,4 +1,4 @@
 export function handler() {
-  return 'hi from js foo';
+  return "hi from js foo";
 }
- console.log('I am loaded')
+console.log("I am loaded");

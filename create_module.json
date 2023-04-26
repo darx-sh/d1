@@ -1,5 +1,0 @@
-{
-  "dir": "api",
-  "file_name": "foo.js",
-  "code": "export function handler() {\n  return 'hi from js foo';\n}\n console.log('I am loaded')"
-}
