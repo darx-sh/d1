@@ -5,7 +5,6 @@ mod db;
 
 use anyhow::{Context, Result};
 use db::darx_db;
-use deno_core::ModuleSpecifier;
 use module_loader::TenantModuleLoader;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -81,10 +80,9 @@ impl DarxIsolate {
 
         let receiver = self.js_runtime.mod_evaluate(module_id);
         self.js_runtime.run_event_loop(false).await?;
-        let r = receiver
+        receiver
             .await?
-            .with_context(|| format!("Couldn't execute '{}'", file_path));
-        Ok(())
+            .with_context(|| format!("Couldn't execute '{}'", file_path))
     }
 
     pub async fn load_and_evaluate_module_code(
@@ -105,10 +103,9 @@ impl DarxIsolate {
 
         let receiver = self.js_runtime.mod_evaluate(module_id);
         self.js_runtime.run_event_loop(false).await?;
-        let r = receiver
+        receiver
             .await?
-            .with_context(|| format!("Couldn't execute '{}'", file_path));
-        Ok(())
+            .with_context(|| format!("Couldn't execute '{}'", file_path))
     }
 }
 

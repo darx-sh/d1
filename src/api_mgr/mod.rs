@@ -3,8 +3,6 @@ use axum::response::{IntoResponse, Response};
 use axum::Json;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::fmt::format;
-use std::io;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
