@@ -5,6 +5,7 @@ use axum::http::StatusCode;
 use axum::routing::get;
 use axum::{Json, Router};
 use serde::Deserialize;
+use serde_json::json;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -26,11 +27,20 @@ pub async fn run_server() -> Result<()> {
 
     let app = Router::new()
         .route(
-            "/d/api/f/:function_name",
+            "/d/f/:function_name",
             get(invoke_func_get).post(invoke_func_post),
         )
-        .route("/c/modules", get(list_modules).post(create_module))
+        .route(
+            "/c/draft/modules",
+            get(list_draft_modules).post(create_draft_module),
+        )
+        .route(
+            "/c/preview/f/:function_name",
+            get(invoke_func_preview_get).post(invoke_func_preview_post),
+        )
+        .route("/c/deploy", get(list_deployments).post(create_deployment))
         .with_state(server_state);
+
     axum::Server::bind(&"127.0.0.1:3000".parse().unwrap())
         .serve(app.into_make_service())
         .await?;
@@ -38,6 +48,22 @@ pub async fn run_server() -> Result<()> {
 }
 
 async fn invoke_func_get(
+    State(server_state): State<Arc<ServerState>>,
+    Query(params): Query<HashMap<String, String>>,
+    Path(func_name): Path<String>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    Ok(Json(json!("not implemented yet")))
+}
+
+async fn invoke_func_post(
+    State(server_state): State<Arc<ServerState>>,
+    Path(func_name): Path<String>,
+    Json(body): Json<serde_json::Value>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    Ok(Json(json!("not implemented yet")))
+}
+
+async fn invoke_func_preview_get(
     State(server_state): State<Arc<ServerState>>,
     Query(params): Query<HashMap<String, String>>,
     Path(func_name): Path<String>,
@@ -65,13 +91,19 @@ async fn invoke_func_get(
     Ok(Json(result.unwrap()))
 }
 
-async fn invoke_func_post() {}
-
-async fn list_modules() -> Result<Json<serde_json::Value>, ApiError> {
+async fn invoke_func_preview_post(
+    State(server_state): State<Arc<ServerState>>,
+    Path(func_name): Path<String>,
+    Json(body): Json<serde_json::Value>,
+) -> Result<Json<serde_json::Value>, ApiError> {
     todo!()
 }
 
-async fn create_module(
+async fn list_draft_modules() -> Result<Json<serde_json::Value>, ApiError> {
+    todo!()
+}
+
+async fn create_draft_module(
     Json(req): Json<CreateModuleRequest>,
 ) -> Result<StatusCode, ApiError> {
     // save file to tenant's directory
@@ -112,6 +144,14 @@ async fn create_module(
     })?;
 
     Ok(StatusCode::CREATED)
+}
+
+async fn list_deployments() -> Result<StatusCode, ApiError> {
+    todo!()
+}
+
+async fn create_deployment() -> Result<StatusCode, ApiError> {
+    todo!()
 }
 
 fn tenant_dir() -> String {
