@@ -39,8 +39,8 @@ pub async fn op_db_query(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::isolate_runtime::DarxIsolate;
-    use crate::utils::create_db_pool;
+    use crate::DarxIsolate;
+    use darx_utils::create_db_pool;
     use deno_core::anyhow::Result;
     use mysql_async::prelude::Query;
     use std::path::PathBuf;

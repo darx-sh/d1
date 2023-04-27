@@ -1,0 +1,21 @@
+[package]
+name = "darx_api_server"
+version = "0.0.1"
+edition = "2021"
+
+[lib]
+name = "darx_api_server"
+path = "lib.rs"
+
+[dependencies]
+darx_utils.workspace = true
+darx_isolate_runtime.workspace = true
+deno_core.workspace = true
+
+axum.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+anyhow.workspace = true
+tokio.workspace = true
+mysql_async.workspace = true

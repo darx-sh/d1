@@ -1,4 +1,4 @@
-use crate::isolate_runtime::DarxIsolate;
+use darx_isolate_runtime::DarxIsolate;
 use deno_core::{serde_v8, v8};
 use std::collections::HashMap;
 use std::path::PathBuf;

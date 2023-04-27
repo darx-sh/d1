@@ -1,0 +1,28 @@
+[package]
+name = "darx_isolate_runtime"
+version = "0.0.1"
+edition = "2021"
+
+[lib]
+name = "darx_isolate_runtime"
+path = "lib.rs"
+
+[dependencies]
+deno_core.workspace = true
+deno_fetch.workspace = true
+deno_web.workspace = true
+deno_webidl.workspace = true
+deno_console.workspace = true
+deno_crypto.workspace = true
+deno_url.workspace = true
+deno_tls.workspace = true
+
+serde.workspace = true
+serde_json.workspace = true
+mysql_async.workspace = true
+anyhow.workspace = true
+
+
+[dev-dependencies]
+darx_utils.workspace = true
+tokio.workspace = true

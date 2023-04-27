@@ -1,13 +1,4 @@
-mod api_mgr;
-mod isolate_runtime;
-mod server;
-mod types;
-mod utils;
-mod worker;
-
 use anyhow::Result;
-
-use crate::server::run_server;
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
@@ -31,7 +22,7 @@ enum Commands {
 async fn main() -> Result<()> {
     let cli = Cli::parse();
     match &cli.command {
-        Commands::Server => run_server().await?,
+        Commands::Server => darx_api_server::run_server().await?,
         _ => {
             println!("other");
         }

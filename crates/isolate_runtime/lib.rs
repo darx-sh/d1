@@ -1,7 +1,7 @@
+mod db;
 mod module_loader;
 mod permissions;
-
-mod db;
+mod types;
 
 use anyhow::{Context, Result};
 use db::darx_db;
@@ -112,7 +112,7 @@ impl DarxIsolate {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::utils::create_db_pool;
+    use darx_utils::create_db_pool;
     #[tokio::test]
     async fn test_run() {
         let tenant_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))

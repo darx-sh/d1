@@ -1,0 +1,14 @@
+[package]
+name = "darx"
+version = "0.0.1"
+edition = "2021"
+
+[[bin]]
+name = "darx"
+path = "main.rs"
+
+[dependencies]
+darx_api_server.workspace = true
+anyhow.workspace = true
+clap.workspace = true
+tokio.workspace = true

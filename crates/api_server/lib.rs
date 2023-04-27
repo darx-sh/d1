@@ -5,6 +5,11 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use thiserror::Error;
 
+mod server;
+mod worker;
+
+pub use server::run_server;
+
 #[derive(Error, Debug)]
 pub enum ApiError {
     #[error("Authorization failed")]

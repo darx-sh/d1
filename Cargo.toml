@@ -1,27 +1,28 @@
-[package]
-name = "darx"
-version = "0.0.1"
-edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [workspace]
 members = [
-    ".",
-    "migration",
+    "crates/isolate_runtime",
+    "crates/cli",
+    "crates/api_server",
+    "crates/utils"
 ]
 
-[dependencies]
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[workspace.dependencies]
+darx_isolate_runtime = { path = "./crates/isolate_runtime" }
+darx_api_server = { path = "./crates/api_server" }
+darx_utils = { path = "./crates/utils" }
 
 # Deno related crates from v1.32.3
 # https://github.com/denoland/deno/blob/v1.32.3/Cargo.toml
-deno_core = { version  = "0.179.0" }
-deno_console = { version = "0.97.0" }
-deno_crypto = { version = "0.111.0" }
-deno_fetch = { version = "0.121.0" }
-deno_url = {version = "0.97.0"}
-deno_web = {version = "0.128.0"}
-deno_webidl = { version = "0.97.0"}
-deno_tls = { version = "0.84.0" }
+deno_core = { version = "= 0.179.0" }
+deno_console = {version = "= 0.97.0" }
+deno_crypto = { version = "= 0.111.0" }
+deno_fetch = { version = "= 0.121.0" }
+deno_url = {version = "= 0.97.0"}
+deno_web = {version = "= 0.128.0"}
+deno_webidl = { version = "= 0.97.0"}
+deno_tls = { version = "= 0.84.0" }
 
 clap = { version = "4.1.8", features = ["derive"] }
 tokio = { version = "1.25.0", features = ["full"] }
@@ -34,3 +35,5 @@ thiserror = { version = "1"}
 futures = { version = "0.3" }
 serde = {version = "1.0.157", features = ["derive"]}
 serde_json = { version = "1.0" }
+
+
