@@ -26,6 +26,7 @@ pub async fn run_server() -> Result<()> {
     });
 
     let app = Router::new()
+        .route("/", get(|| async { "darx data plan api healthy." }))
         .route(
             "/d/f/:function_name",
             get(invoke_func_get).post(invoke_func_post),
@@ -41,7 +42,7 @@ pub async fn run_server() -> Result<()> {
         .route("/c/deploy", get(list_deployments).post(create_deployment))
         .with_state(server_state);
 
-    axum::Server::bind(&"127.0.0.1:3000".parse().unwrap())
+    axum::Server::bind(&"127.0.0.1:4000".parse().unwrap())
         .serve(app.into_make_service())
         .await?;
     Ok(())

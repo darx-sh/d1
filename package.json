@@ -1,0 +1,23 @@
+{
+  "name": "darx",
+  "version": "0.0.1",
+  "description": "Makes your database more accessible",
+  "private": true,
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint --continue",
+    "typecheck": "turbo typecheck --continue"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": "eslint --fix"
+  },
+  "packageManager": "pnpm@8.2.0",
+  "engines": {
+    "node": ">=16.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "devDependencies": {
+    "turbo": "^1.9.3"
+  }
+}
