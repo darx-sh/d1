@@ -19,8 +19,7 @@ const navigation = [
   { name: "Settings", href: "#", icon: WrenchIcon, current: false },
 ];
 
-// @ts-ignore
-function classNames(...classes) {
+function classNames(...classes: any[]) {
   return classes.filter(Boolean).join(" ");
 }
 
