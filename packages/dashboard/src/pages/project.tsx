@@ -1,5 +1,4 @@
 import { useState } from "react";
-
 import {
   CircleStackIcon,
   CloudIcon,
@@ -9,14 +8,44 @@ import {
   WrenchIcon,
 } from "@heroicons/react/24/solid";
 
-const navigation = [
-  { name: "Database", href: "#", icon: CircleStackIcon, current: false },
-  { name: "Data API", href: "#", icon: CloudIcon, current: false },
-  { name: "Triggers", href: "#", icon: ArrowPathIcon, current: false },
+import Database from "~/components/project/database";
+import DataApi from "~/components/project/data_api";
+import Triggers from "~/components/project/triggers";
+import Report from "~/components/project/reports";
+import Logs from "~/components/project/logs";
+import Settings from "~/components/project/settings";
 
-  { name: "Reports", href: "#", icon: ArrowTrendingUpIcon, current: false },
-  { name: "Logs", href: "#", icon: Bars4Icon, current: false },
-  { name: "Settings", href: "#", icon: WrenchIcon, current: false },
+const navigation = [
+  {
+    name: "Database",
+    icon: CircleStackIcon,
+    component: Database,
+  },
+  {
+    name: "Data API",
+    icon: CloudIcon,
+    component: DataApi,
+  },
+  {
+    name: "Triggers",
+    icon: ArrowPathIcon,
+    component: Triggers,
+  },
+  {
+    name: "Reports",
+    icon: ArrowTrendingUpIcon,
+    component: Report,
+  },
+  {
+    name: "Logs",
+    icon: Bars4Icon,
+    component: Logs,
+  },
+  {
+    name: "Settings",
+    icon: WrenchIcon,
+    component: Settings,
+  },
 ];
 
 function classNames(...classes: any[]) {
@@ -24,7 +53,15 @@ function classNames(...classes: any[]) {
 }
 
 export default function Example() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [curIndex, setCurIndex] = useState(0);
+
+  function handleNav(index: number) {
+    setCurIndex(index);
+  }
+
+  function getNavItem(index: number) {
+    return navigation[index]!.component;
+  }
 
   return (
     <>
@@ -44,12 +81,16 @@ export default function Example() {
               <ul role="list" className="flex flex-1 flex-col gap-y-7">
                 <li>
                   <ul role="list" className="-mx-2 space-y-5">
-                    {navigation.map((item) => (
-                      <li key={item.name}>
+                    {navigation.map((item, index) => (
+                      <li
+                        key={item.name}
+                        onClick={() => {
+                          handleNav(index);
+                        }}
+                      >
                         <a
-                          href={item.href}
                           className={classNames(
-                            item.current
+                            index === curIndex
                               ? "bg-gray-50 text-indigo-600"
                               : "text-gray-700 hover:bg-gray-50 hover:text-indigo-600",
                             "group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6"
@@ -57,7 +98,7 @@ export default function Example() {
                         >
                           <item.icon
                             className={classNames(
-                              item.current
+                              index === curIndex
                                 ? "text-indigo-600"
                                 : "text-gray-400 group-hover:text-indigo-600",
                               "h-6 w-6 shrink-0"
@@ -90,10 +131,7 @@ export default function Example() {
         </div>
 
         <main className="lg:pl-52">
-          <div className="px-4 py-10 ">
-            {/* Main area */}
-            main
-          </div>
+          <div className="px-4 py-10 ">{getNavItem(curIndex)()}</div>
         </main>
       </div>
     </>
