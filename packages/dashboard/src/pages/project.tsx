@@ -6,6 +6,7 @@ import {
   ArrowTrendingUpIcon,
   Bars4Icon,
   WrenchIcon,
+  UserGroupIcon,
 } from "@heroicons/react/24/solid";
 
 import Database from "~/components/project/database";
@@ -14,6 +15,7 @@ import Triggers from "~/components/project/triggers";
 import Report from "~/components/project/reports";
 import Logs from "~/components/project/logs";
 import Settings from "~/components/project/settings";
+import Auth from "~/components/project/auth";
 
 const navigation = [
   {
@@ -22,14 +24,19 @@ const navigation = [
     component: Database,
   },
   {
-    name: "Data API",
+    name: "API",
     icon: CloudIcon,
     component: DataApi,
   },
+  // {
+  //   name: "Triggers",
+  //   icon: ArrowPathIcon,
+  //   component: Triggers,
+  // },
   {
-    name: "Triggers",
-    icon: ArrowPathIcon,
-    component: Triggers,
+    name: "Auth",
+    icon: UserGroupIcon,
+    component: Auth,
   },
   {
     name: "Reports",
