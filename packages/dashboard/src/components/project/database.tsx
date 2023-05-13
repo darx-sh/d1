@@ -1,12 +1,11 @@
 import { useState } from "react";
 
 const navigation = [
-  { name: "Tables", href: "#", current: true },
-  { name: "Query Editor", href: "#", current: false },
+  { name: "Query", href: "#", current: false },
   { name: "Schema Editor", href: "#", current: false },
 ];
 
-function classNames(...classes: any) {
+function classNames(...classes: any[]) {
   return classes.filter(Boolean).join(" ");
 }
 
@@ -32,7 +31,6 @@ export default function Database() {
           ))}
         </ul>
       </div>
-      <div className="col-span-11">02</div>
     </div>
   );
 }

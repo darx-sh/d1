@@ -3,6 +3,7 @@ import {
   CircleStackIcon,
   CloudIcon,
   CodeBracketIcon,
+  CodeBracketSquareIcon,
   ArrowPathIcon,
   ArrowTrendingUpIcon,
   Bars4Icon,
@@ -11,7 +12,7 @@ import {
 } from "@heroicons/react/24/solid";
 
 import Database from "~/components/project/database";
-import Functions from "~/components/project/data_api";
+import Functions from "~/components/project/functions";
 import Triggers from "~/components/project/triggers";
 import Reports from "~/components/project/reports";
 import Logs from "~/components/project/logs";
@@ -24,16 +25,12 @@ const navigation = [
     icon: CircleStackIcon,
   },
   {
-    name: "Code",
-    icon: CodeBracketIcon,
+    name: "Functions",
+    icon: CodeBracketSquareIcon,
   },
   {
     name: "Users",
     icon: UserGroupIcon,
-  },
-  {
-    name: "Reports",
-    icon: ArrowTrendingUpIcon,
   },
   {
     name: "Logs",
