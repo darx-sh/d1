@@ -10,11 +10,14 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
+    /// Initialize a Darx project.
+    Init,
+    /// Starts the Darx development server that watches local file
+    /// and use control plan API to register functions.
+    Dev,
     /// Starts the Darx backend server handling data plan and control plan API.
     Server,
-    /// Downloads user's code from Darx server.
-    Pull,
-    /// Deploy user's code to Darx server.
+    /// Deploy user's backend code to Darx server.
     Deploy,
 }
 
