@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   CircleStackIcon,
   CloudIcon,
+  CodeBracketIcon,
   ArrowPathIcon,
   ArrowTrendingUpIcon,
   Bars4Icon,
@@ -10,48 +11,37 @@ import {
 } from "@heroicons/react/24/solid";
 
 import Database from "~/components/project/database";
-import DataApi from "~/components/project/data_api";
+import Functions from "~/components/project/data_api";
 import Triggers from "~/components/project/triggers";
-import Report from "~/components/project/reports";
+import Reports from "~/components/project/reports";
 import Logs from "~/components/project/logs";
 import Settings from "~/components/project/settings";
-import Auth from "~/components/project/auth";
+import Users from "~/components/project/users";
 
 const navigation = [
   {
     name: "Database",
     icon: CircleStackIcon,
-    component: Database,
   },
   {
-    name: "API",
-    icon: CloudIcon,
-    component: DataApi,
+    name: "Code",
+    icon: CodeBracketIcon,
   },
-  // {
-  //   name: "Triggers",
-  //   icon: ArrowPathIcon,
-  //   component: Triggers,
-  // },
   {
-    name: "Auth",
+    name: "Users",
     icon: UserGroupIcon,
-    component: Auth,
   },
   {
     name: "Reports",
     icon: ArrowTrendingUpIcon,
-    component: Report,
   },
   {
     name: "Logs",
     icon: Bars4Icon,
-    component: Logs,
   },
   {
     name: "Settings",
     icon: WrenchIcon,
-    component: Settings,
   },
 ];
 
@@ -64,10 +54,6 @@ export default function Example() {
 
   function handleNav(index: number) {
     setCurIndex(index);
-  }
-
-  function getNavItem(index: number) {
-    return navigation[index]!.component;
   }
 
   return (
@@ -136,9 +122,15 @@ export default function Example() {
             </nav>
           </div>
         </div>
-
         <main className="lg:pl-52">
-          <div className="px-4 py-10 ">{getNavItem(curIndex)()}</div>
+          <div className="px-4 py-10 ">
+            {curIndex === 0 && <Database />}
+            {curIndex === 1 && <Functions />}
+            {curIndex === 2 && <Users />}
+            {curIndex === 3 && <Reports />}
+            {curIndex === 4 && <Logs />}
+            {curIndex === 5 && <Settings />}
+          </div>
         </main>
       </div>
     </>
