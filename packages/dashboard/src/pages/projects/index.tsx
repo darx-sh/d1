@@ -1,6 +1,9 @@
 import { Fragment } from "react";
 import { Disclosure, Menu, Transition } from "@headlessui/react";
 import { Bars3Icon, BellIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { EllipsisVerticalIcon } from "@heroicons/react/20/solid";
+import Link from "next/link";
+
 const user = {
   name: "Tom Cook",
   email: "tom@example.com",
@@ -15,6 +18,21 @@ const userNavigation = [
   { name: "Your Profile", href: "#" },
   { name: "Settings", href: "#" },
   { name: "Sign out", href: "#" },
+];
+
+const projects = [
+  {
+    name: "wild-dog-87",
+  },
+  {
+    name: "bold-lion-42",
+  },
+  {
+    name: "dark-deer-99",
+  },
+  {
+    name: "quick-lynx-76",
+  },
 ];
 
 function classNames(...classes: any[]) {
@@ -242,7 +260,21 @@ export default function Example() {
           )}
         </Disclosure>
 
-        <div className="py-10"></div>
+        <div className="py-10">
+          <ul
+            role="list"
+            className="mx-80 mt-3 grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-2"
+          >
+            {projects.map((project) => (
+              <li
+                key={project.name}
+                className="col-span-1 flex h-40 place-content-center rounded-md border border-zinc-500 shadow-lg"
+              >
+                <Link href="/projects/1"> {project.name}</Link>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
     </>
   );
