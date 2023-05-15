@@ -260,17 +260,23 @@ export default function Example() {
           )}
         </Disclosure>
 
-        <div className="py-10">
-          <ul
-            role="list"
-            className="mx-80 mt-3 grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-2"
-          >
+        <div className=" py-10">
+          <ul role="list" className="mx-80 grid grid-cols-2 gap-10">
             {projects.map((project) => (
               <li
                 key={project.name}
-                className="col-span-1 flex h-40 place-content-center rounded-md border border-zinc-500 shadow-lg"
+                className="rounded-lg border border-gray-300/80 transition-colors duration-200 hover:bg-gray-50"
               >
-                <Link href="/projects/1"> {project.name}</Link>
+                <Link
+                  href="/projects/1"
+                  className="flex place-content-center py-5"
+                >
+                  <h2>
+                    <strong className="align-middle text-base font-medium leading-tight">
+                      {project.name}
+                    </strong>
+                  </h2>
+                </Link>
               </li>
             ))}
           </ul>

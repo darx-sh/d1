@@ -1,8 +1,10 @@
 import { useState } from "react";
+import Data from "~/components/project/database/data";
+import Schema from "~/components/project/database/schema";
 
 const navigation = [
-  { name: "Query", href: "#", current: false },
-  { name: "Schema Editor", href: "#", current: false },
+  { name: "Data", href: "#", current: false },
+  { name: "Schema", href: "#", current: false },
 ];
 
 function classNames(...classes: any[]) {
@@ -12,11 +14,16 @@ function classNames(...classes: any[]) {
 export default function Database() {
   const [curIndex, setCurIndex] = useState(0);
   return (
-    <div>
+    <div className="grid grid-cols-12 gap-2">
       <div className="border-r border-gray-200 bg-white">
-        <ul role="list" className="-mx-2 space-y-5">
+        <ul role="list" className="-mx-2 space-y-2">
           {navigation.map((item, index) => (
-            <li key={item.name}>
+            <li
+              key={item.name}
+              onClick={() => {
+                setCurIndex(index);
+              }}
+            >
               <a
                 className={classNames(
                   index === curIndex
@@ -30,6 +37,10 @@ export default function Database() {
             </li>
           ))}
         </ul>
+      </div>
+      <div className="col-span-11">
+        {curIndex === 0 && <Data />}
+        {curIndex === 1 && <Schema />}
       </div>
     </div>
   );
