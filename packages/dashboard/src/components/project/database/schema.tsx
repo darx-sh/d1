@@ -23,7 +23,9 @@ export default function Schema() {
       <button type="button" className={btnClass}>
         Sync Schema
       </button>
-      <JsEditor initialCode={code} />
+      <div className="mt-2">
+        <JsEditor initialCode={code} />
+      </div>
     </div>
   );
 }

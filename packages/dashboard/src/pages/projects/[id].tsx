@@ -13,8 +13,6 @@ import {
 
 import Database from "~/components/project/database";
 import Functions from "~/components/project/functions";
-import Triggers from "~/components/project/triggers";
-import Reports from "~/components/project/reports";
 import Logs from "~/components/project/logs";
 import Settings from "~/components/project/settings";
 import Users from "~/components/project/users";
@@ -124,9 +122,8 @@ export default function Example() {
             {curIndex === 0 && <Database />}
             {curIndex === 1 && <Functions />}
             {curIndex === 2 && <Users />}
-            {curIndex === 3 && <Reports />}
-            {curIndex === 4 && <Logs />}
-            {curIndex === 5 && <Settings />}
+            {curIndex === 3 && <Logs />}
+            {curIndex === 4 && <Settings />}
           </div>
         </main>
       </div>
