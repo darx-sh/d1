@@ -6,6 +6,7 @@ import {
   Bars4Icon,
   WrenchIcon,
   UserGroupIcon,
+  RectangleGroupIcon,
 } from "@heroicons/react/24/solid";
 
 import Database from "~/components/project/database";
@@ -13,6 +14,7 @@ import Functions from "~/components/project/functions";
 import Logs from "~/components/project/logs";
 import Settings from "~/components/project/settings";
 import Users from "~/components/project/users";
+import Plugins from "~/components/project/plugins";
 import QuickNav from "~/components/quick_nav";
 
 const navigation = [
@@ -27,6 +29,10 @@ const navigation = [
   {
     id: "Users",
     icon: UserGroupIcon,
+  },
+  {
+    id: "Plugins",
+    icon: RectangleGroupIcon,
   },
   {
     id: "Logs",
@@ -128,8 +134,9 @@ export default function ProjectDetail() {
             {curIndex === 0 && <Database />}
             {curIndex === 1 && <Functions />}
             {curIndex === 2 && <Users />}
-            {curIndex === 3 && <Logs />}
-            {curIndex === 4 && <Settings />}
+            {curIndex === 3 && <Plugins />}
+            {curIndex === 4 && <Logs />}
+            {curIndex === 5 && <Settings />}
           </div>
         </main>
       </div>
