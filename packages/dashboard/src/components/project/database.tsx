@@ -3,8 +3,8 @@ import Data from "~/components/project/database/data";
 import Schema from "~/components/project/database/schema";
 
 const navigation = [
-  { name: "Data", href: "#", current: false },
-  { name: "Schema", href: "#", current: false },
+  { id: "Data", href: "#", current: false },
+  { id: "Schema", href: "#", current: false },
 ];
 
 function classNames(...classes: any[]) {
@@ -14,31 +14,28 @@ function classNames(...classes: any[]) {
 export default function Database() {
   const [curIndex, setCurIndex] = useState(0);
   return (
-    <div className="grid grid-cols-12 gap-2">
-      <div className="border-r border-gray-200 bg-white">
+    <div className="mx-2 my-4 flex rounded-lg border bg-slate-50 px-4 py-10">
+      <div className="flex-none  p-4">
         <ul role="list" className="-mx-2 space-y-2">
           {navigation.map((item, index) => (
             <li
-              key={item.name}
+              key={item.id}
               onClick={() => {
                 setCurIndex(index);
               }}
+              className={classNames(
+                index === curIndex
+                  ? "bg-slate-200 text-indigo-600"
+                  : "text-gray-700 hover:bg-gray-50 hover:text-indigo-600",
+                "group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6"
+              )}
             >
-              <a
-                className={classNames(
-                  index === curIndex
-                    ? "bg-gray-50 text-indigo-600"
-                    : "text-gray-700 hover:bg-gray-50 hover:text-indigo-600",
-                  "group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6"
-                )}
-              >
-                {item.name}
-              </a>
+              {item.id}
             </li>
           ))}
         </ul>
       </div>
-      <div className="col-span-11">
+      <div className="flex-none p-4">
         {curIndex === 0 && <Data />}
         {curIndex === 1 && <Schema />}
       </div>

@@ -5,80 +5,36 @@ import { EllipsisVerticalIcon } from "@heroicons/react/20/solid";
 import Link from "next/link";
 
 const user = {
-  name: "Tom Cook",
+  id: "Tom Cook",
   email: "tom@example.com",
   imageUrl:
     "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
 };
-const navigation = [
-  { name: "Projects", href: "#", current: true },
-  { name: "Organizations", href: "#", current: false },
-];
+const navigation = [{ id: "Projects", href: "#", current: true }];
 const userNavigation = [
-  { name: "Your Profile", href: "#" },
-  { name: "Settings", href: "#" },
-  { name: "Sign out", href: "#" },
+  { id: "Your Profile", href: "#" },
+  { id: "Settings", href: "#" },
+  { id: "Sign out", href: "#" },
 ];
 
 const projects = [
   {
-    name: "wild-dog-87",
+    id: "wild-dog-87",
   },
   {
-    name: "bold-lion-42",
+    id: "bold-lion-42",
   },
   {
-    name: "dark-deer-99",
+    id: "dark-deer-99",
   },
   {
-    name: "quick-lynx-76",
+    id: "quick-lynx-76",
   },
 ];
 
 function classNames(...classes: any[]) {
   return classes.filter(Boolean).join(" ");
 }
-
-const statuses = {
-  Paid: "text-green-700 bg-green-50 ring-green-600/20",
-  Withdraw: "text-gray-600 bg-gray-50 ring-gray-500/10",
-  Overdue: "text-red-700 bg-red-50 ring-red-600/10",
-};
-const clients = [
-  {
-    id: 1,
-    name: "Tuple",
-    imageUrl: "https://tailwindui.com/img/logos/48x48/tuple.svg",
-    lastInvoice: {
-      date: "December 13, 2022",
-      dateTime: "2022-12-13",
-      amount: "$2,000.00",
-      status: "Overdue",
-    },
-  },
-  {
-    id: 2,
-    name: "SavvyCal",
-    imageUrl: "https://tailwindui.com/img/logos/48x48/savvycal.svg",
-    lastInvoice: {
-      date: "January 22, 2023",
-      dateTime: "2023-01-22",
-      amount: "$14,000.00",
-      status: "Paid",
-    },
-  },
-  {
-    id: 3,
-    name: "Reform",
-    imageUrl: "https://tailwindui.com/img/logos/48x48/reform.svg",
-    lastInvoice: {
-      date: "January 23, 2023",
-      dateTime: "2023-01-23",
-      amount: "$7,600.00",
-      status: "Paid",
-    },
-  },
-];
 
 export default function Example() {
   return (
@@ -113,7 +69,7 @@ export default function Example() {
                     <div className="hidden sm:-my-px sm:ml-6 sm:flex sm:space-x-8">
                       {navigation.map((item) => (
                         <a
-                          key={item.name}
+                          key={item.id}
                           href={item.href}
                           className={classNames(
                             item.current
@@ -123,7 +79,7 @@ export default function Example() {
                           )}
                           aria-current={item.current ? "page" : undefined}
                         >
-                          {item.name}
+                          {item.id}
                         </a>
                       ))}
                     </div>
@@ -160,7 +116,7 @@ export default function Example() {
                       >
                         <Menu.Items className="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
                           {userNavigation.map((item) => (
-                            <Menu.Item key={item.name}>
+                            <Menu.Item key={item.id}>
                               {({ active }) => (
                                 <a
                                   href={item.href}
@@ -169,7 +125,7 @@ export default function Example() {
                                     "block px-4 py-2 text-sm text-gray-700"
                                   )}
                                 >
-                                  {item.name}
+                                  {item.id}
                                 </a>
                               )}
                             </Menu.Item>
@@ -202,7 +158,7 @@ export default function Example() {
                 <div className="space-y-1 pb-3 pt-2">
                   {navigation.map((item) => (
                     <Disclosure.Button
-                      key={item.name}
+                      key={item.id}
                       as="a"
                       href={item.href}
                       className={classNames(
@@ -213,7 +169,7 @@ export default function Example() {
                       )}
                       aria-current={item.current ? "page" : undefined}
                     >
-                      {item.name}
+                      {item.id}
                     </Disclosure.Button>
                   ))}
                 </div>
@@ -228,7 +184,7 @@ export default function Example() {
                     </div>
                     <div className="ml-3">
                       <div className="text-base font-medium text-gray-800">
-                        {user.name}
+                        {user.id}
                       </div>
                       <div className="text-sm font-medium text-gray-500">
                         {user.email}
@@ -245,12 +201,12 @@ export default function Example() {
                   <div className="mt-3 space-y-1">
                     {userNavigation.map((item) => (
                       <Disclosure.Button
-                        key={item.name}
+                        key={item.id}
                         as="a"
                         href={item.href}
                         className="block px-4 py-2 text-base font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-800"
                       >
-                        {item.name}
+                        {item.id}
                       </Disclosure.Button>
                     ))}
                   </div>
@@ -264,16 +220,16 @@ export default function Example() {
           <ul role="list" className="mx-80 grid grid-cols-2 gap-10">
             {projects.map((project) => (
               <li
-                key={project.name}
+                key={project.id}
                 className="rounded-lg border border-gray-300/80 transition-colors duration-200 hover:bg-gray-50"
               >
                 <Link
-                  href="/projects/1"
+                  href={`/projects/${project.id}`}
                   className="flex place-content-center py-5"
                 >
                   <h2>
                     <strong className="align-middle text-base font-medium leading-tight">
-                      {project.name}
+                      {project.id}
                     </strong>
                   </h2>
                 </Link>

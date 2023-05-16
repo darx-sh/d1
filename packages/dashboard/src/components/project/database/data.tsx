@@ -1,4 +1,5 @@
 import JsEditor from "~/components/project/editor";
+import { PlayIcon } from "@heroicons/react/24/solid";
 
 export default function Data() {
   const code = `db.table("order").findMany().limit(10);`;
@@ -6,12 +7,18 @@ export default function Data() {
     "rounded-md bg-indigo-600 px-2.5 py-1.5 mr-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600";
   return (
     <div>
-      <button type="button" className={btnClass}>
-        Generate random data
-      </button>
-      <button type="button" className={btnClass}>
-        New record
-      </button>
+      <div className="flex">
+        <button className="mr-20 flex">
+          <PlayIcon className="h-6 w-6 shrink-0"></PlayIcon>
+          Run
+        </button>
+        <button type="button" className={btnClass}>
+          Generate random data
+        </button>
+        <button type="button" className={btnClass}>
+          New record
+        </button>
+      </div>
       <div className="mt-2">
         <JsEditor initialCode={code} />
       </div>
@@ -22,7 +29,7 @@ export default function Data() {
 
 const people = [
   {
-    name: "Lindsay Walton",
+    id: "Lindsay Walton",
     title: "Front-end Developer",
     email: "lindsay.walton@example.com",
     role: "Member",
@@ -75,7 +82,7 @@ function TableData() {
                 {people.map((person) => (
                   <tr key={person.email}>
                     <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8">
-                      {person.name}
+                      {person.id}
                     </td>
                     <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                       {person.title}
@@ -91,7 +98,7 @@ function TableData() {
                         href="#"
                         className="text-indigo-600 hover:text-indigo-900"
                       >
-                        Edit<span className="sr-only">, {person.name}</span>
+                        Edit<span className="sr-only">, {person.id}</span>
                       </a>
                     </td>
                   </tr>

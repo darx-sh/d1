@@ -1,11 +1,8 @@
 import { useState } from "react";
+import { useRouter } from "next/router";
 import {
   CircleStackIcon,
-  CloudIcon,
-  CodeBracketIcon,
   CodeBracketSquareIcon,
-  ArrowPathIcon,
-  ArrowTrendingUpIcon,
   Bars4Icon,
   WrenchIcon,
   UserGroupIcon,
@@ -16,26 +13,27 @@ import Functions from "~/components/project/functions";
 import Logs from "~/components/project/logs";
 import Settings from "~/components/project/settings";
 import Users from "~/components/project/users";
+import QuickNav from "~/components/quick_nav";
 
 const navigation = [
   {
-    name: "Database",
+    id: "Database",
     icon: CircleStackIcon,
   },
   {
-    name: "Functions",
+    id: "Functions",
     icon: CodeBracketSquareIcon,
   },
   {
-    name: "Users",
+    id: "Users",
     icon: UserGroupIcon,
   },
   {
-    name: "Logs",
+    id: "Logs",
     icon: Bars4Icon,
   },
   {
-    name: "Settings",
+    id: "Settings",
     icon: WrenchIcon,
   },
 ];
@@ -44,8 +42,15 @@ function classNames(...classes: any[]) {
   return classes.filter(Boolean).join(" ");
 }
 
-export default function Example() {
+export default function ProjectDetail() {
   const [curIndex, setCurIndex] = useState(0);
+  const router = useRouter();
+  const projectId = router.query.id;
+  const quickNav = [
+    { name: "Home", href: "/" },
+    { name: "Projects", href: "/projects" },
+    { name: `${projectId}`, href: "#" },
+  ];
 
   function handleNav(index: number) {
     setCurIndex(index);
@@ -71,7 +76,7 @@ export default function Example() {
                   <ul role="list" className="-mx-2 space-y-5">
                     {navigation.map((item, index) => (
                       <li
-                        key={item.name}
+                        key={item.id}
                         onClick={() => {
                           handleNav(index);
                         }}
@@ -93,7 +98,7 @@ export default function Example() {
                             )}
                             aria-hidden="true"
                           />
-                          {item.name}
+                          {item.id}
                         </a>
                       </li>
                     ))}
@@ -118,7 +123,8 @@ export default function Example() {
           </div>
         </div>
         <main className="lg:pl-52">
-          <div className="px-4 py-10 ">
+          <QuickNav nav={quickNav} />
+          <div>
             {curIndex === 0 && <Database />}
             {curIndex === 1 && <Functions />}
             {curIndex === 2 && <Users />}
