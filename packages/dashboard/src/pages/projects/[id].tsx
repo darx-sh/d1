@@ -45,7 +45,7 @@ function classNames(...classes: any[]) {
 export default function ProjectDetail() {
   const [curIndex, setCurIndex] = useState(0);
   const router = useRouter();
-  const projectId = router.query.id;
+  const projectId = router.query.id as string;
   const quickNav = [
     { name: "Home", href: "/" },
     { name: "Projects", href: "/projects" },
