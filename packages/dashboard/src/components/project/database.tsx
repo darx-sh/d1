@@ -14,8 +14,8 @@ function classNames(...classes: any[]) {
 export default function Database() {
   const [curIndex, setCurIndex] = useState(0);
   return (
-    <div className="mx-2 my-4 flex rounded-lg border bg-slate-50 px-4 py-10">
-      <div className="flex-none  p-4">
+    <div className="mx-6 my-1 flex h-5/6 rounded-md border bg-slate-50 px-1">
+      <div className="flex-none p-4">
         <ul role="list" className="-mx-2 space-y-2">
           {navigation.map((item, index) => (
             <li
@@ -35,7 +35,7 @@ export default function Database() {
           ))}
         </ul>
       </div>
-      <div className="flex-none p-4">
+      <div className="flex-none  p-4">
         {curIndex === 0 && <Data />}
         {curIndex === 1 && <Schema />}
       </div>

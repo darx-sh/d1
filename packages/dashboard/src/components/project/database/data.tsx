@@ -4,9 +4,9 @@ import { PlayIcon } from "@heroicons/react/24/solid";
 export default function Data() {
   const code = `db.table("order").findMany().limit(10);`;
   const btnClass =
-    "rounded-md bg-indigo-600 px-2.5 py-1.5 mr-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600";
+    "rounded bg-indigo-600 px-2.5 py-1.5 mr-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600";
   return (
-    <div>
+    <div className="border border-slate-700">
       <div className="flex">
         <button className="mr-20 flex">
           <PlayIcon className="h-6 w-6 shrink-0"></PlayIcon>
