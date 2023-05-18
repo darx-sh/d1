@@ -1,9 +1,10 @@
-function isLoggedInUser(context, _) {
-  return context.user != null;
+function isLoggedInUser({ auth }, _) {
+  return auth.uid != null;
 }
 
 function isPostOwner(context, post) {
-  return isLoggedInUser(context, post) && context.user.id === post.user_id;
+  const { auth } = context;
+  return isLoggedInUser(context, post) && auth.uid === post.user_id;
 }
 
 function postFilter(context, post) {
@@ -15,9 +16,8 @@ function postFilter(context, post) {
 }
 
 function isCommentOwner(context, comment) {
-  return (
-    isLoggedInUser(context, comment) && context.user.id === comment.user_id
-  );
+  const { auth } = context;
+  return isLoggedInUser(context, comment) && auth.uid === comment.user_id;
 }
 
 export const rules = {

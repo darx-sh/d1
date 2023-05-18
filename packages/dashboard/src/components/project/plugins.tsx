@@ -3,7 +3,6 @@ export default function Plugins() {
     <div>
       <ul>
         <li>Stripe Checkout</li>
-        <li>Row Level Security</li>
       </ul>
     </div>
   );

@@ -1,9 +1,6 @@
-export async function createComment({ db }, user_id, content, post_id) {
-  const user = await db.exec("SELECT * FROM users WHERE id = ? LIMIT 1", [
-    user_id,
-  ]);
-
-  if (!user || user.length === 0) {
+export async function createComment(context, content, post_id) {
+  const { auth, db } = context;
+  if (!auth.uid) {
     return new Response().status(403).json({ error: "not authorized" });
   }
 
@@ -18,12 +15,13 @@ export async function createComment({ db }, user_id, content, post_id) {
 
     await txn.exec(
       "INSERT INTO comments WHERE content = ?, user_id = ?, post_id = ?",
-      [content, user_id, post_id]
+      [content, auth.user_id, post_id]
     );
 
     await txn.exec(
       "UPDATE posts SET comments_count = comments_count + 1 WHERE id = ?",
       [post_id]
     );
+    return new Response().status(200);
   });
 }

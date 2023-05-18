@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useRouter } from "next/router";
 import {
   CircleStackIcon,
+  CloudIcon,
   CodeBracketSquareIcon,
   Bars4Icon,
   WrenchIcon,
@@ -24,7 +25,7 @@ const navigation = [
   },
   {
     id: "API",
-    icon: CodeBracketSquareIcon,
+    icon: CloudIcon,
   },
   {
     id: "Users",
