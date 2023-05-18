@@ -23,7 +23,7 @@ const navigation = [
     icon: CircleStackIcon,
   },
   {
-    id: "Functions",
+    id: "API",
     icon: CodeBracketSquareIcon,
   },
   {
