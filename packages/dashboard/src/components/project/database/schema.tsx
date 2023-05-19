@@ -20,11 +20,8 @@ export default function Schema() {
 
   return (
     <div>
-      <button type="button" className={btnClass}>
-        Sync Schema
-      </button>
       <div className="mt-2">
-        <JsEditor initialCode={code} />
+        <JsEditor initialCode={code} readOnly={true} />
       </div>
     </div>
   );

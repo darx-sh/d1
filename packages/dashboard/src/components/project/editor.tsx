@@ -5,6 +5,7 @@ import { ViewUpdate } from "@codemirror/view";
 
 type JsEditorProps = {
   initialCode: string;
+  readOnly: boolean;
 };
 
 function JsEditor(props: JsEditorProps) {
@@ -18,7 +19,9 @@ function JsEditor(props: JsEditorProps) {
   return (
     <CodeMirror
       value={props.initialCode}
-      height="200px"
+      readOnly={props.readOnly}
+      height="300px"
+      width="800px"
       extensions={[javascript()]}
       onChange={onChange}
     />

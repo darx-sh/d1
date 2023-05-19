@@ -21,6 +21,9 @@ enum Commands {
     Deploy,
 }
 
+#[derive(Subcommand)]
+enum Db {}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = Cli::parse();

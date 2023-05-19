@@ -1,5 +1,7 @@
-export async function createComment(context, content, user_id, post_id) {
-  const { db } = context;
+import { useMySql } from "darx";
+
+export async function createComment(content, user_id, post_id) {
+  const db = useMySql();
 
   return await db.txn(async (txn) => {
     const posts = await txn.exec("SELECT * FROM posts WHERE id = ? LIMIT 1", [

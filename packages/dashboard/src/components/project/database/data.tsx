@@ -20,7 +20,7 @@ export default function Data() {
         </button>
       </div>
       <div className="mt-2">
-        <JsEditor initialCode={code} />
+        <JsEditor initialCode={code} readOnly={false} />
       </div>
       <TableData></TableData>
     </div>

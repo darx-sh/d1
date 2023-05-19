@@ -1,5 +1,6 @@
-export async function viewPublishedPost(context, post_id) {
-  const { db } = context;
+import { useMySql } from "darx";
+export async function viewPublishedPost(post_id) {
+  const db = useMySql();
   const posts = await db.exec(
     "SELECT * FROM posts WHERE id = ? AND status = ? LIMIT 1",
     [post_id, "published"]
@@ -11,8 +12,8 @@ export async function viewPublishedPost(context, post_id) {
   }
 }
 
-export async function createPost(context, user_id, content) {
-  const { db } = context;
+export async function createPost(user_id, content) {
+  const db = useMySql();
 
   await db.exec("INSERT INTO posts WHERE content = ?, user_id = ?", [
     content,
@@ -21,8 +22,8 @@ export async function createPost(context, user_id, content) {
   return new Response().status(201);
 }
 
-export async function publishPost(context, user_id, post_id) {
-  const { db } = context;
+export async function publishPost(user_id, post_id) {
+  const db = useMySql();
 
   const result = await db.exec(
     "UPDATE posts SET status = ? WHERE id = ? AND user_id = ? AND status = ?",

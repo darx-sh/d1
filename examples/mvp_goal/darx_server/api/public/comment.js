@@ -1,5 +1,8 @@
+import { useMySql } from "darx";
+
 export async function createComment(context, content, post_id) {
-  const { auth, db } = context;
+  const db = useMySql();
+  const { auth } = context;
   if (!auth.uid) {
     return new Response().status(403).json({ error: "not authorized" });
   }
