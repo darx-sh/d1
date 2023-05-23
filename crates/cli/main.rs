@@ -12,17 +12,35 @@ struct Cli {
 enum Commands {
     /// Initialize a Darx project.
     Init,
-    /// Starts the Darx development server that watches local file
-    /// and use control plan API to register functions.
+    /// Starts the Darx development server that watches local files.
     Dev,
-    /// Starts the Darx backend server handling data plan and control plan API.
+    /// Starts the Darx backend server handling data plane request.
     Server,
-    /// Deploy user's backend code to Darx server.
-    Deploy,
+    #[command(subcommand)]
+    /// Manage database schema
+    Schema(Schema),
+    /// Manage API
+    #[command(subcommand)]
+    Api(Api),
 }
 
 #[derive(Subcommand)]
-enum Db {}
+enum Schema {
+    /// Deploy the schema migrations to a target project.
+    Deploy,
+    /// Rollback the schema migrations.
+    Rollback,
+}
+
+#[derive(Subcommand)]
+enum Api {
+    /// Preview the API for a target project.
+    Preview,
+    /// Deploy the API to a target project.
+    Deploy,
+    /// Rollback the API deployment in a target project.
+    Rollback,
+}
 
 #[tokio::main]
 async fn main() -> Result<()> {
