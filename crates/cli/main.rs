@@ -1,3 +1,5 @@
+mod dev;
+
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 
@@ -13,11 +15,23 @@ enum Commands {
     /// Initialize a Darx project.
     Init,
     /// Starts the Darx development server that watches local files.
-    Dev,
+    Dev {
+        /// The port to listen on.
+        #[arg(short, long, default_value_t = 4000)]
+        port: u16,
+
+        /// The project directory to watch.
+        #[arg(short, long, default_value_t = String::from("."))]
+        dir: String,
+    },
     /// Starts the Darx backend server handling data plane request.
-    Server,
-    #[command(subcommand)]
+    Server {
+        /// The port to listen on.
+        #[arg(short, long, default_value_t = 4001)]
+        port: u16,
+    },
     /// Manage database schema
+    #[command(subcommand)]
     Schema(Schema),
     /// Manage API
     #[command(subcommand)]
@@ -46,7 +60,8 @@ enum Api {
 async fn main() -> Result<()> {
     let cli = Cli::parse();
     match &cli.command {
-        Commands::Server => darx_api_server::run_server().await?,
+        Commands::Server { port } => darx_api_server::run_server(*port).await?,
+        Commands::Dev { port, dir } => dev::run_dev(*port, dir).await?,
         _ => {
             println!("other");
         }

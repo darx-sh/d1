@@ -2,7 +2,7 @@ use crate::ApiError;
 use anyhow::{Context, Result};
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
-use axum::routing::get;
+use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde::Deserialize;
 use serde_json::json;
@@ -17,7 +17,7 @@ use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::oneshot;
 
-pub async fn run_server() -> Result<()> {
+pub async fn run_server(port: u16) -> Result<()> {
     let db_pool = create_db_pool();
     let worker_pool = WorkerPool::new();
     let server_state = Arc::new(ServerState {
@@ -27,33 +27,23 @@ pub async fn run_server() -> Result<()> {
 
     let app = Router::new()
         .route("/", get(|| async { "darx data plan api healthy." }))
+        .route("/invoke/pub/:function_name", post(invoke_func_post))
         .route(
-            "/d/f/:function_name",
-            get(invoke_func_get).post(invoke_func_post),
+            "/invoke/preview/pub/:function_name",
+            post(invoke_func_preview_post),
         )
         .route(
             "/c/draft/modules",
             get(list_draft_modules).post(create_draft_module),
         )
-        .route(
-            "/c/preview/f/:function_name",
-            get(invoke_func_preview_get).post(invoke_func_preview_post),
-        )
         .route("/c/deploy", get(list_deployments).post(create_deployment))
         .with_state(server_state);
 
-    axum::Server::bind(&"127.0.0.1:4000".parse().unwrap())
+    let socket_addr = format!("127.0.0.1:{}", port);
+    axum::Server::bind(&socket_addr.parse().unwrap())
         .serve(app.into_make_service())
         .await?;
     Ok(())
-}
-
-async fn invoke_func_get(
-    State(server_state): State<Arc<ServerState>>,
-    Query(params): Query<HashMap<String, String>>,
-    Path(func_name): Path<String>,
-) -> Result<Json<serde_json::Value>, ApiError> {
-    Ok(Json(json!("not implemented yet")))
 }
 
 async fn invoke_func_post(
@@ -64,10 +54,10 @@ async fn invoke_func_post(
     Ok(Json(json!("not implemented yet")))
 }
 
-async fn invoke_func_preview_get(
+async fn invoke_func_preview_post(
     State(server_state): State<Arc<ServerState>>,
-    Query(params): Query<HashMap<String, String>>,
     Path(func_name): Path<String>,
+    Json(body): Json<serde_json::Value>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
     let db_pool = (&server_state).db_pool.clone();
     let (resp_tx, resp_rx) = oneshot::channel();
@@ -75,7 +65,7 @@ async fn invoke_func_preview_get(
         db_pool,
         tenant_dir: tenant_dir().to_string(),
         func_name: func_name.clone(),
-        params,
+        params: Default::default(),
         resp: resp_tx,
     };
     server_state
@@ -90,14 +80,6 @@ async fn invoke_func_preview_get(
         )
     })?;
     Ok(Json(result.unwrap()))
-}
-
-async fn invoke_func_preview_post(
-    State(server_state): State<Arc<ServerState>>,
-    Path(func_name): Path<String>,
-    Json(body): Json<serde_json::Value>,
-) -> Result<Json<serde_json::Value>, ApiError> {
-    todo!()
 }
 
 async fn list_draft_modules() -> Result<Json<serde_json::Value>, ApiError> {
