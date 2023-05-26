@@ -1,7 +1,11 @@
 import { useMySql } from "darx";
 
-export async function createComment(content, user_id, post_id) {
+export async function createComment(context, content, post_id) {
   const db = useMySql();
+  const { auth } = context;
+  if (!auth.uid()) {
+    return new Response().status(403).json({ error: "not authorized" });
+  }
 
   return await db.txn(async (txn) => {
     const posts = await txn.exec("SELECT * FROM posts WHERE id = ? LIMIT 1", [
@@ -14,7 +18,7 @@ export async function createComment(content, user_id, post_id) {
 
     await txn.exec(
       "INSERT INTO comments WHERE content = ?, user_id = ?, post_id = ?",
-      [content, user_id, post_id]
+      [content, auth.user_id, post_id]
     );
 
     await txn.exec(
