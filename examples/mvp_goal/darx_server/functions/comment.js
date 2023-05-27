@@ -1,7 +1,7 @@
-import { useMySql } from "darx";
+import { useSqlite } from "darx";
 
 export async function createComment(context, content, post_id) {
-  const db = useMySql();
+  const db = useSqlite();
   const { auth } = context;
   if (!auth.uid()) {
     return new Response().status(403).json({ error: "not authorized" });
@@ -17,7 +17,7 @@ export async function createComment(context, content, post_id) {
     }
 
     await txn.exec(
-      "INSERT INTO comments WHERE content = ?, user_id = ?, post_id = ?",
+      "INSERT INTO comments WHERE content = ? AND user_id = ? AND post_id = ?",
       [content, auth.user_id, post_id]
     );
 

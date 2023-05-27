@@ -8,7 +8,7 @@ export const rules = {
     {
       role: "authenticated",
       create: true,
-      get: ({ auth }, post) => {
+      view: ({ auth }, post) => {
         // authenticated user can view any published post, or any post that the user owns.
         return auth.uid() === post.user_id || post.status === "published";
       },

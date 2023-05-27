@@ -1,4 +1,4 @@
-import { useMySql } from "darx";
+import { useSqlite } from "darx";
 
 export async function viewPublishedPost(context, post_id) {
   const { db } = context;
