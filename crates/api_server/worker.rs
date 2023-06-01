@@ -43,7 +43,7 @@ impl WorkerPool {
 pub enum WorkerEvent {
     InvokeFunction {
         db_pool: mysql_async::Pool,
-        tenant_dir: String,
+        project_dir: String,
         func_name: String,
         params: HashMap<String, String>,
         resp: Responder<serde_json::Value>,
@@ -56,7 +56,7 @@ async fn handle_event(event: WorkerEvent) {
     match event {
         WorkerEvent::InvokeFunction {
             db_pool,
-            tenant_dir,
+            project_dir: tenant_dir,
             func_name,
             params,
             resp,

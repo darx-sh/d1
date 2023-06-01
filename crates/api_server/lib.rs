@@ -14,6 +14,8 @@ pub use server::run_server;
 pub enum ApiError {
     #[error("Authorization failed")]
     Auth,
+    #[error("Sqlite directory does not exist")]
+    SqliteDirNotExist(#[from] std::io::Error),
     #[error("Function {0} not found")]
     FunctionNotFound(String),
     #[error("Function parameter error: {0}")]
@@ -35,6 +37,10 @@ impl IntoResponse for ApiError {
         match self {
             ApiError::Auth => {
                 (StatusCode::UNAUTHORIZED, format!("{}", self)).into_response()
+            }
+            ApiError::SqliteDirNotExist(_) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", self))
+                    .into_response()
             }
             ApiError::FunctionNotFound(_) => {
                 (StatusCode::NOT_FOUND, format!("{}", self)).into_response()

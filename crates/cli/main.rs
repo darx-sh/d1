@@ -29,6 +29,10 @@ enum Commands {
         /// The port to listen on.
         #[arg(short, long, default_value_t = 4001)]
         port: u16,
+        #[arg(long)]
+        projects_dir: String,
+        #[arg(long)]
+        sqlite_dir: String,
     },
     /// Manage database schema
     #[command(subcommand)]
@@ -60,7 +64,13 @@ enum Api {
 async fn main() -> Result<()> {
     let cli = Cli::parse();
     match &cli.command {
-        Commands::Server { port } => darx_api_server::run_server(*port).await?,
+        Commands::Server {
+            port,
+            projects_dir,
+            sqlite_dir,
+        } => {
+            darx_api_server::run_server(*port, projects_dir, sqlite_dir).await?
+        }
         Commands::Dev { port, dir } => dev::run_dev(*port, dir).await?,
         _ => {
             println!("other");
