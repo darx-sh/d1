@@ -33,7 +33,7 @@ impl WorkerPool {
     pub fn send(
         &self,
         event: WorkerEvent,
-    ) -> std::result::Result<(), SendError<WorkerEvent>> {
+    ) -> Result<(), SendError<WorkerEvent>> {
         self.send.send(event)
     }
 }
@@ -44,7 +44,7 @@ pub enum WorkerEvent {
         db_pool: mysql_async::Pool,
         tenant_dir: String,
         func_name: String,
-        params: serde_json::Value,
+        params: Box<serde_json::value::RawValue>,
         resp: Responder<serde_json::Value>,
     },
 }
@@ -82,7 +82,7 @@ async fn handle_event(event: WorkerEvent) {
                         .js_runtime
                         .execute_script(
                             "myfoo",
-                            format!("handler({});", params), //TODO avoid serialization again
+                            format!("handler({});", params.get()),
                         )
                         .unwrap();
 
