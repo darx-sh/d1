@@ -17,5 +17,5 @@ cargo run -- server
 http POST localhost:4001/c/draft/modules < module_simple.json
 
 # 4. Invoke function with POST
- echo -n '{}' | http POST localhost:4001/invoke/preview/pub/foo
+ http POST localhost:4001/invoke/preview/pub/foo name=abc age=18
 ```

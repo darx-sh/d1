@@ -6,7 +6,6 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde::Deserialize;
 use serde_json::json;
-use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::fs;
@@ -65,9 +64,10 @@ async fn invoke_func_preview_post(
         db_pool,
         tenant_dir: tenant_dir().to_string(),
         func_name: func_name.clone(),
-        params: Default::default(),
+        params: body,
         resp: resp_tx,
     };
+
     server_state
         .worker_pool
         .send(event)
