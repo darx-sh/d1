@@ -1,6 +1,5 @@
 use darx_isolate_runtime::DarxIsolate;
 use deno_core::{serde_v8, v8};
-use std::collections::HashMap;
 use std::path::PathBuf;
 use tokio::runtime::Builder;
 use tokio::sync::mpsc::error::SendError;
@@ -34,7 +33,7 @@ impl WorkerPool {
     pub fn send(
         &self,
         event: WorkerEvent,
-    ) -> std::result::Result<(), SendError<WorkerEvent>> {
+    ) -> Result<(), SendError<WorkerEvent>> {
         self.send.send(event)
     }
 }
@@ -45,7 +44,7 @@ pub enum WorkerEvent {
         db_pool: mysql_async::Pool,
         tenant_dir: String,
         func_name: String,
-        params: HashMap<String, String>,
+        params: Box<serde_json::value::RawValue>,
         resp: Responder<serde_json::Value>,
     },
 }
@@ -83,9 +82,7 @@ async fn handle_event(event: WorkerEvent) {
                         .js_runtime
                         .execute_script(
                             "myfoo",
-                            r#"
-                            handler();
-                    "#,
+                            format!("handler({});", params.get()),
                         )
                         .unwrap();
 

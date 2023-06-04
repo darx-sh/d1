@@ -6,7 +6,6 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde::Deserialize;
 use serde_json::json;
-use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::fs;
@@ -57,21 +56,29 @@ async fn invoke_func_post(
 async fn invoke_func_preview_post(
     State(server_state): State<Arc<ServerState>>,
     Path(func_name): Path<String>,
-    Json(body): Json<serde_json::Value>,
+    body: String,
 ) -> Result<Json<serde_json::Value>, ApiError> {
-    let db_pool = (&server_state).db_pool.clone();
+    let db_pool = server_state.db_pool.clone();
     let (resp_tx, resp_rx) = oneshot::channel();
+    let raw_value = serde_json::value::RawValue::from_string(body)
+        .with_context(|| {
+            format!(
+                "failed to serialize request body for function '{}'",
+                func_name
+            )
+        })?;
     let event = WorkerEvent::InvokeFunction {
         db_pool,
         tenant_dir: tenant_dir().to_string(),
         func_name: func_name.clone(),
-        params: Default::default(),
+        params: raw_value,
         resp: resp_tx,
     };
+
     server_state
         .worker_pool
         .send(event)
-        .with_context(|| format!("failed to send event to worker pool"))?;
+        .with_context(|| "failed to send event to worker pool".to_string())?;
 
     let result = resp_rx.await.with_context(|| {
         format!(
