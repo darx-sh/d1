@@ -16,10 +16,6 @@ enum Commands {
     Init,
     /// Starts the Darx development server that watches local files.
     Dev {
-        /// The port to listen on.
-        #[arg(short, long, default_value_t = 4000)]
-        port: u16,
-
         /// The project directory to watch.
         #[arg(short, long, default_value_t = String::from("."))]
         dir: String,
@@ -29,9 +25,9 @@ enum Commands {
         /// The port to listen on.
         #[arg(short, long, default_value_t = 4001)]
         port: u16,
-        #[arg(long)]
+        #[arg(long, default_value_t = String::from("."))]
         projects_dir: String,
-        #[arg(long)]
+        #[arg(long, default_value_t = String::from("."))]
         sqlite_dir: String,
     },
     /// Manage database schema
@@ -71,7 +67,7 @@ async fn main() -> Result<()> {
         } => {
             darx_api_server::run_server(*port, projects_dir, sqlite_dir).await?
         }
-        Commands::Dev { port, dir } => dev::run_dev(*port, dir).await?,
+        Commands::Dev { dir } => dev::run_dev(dir).await?,
         _ => {
             println!("other");
         }
