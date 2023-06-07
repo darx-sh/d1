@@ -1,7 +1,9 @@
+use darx_db::ConnectionPool;
 use darx_isolate_runtime::DarxIsolate;
 use deno_core::{serde_v8, v8};
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::Arc;
 use tokio::runtime::Builder;
 use tokio::sync::mpsc::error::SendError;
 use tokio::sync::{mpsc, oneshot};
@@ -39,10 +41,9 @@ impl WorkerPool {
     }
 }
 
-#[derive(Debug)]
 pub enum WorkerEvent {
     InvokeFunction {
-        db_pool: mysql_async::Pool,
+        project_id: String,
         bundle_dir: PathBuf,
         func_name: String,
         params: HashMap<String, String>,
@@ -55,15 +56,16 @@ type Responder<T> = oneshot::Sender<anyhow::Result<T>>;
 async fn handle_event(event: WorkerEvent) {
     match event {
         WorkerEvent::InvokeFunction {
-            db_pool,
+            project_id,
             bundle_dir: tenant_dir,
             func_name,
             params,
             resp,
         } => {
             // todo: use some thing real. this is just for testing
-            let tenant_path = PathBuf::from(tenant_dir);
-            let mut isolate = DarxIsolate::new(db_pool, tenant_path);
+            let project_dir = PathBuf::from(tenant_dir);
+            let mut isolate =
+                DarxIsolate::new(project_id.as_str(), project_dir);
             let func_path = format!("./api/{}.js", func_name);
             // evaluate the module here to check the syntax.
             let r = isolate.load_and_eval_module_file(&func_path).await;

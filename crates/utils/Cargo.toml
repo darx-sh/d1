@@ -8,4 +8,4 @@ name = "darx_utils"
 path = "lib.rs"
 
 [dependencies]
-mysql_async.workspace = true
+darx_db.workspace = true

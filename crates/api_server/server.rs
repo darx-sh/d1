@@ -1,6 +1,6 @@
 use crate::ApiError;
 use anyhow::{anyhow, Context, Result};
-use axum::extract::{Path as AxumPath, Query, State};
+use axum::extract::{Path as AxumPath, State};
 use axum::http::StatusCode;
 use axum::routing::{get, post};
 use axum::{Json, Router};
@@ -16,7 +16,9 @@ use std::sync::Arc;
 use tokio::fs;
 
 use crate::worker::{WorkerEvent, WorkerPool};
-use darx_utils::create_db_pool;
+use darx_db::mysql::MySqlPool;
+// use darx_db::Database;
+use darx_utils::test_mysql_db_pool;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::oneshot;
@@ -40,13 +42,12 @@ pub async fn run_server(
         ));
     }
 
-    let db_pool = create_db_pool();
+    let db_pool = test_mysql_db_pool();
+
     let worker_pool = WorkerPool::new();
     let server_state = Arc::new(ServerState {
-        mysql_pool: db_pool,
         worker_pool,
         projects_dir,
-        sqlite_dir,
     });
 
     let app = Router::new()
@@ -85,16 +86,16 @@ async fn create_project(
 ) -> Result<StatusCode, ApiError> {
     let project_dir = server_state.projects_dir.join(&req.project_id);
     fs::create_dir(&project_dir).await?;
-
-    let sqlite_file =
-        project_db_file(server_state.sqlite_dir.as_path(), &req.project_id);
-
-    let conn = rusqlite::Connection::open(sqlite_file.as_path())?;
-    conn.pragma_update(None, "journal_mode", &"WAL")?;
-    conn.pragma_update(None, "synchronous", &"NORMAL")?;
-
-    let schema_sql = include_str!("schema.sql");
-    conn.execute_batch(schema_sql)?;
+    //
+    // let sqlite_file =
+    //     project_db_file(server_state.sqlite_dir.as_path(), &req.project_id);
+    //
+    // let conn = rusqlite::Connection::open(sqlite_file.as_path())?;
+    // conn.pragma_update(None, "journal_mode", &"WAL")?;
+    // conn.pragma_update(None, "synchronous", &"NORMAL")?;
+    //
+    // let schema_sql = include_str!("schema.sql");
+    // conn.execute_batch(schema_sql)?;
     Ok(StatusCode::CREATED)
 }
 
@@ -104,10 +105,10 @@ async fn invoke_function(
     AxumPath(func_name): AxumPath<String>,
     Json(req): Json<serde_json::Value>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
-    let db_pool = (&server_state).mysql_pool.clone();
+    let conn_pool = MySqlPool::new("mysql://root:12345678@localhost:3306/test");
     let (resp_tx, resp_rx) = oneshot::channel();
     let event = WorkerEvent::InvokeFunction {
-        db_pool,
+        project_id: project_id.clone(),
         bundle_dir: project_bundle_dir(
             server_state.projects_dir.as_path(),
             project_id.as_str(),
@@ -116,10 +117,12 @@ async fn invoke_function(
         params: Default::default(),
         resp: resp_tx,
     };
-    server_state
-        .worker_pool
-        .send(event)
-        .with_context(|| format!("failed to send event to worker pool"))?;
+    server_state.worker_pool.send(event).map_err(|e| {
+        ApiError::Internal(anyhow!(
+            "failed to send request to worker pool: {}",
+            e.to_string()
+        ))
+    })?;
 
     let result = resp_rx.await.with_context(|| {
         format!(
@@ -135,33 +138,34 @@ async fn deploy_schema(
     AxumPath(project_id): AxumPath<String>,
     Json(req): Json<DeploySchemaRequest>,
 ) -> Result<Json<DeploySchemaResponse>, ApiError> {
-    let sqlite_file =
-        project_db_file(server_state.sqlite_dir.as_path(), project_id.as_str());
-    let conn = rusqlite::Connection::open(sqlite_file.as_path())?;
-    conn.execute(
-        "INSERT INTO deployments (type, status) VALUES (?, ?)",
-        params![DeploymentType::Schema, DeploymentStatus::Doing],
-    )?;
-    let deployment_id = conn.last_insert_rowid();
-    for m in req.migrations.iter() {
-        conn.execute(
-            "INSERT INTO db_migrations (file_name, sql, applied, deployment_id) VALUES (?, ?, ?, ?)",
-            params![&m.file_name, &m.sql, &0, &deployment_id],
-        )?;
-    }
-
-    for m in req.migrations.iter() {
-        conn.execute_batch(m.sql.as_str())?;
-        conn.execute(
-            "UPDATE db_migrations SET applied = 1 WHERE file_name = ?",
-            params![m.file_name],
-        )?;
-    }
-    conn.execute(
-        "UPDATE deployments SET status = ? WHERE id = ?",
-        params![DeploymentStatus::Done, deployment_id],
-    )?;
-    Ok(Json(DeploySchemaResponse { deployment_id }))
+    todo!()
+    // let sqlite_file =
+    //     project_db_file(server_state.sqlite_dir.as_path(), project_id.as_str());
+    // let conn = rusqlite::Connection::open(sqlite_file.as_path())?;
+    // conn.execute(
+    //     "INSERT INTO deployments (type, status) VALUES (?, ?)",
+    //     params![DeploymentType::Schema, DeploymentStatus::Doing],
+    // )?;
+    // let deployment_id = conn.last_insert_rowid();
+    // for m in req.migrations.iter() {
+    //     conn.execute(
+    //         "INSERT INTO db_migrations (file_name, sql, applied, deployment_id) VALUES (?, ?, ?, ?)",
+    //         params![&m.file_name, &m.sql, &0, &deployment_id],
+    //     )?;
+    // }
+    //
+    // for m in req.migrations.iter() {
+    //     conn.execute_batch(m.sql.as_str())?;
+    //     conn.execute(
+    //         "UPDATE db_migrations SET applied = 1 WHERE file_name = ?",
+    //         params![m.file_name],
+    //     )?;
+    // }
+    // conn.execute(
+    //     "UPDATE deployments SET status = ? WHERE id = ?",
+    //     params![DeploymentStatus::Done, deployment_id],
+    // )?;
+    // Ok(Json(DeploySchemaResponse { deployment_id }))
 }
 
 async fn get_deployment(
@@ -169,19 +173,20 @@ async fn get_deployment(
     AxumPath(project_id): AxumPath<String>,
     AxumPath(deployment_id): AxumPath<i64>,
 ) -> Result<Json<GetDeploymentResponse>, ApiError> {
-    let conn = project_db_conn(
-        server_state.sqlite_dir.as_path(),
-        project_id.as_str(),
-    )?;
-    let mut stmt =
-        conn.prepare("SELECT type, status FROM deployments WHERE id = ?")?;
-    let mut rows = stmt.query(params![deployment_id])?;
-    let row = rows.next()?.unwrap();
-    let rsp = GetDeploymentResponse {
-        deploy_type: row.get(0)?,
-        status: row.get(1)?,
-    };
-    Ok(Json(rsp))
+    todo!()
+    // let conn = project_db_conn(
+    //     server_state.sqlite_dir.as_path(),
+    //     project_id.as_str(),
+    // )?;
+    // let mut stmt =
+    //     conn.prepare("SELECT type, status FROM deployments WHERE id = ?")?;
+    // let mut rows = stmt.query(params![deployment_id])?;
+    // let row = rows.next()?.unwrap();
+    // let rsp = GetDeploymentResponse {
+    //     deploy_type: row.get(0)?,
+    //     status: row.get(1)?,
+    // };
+    // Ok(Json(rsp))
 }
 
 async fn deploy_functions(
@@ -189,41 +194,42 @@ async fn deploy_functions(
     AxumPath(project_id): AxumPath<String>,
     Json(req): Json<DeployFunctionsRequest>,
 ) -> Result<Json<DeployFunctionsResponse>, ApiError> {
-    let conn = project_db_conn(
-        server_state.sqlite_dir.as_path(),
-        project_id.as_str(),
-    )?;
-    conn.execute(
-        "INSERT INTO deployments (type, status) VALUES (?, ?)",
-        &["functions", "start"],
-    )?;
-    let deployment_id = conn.last_insert_rowid();
-    for bundle in req.modules.iter() {
-        conn.execute("INSERT INTO js_bundles (path, code, deployment_id) VALUES (?, ?, ?)", params![bundle.path, bundle.code, deployment_id])?;
-    }
-    conn.execute(
-        "UPDATE deployments SET status = ? WHERE id = ?",
-        params!["success", deployment_id],
-    )?;
-
-    // store bundle in project's directory
-    let bundle_dir = project_bundle_dir(
-        server_state.projects_dir.as_path(),
-        project_id.as_str(),
-    );
-
-    for bundle in req.modules.iter() {
-        let bundle_file_path = PathBuf::from(bundle.path.as_str());
-        if let Some(parent) = bundle_file_path.parent() {
-            let mut parent_dir = bundle_dir.join(parent);
-            std::fs::create_dir_all(parent_dir.as_path())?;
-        }
-        let file_path = bundle_dir.join(bundle.path.as_str());
-        let mut file = File::create(file_path.as_path()).await?;
-        file.write_all(bundle.code.as_bytes()).await?;
-    }
-
-    Ok(Json(DeployFunctionsResponse { deployment_id }))
+    todo!()
+    // let conn = project_db_conn(
+    //     server_state.sqlite_dir.as_path(),
+    //     project_id.as_str(),
+    // )?;
+    // conn.execute(
+    //     "INSERT INTO deployments (type, status) VALUES (?, ?)",
+    //     &["functions", "start"],
+    // )?;
+    // let deployment_id = conn.last_insert_rowid();
+    // for bundle in req.modules.iter() {
+    //     conn.execute("INSERT INTO js_bundles (path, code, deployment_id) VALUES (?, ?, ?)", params![bundle.path, bundle.code, deployment_id])?;
+    // }
+    // conn.execute(
+    //     "UPDATE deployments SET status = ? WHERE id = ?",
+    //     params!["success", deployment_id],
+    // )?;
+    //
+    // // store bundle in project's directory
+    // let bundle_dir = project_bundle_dir(
+    //     server_state.projects_dir.as_path(),
+    //     project_id.as_str(),
+    // );
+    //
+    // for bundle in req.modules.iter() {
+    //     let bundle_file_path = PathBuf::from(bundle.path.as_str());
+    //     if let Some(parent) = bundle_file_path.parent() {
+    //         let mut parent_dir = bundle_dir.join(parent);
+    //         std::fs::create_dir_all(parent_dir.as_path())?;
+    //     }
+    //     let file_path = bundle_dir.join(bundle.path.as_str());
+    //     let mut file = File::create(file_path.as_path()).await?;
+    //     file.write_all(bundle.code.as_bytes()).await?;
+    // }
+    //
+    // Ok(Json(DeployFunctionsResponse { deployment_id }))
 }
 
 async fn rollback_functions(
@@ -428,8 +434,7 @@ impl ToSql for DeploymentStatus {
 
 struct ServerState {
     // will use sqlite by default.
-    mysql_pool: mysql_async::Pool,
     worker_pool: WorkerPool,
     projects_dir: PathBuf,
-    sqlite_dir: PathBuf,
+    // sqlite_dir: PathBuf,
 }
