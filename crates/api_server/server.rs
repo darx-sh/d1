@@ -105,6 +105,13 @@ async fn invoke_function(
     Json(req): Json<serde_json::Value>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
     let (resp_tx, resp_rx) = oneshot::channel();
+    let raw_value = serde_json::value::RawValue::from_string(req.to_string())
+        .with_context(|| {
+        format!(
+            "failed to serialize request body for function '{}'",
+            func_name
+        )
+    })?;
     let event = WorkerEvent::InvokeFunction {
         project_id: project_id.clone(),
         bundle_dir: project_bundle_dir(
@@ -112,9 +119,10 @@ async fn invoke_function(
             project_id.as_str(),
         ),
         func_name: func_name.clone(),
-        params: Default::default(),
+        params: raw_value,
         resp: resp_tx,
     };
+
     server_state.worker_pool.send(event).map_err(|e| {
         ApiError::Internal(anyhow!(
             "failed to send request to worker pool: {}",
