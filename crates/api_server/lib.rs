@@ -14,6 +14,10 @@ pub use server::run_server;
 pub enum ApiError {
     #[error("Authorization failed")]
     Auth,
+    #[error("IO error: {0}")]
+    IoError(#[from] std::io::Error),
+    #[error("Sqlite error: {0}")]
+    SqliteError(#[from] rusqlite::Error),
     #[error("Function {0} not found")]
     FunctionNotFound(String),
     #[error("Function parameter error: {0}")]
@@ -35,6 +39,14 @@ impl IntoResponse for ApiError {
         match self {
             ApiError::Auth => {
                 (StatusCode::UNAUTHORIZED, format!("{}", self)).into_response()
+            }
+            ApiError::IoError(e) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, format!("{:#}", e))
+                    .into_response()
+            }
+            ApiError::SqliteError(e) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, format!("{:#}", e))
+                    .into_response()
             }
             ApiError::FunctionNotFound(_) => {
                 (StatusCode::NOT_FOUND, format!("{}", self)).into_response()

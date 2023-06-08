@@ -10,6 +10,8 @@ path = "lib.rs"
 [dependencies]
 darx_utils.workspace = true
 darx_isolate_runtime.workspace = true
+darx_db.workspace = true
+
 deno_core.workspace = true
 
 axum.workspace = true
@@ -19,3 +21,4 @@ thiserror.workspace = true
 anyhow.workspace = true
 tokio.workspace = true
 mysql_async.workspace = true
+rusqlite.workspace = true
