@@ -1,7 +1,12 @@
 CREATE TABLE IF NOT EXISTS deployments (
   id INTEGER AUTOINCREMENT,
+-- 0: Schema
+-- 1: Function
   type INTEGER NOT NULL,
-  status INTEGER NOT NULL,
+-- 0: Doing
+-- 1: Done
+-- 2: Failed
+  status INTEGER NOT NULL DEFAULT 0,
   tag TEXT,
   description TEXT,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -12,7 +17,7 @@ CREATE TABLE IF NOT EXISTS deployments (
 CREATE TABLE IF NOT EXISTS db_migrations (
   file_name TEXT NOT NULL,
   sql TEXT NOT NULL,
-  applied INTEGER NOT NULL DEFAULT 0,
+  status INTEGER NOT NULL DEFAULT 0,
   deployment_id INTEGER NOT NULL,
 --   executed_at DATETIME NULL,
 --   execution_time INTEGER NULL,

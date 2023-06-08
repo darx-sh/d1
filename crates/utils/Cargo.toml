@@ -8,4 +8,3 @@ name = "darx_utils"
 path = "lib.rs"
 
 [dependencies]
-darx_db.workspace = true

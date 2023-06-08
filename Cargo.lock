@@ -808,7 +808,9 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "darx_utils",
  "mysql_async",
+ "rusqlite",
  "serde",
  "serde_json",
 ]
@@ -837,9 +839,6 @@ dependencies = [
 [[package]]
 name = "darx_utils"
 version = "0.0.1"
-dependencies = [
- "darx_db",
-]
 
 [[package]]
 name = "data-encoding"

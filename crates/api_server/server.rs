@@ -17,8 +17,9 @@ use tokio::fs;
 
 use crate::worker::{WorkerEvent, WorkerPool};
 use darx_db::mysql::MySqlPool;
-// use darx_db::Database;
-use darx_utils::test_mysql_db_pool;
+use darx_db::{
+    Bundle, DBType, DeploymentId, DeploymentStatus, DeploymentType, Migration,
+};
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::oneshot;
@@ -41,8 +42,6 @@ pub async fn run_server(
             sqlite_dir.display()
         ));
     }
-
-    let db_pool = test_mysql_db_pool();
 
     let worker_pool = WorkerPool::new();
     let server_state = Arc::new(ServerState {
@@ -105,7 +104,6 @@ async fn invoke_function(
     AxumPath(func_name): AxumPath<String>,
     Json(req): Json<serde_json::Value>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
-    let conn_pool = MySqlPool::new("mysql://root:12345678@localhost:3306/test");
     let (resp_tx, resp_rx) = oneshot::channel();
     let event = WorkerEvent::InvokeFunction {
         project_id: project_id.clone(),
@@ -138,34 +136,18 @@ async fn deploy_schema(
     AxumPath(project_id): AxumPath<String>,
     Json(req): Json<DeploySchemaRequest>,
 ) -> Result<Json<DeploySchemaResponse>, ApiError> {
-    todo!()
-    // let sqlite_file =
-    //     project_db_file(server_state.sqlite_dir.as_path(), project_id.as_str());
-    // let conn = rusqlite::Connection::open(sqlite_file.as_path())?;
-    // conn.execute(
-    //     "INSERT INTO deployments (type, status) VALUES (?, ?)",
-    //     params![DeploymentType::Schema, DeploymentStatus::Doing],
-    // )?;
-    // let deployment_id = conn.last_insert_rowid();
-    // for m in req.migrations.iter() {
-    //     conn.execute(
-    //         "INSERT INTO db_migrations (file_name, sql, applied, deployment_id) VALUES (?, ?, ?, ?)",
-    //         params![&m.file_name, &m.sql, &0, &deployment_id],
-    //     )?;
-    // }
-    //
-    // for m in req.migrations.iter() {
-    //     conn.execute_batch(m.sql.as_str())?;
-    //     conn.execute(
-    //         "UPDATE db_migrations SET applied = 1 WHERE file_name = ?",
-    //         params![m.file_name],
-    //     )?;
-    // }
-    // conn.execute(
-    //     "UPDATE deployments SET status = ? WHERE id = ?",
-    //     params![DeploymentStatus::Done, deployment_id],
-    // )?;
-    // Ok(Json(DeploySchemaResponse { deployment_id }))
+    let db_type = darx_db::get_db_type(project_id.as_str())?;
+    let deployment_id = match db_type {
+        DBType::MySQL => {
+            darx_db::mysql::deploy_schema(project_id.as_str(), req.migrations)
+                .await?
+        }
+        DBType::Sqlite => {
+            darx_db::sqlite::deploy_schema(project_id.as_str(), req.migrations)
+                .await?
+        }
+    };
+    Ok(Json(DeploySchemaResponse { deployment_id }))
 }
 
 async fn get_deployment(
@@ -194,42 +176,18 @@ async fn deploy_functions(
     AxumPath(project_id): AxumPath<String>,
     Json(req): Json<DeployFunctionsRequest>,
 ) -> Result<Json<DeployFunctionsResponse>, ApiError> {
-    todo!()
-    // let conn = project_db_conn(
-    //     server_state.sqlite_dir.as_path(),
-    //     project_id.as_str(),
-    // )?;
-    // conn.execute(
-    //     "INSERT INTO deployments (type, status) VALUES (?, ?)",
-    //     &["functions", "start"],
-    // )?;
-    // let deployment_id = conn.last_insert_rowid();
-    // for bundle in req.modules.iter() {
-    //     conn.execute("INSERT INTO js_bundles (path, code, deployment_id) VALUES (?, ?, ?)", params![bundle.path, bundle.code, deployment_id])?;
-    // }
-    // conn.execute(
-    //     "UPDATE deployments SET status = ? WHERE id = ?",
-    //     params!["success", deployment_id],
-    // )?;
-    //
-    // // store bundle in project's directory
-    // let bundle_dir = project_bundle_dir(
-    //     server_state.projects_dir.as_path(),
-    //     project_id.as_str(),
-    // );
-    //
-    // for bundle in req.modules.iter() {
-    //     let bundle_file_path = PathBuf::from(bundle.path.as_str());
-    //     if let Some(parent) = bundle_file_path.parent() {
-    //         let mut parent_dir = bundle_dir.join(parent);
-    //         std::fs::create_dir_all(parent_dir.as_path())?;
-    //     }
-    //     let file_path = bundle_dir.join(bundle.path.as_str());
-    //     let mut file = File::create(file_path.as_path()).await?;
-    //     file.write_all(bundle.code.as_bytes()).await?;
-    // }
-    //
-    // Ok(Json(DeployFunctionsResponse { deployment_id }))
+    let db_type = darx_db::get_db_type(project_id.as_str())?;
+    let deployment_id = match db_type {
+        DBType::MySQL => {
+            darx_db::mysql::deploy_functions(project_id.as_str(), &req.bundles)
+                .await?
+        }
+        DBType::Sqlite => {
+            darx_db::sqlite::deploy_functions(project_id.as_str(), &req.bundles)
+                .await?
+        }
+    };
+    Ok(Json(DeployFunctionsResponse { deployment_id }))
 }
 
 async fn rollback_functions(
@@ -321,27 +279,29 @@ struct CreateModuleRequest {
 struct CreatProjectRequest {
     // project_id should unique in the system.
     project_id: String,
+    db_type: DBType,
+    db_url: String,
 }
 
 #[derive(Deserialize)]
-struct DeploySchemaRequest {
+pub struct DeploySchemaRequest {
     migrations: Vec<Migration>,
 }
 
 #[derive(Serialize)]
 struct DeploySchemaResponse {
-    deployment_id: i64,
+    deployment_id: DeploymentId,
 }
 
 #[derive(Deserialize)]
 struct DeployFunctionsRequest {
-    modules: Vec<Bundle>,
+    bundles: Vec<Bundle>,
     description: Option<String>,
 }
 
 #[derive(Serialize)]
 struct DeployFunctionsResponse {
-    deployment_id: i64,
+    deployment_id: DeploymentId,
 }
 
 #[derive(Serialize)]
@@ -361,80 +321,7 @@ struct RollbackFunctionsResponse {
     new_deployment_id: i64,
 }
 
-#[derive(Deserialize)]
-struct Bundle {
-    path: String,
-    code: String,
-}
-
-#[derive(Deserialize)]
-struct Migration {
-    file_name: String,
-    sql: String,
-}
-
-#[derive(Serialize)]
-enum DeploymentType {
-    Schema,
-    Functions,
-}
-
-impl FromSql for DeploymentType {
-    fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
-        match value.as_i64()? {
-            0 => Ok(DeploymentType::Schema),
-            1 => Ok(DeploymentType::Functions),
-            _ => Err(FromSqlError::InvalidType),
-        }
-    }
-}
-
-impl ToSql for DeploymentType {
-    fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
-        match self {
-            DeploymentType::Schema => Ok(ToSqlOutput::Owned(Value::Integer(0))),
-            DeploymentType::Functions => {
-                Ok(ToSqlOutput::Owned(Value::Integer(1)))
-            }
-        }
-    }
-}
-
-#[derive(Serialize)]
-enum DeploymentStatus {
-    Doing,
-    Done,
-    Failed,
-}
-
-impl FromSql for DeploymentStatus {
-    fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
-        match value.as_i64()? {
-            0 => Ok(DeploymentStatus::Doing),
-            1 => Ok(DeploymentStatus::Done),
-            2 => Ok(DeploymentStatus::Failed),
-            _ => Err(FromSqlError::InvalidType),
-        }
-    }
-}
-
-impl ToSql for DeploymentStatus {
-    fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
-        match self {
-            DeploymentStatus::Doing => {
-                Ok(ToSqlOutput::Owned(Value::Integer(0)))
-            }
-            DeploymentStatus::Done => Ok(ToSqlOutput::Owned(Value::Integer(1))),
-            DeploymentStatus::Failed => {
-                Ok(ToSqlOutput::Owned(Value::Integer(2)))
-            }
-        }
-    }
-}
-
 struct ServerState {
-    // will use sqlite by default.
     worker_pool: WorkerPool,
     projects_dir: PathBuf,
-    // sqlite_dir: PathBuf,
 }

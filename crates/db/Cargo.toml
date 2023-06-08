@@ -12,5 +12,8 @@ path = "lib.rs"
 anyhow.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-mysql_async.workspace = true
 async-trait.workspace = true
+mysql_async.workspace = true
+rusqlite.workspace = true
+
+darx_utils.workspace = true
