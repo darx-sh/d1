@@ -1,0 +1,71 @@
+{
+  "inputs": {
+    "foo_empty.js": {
+      "bytes": 0,
+      "imports": []
+    },
+    "../lib/hello.js": {
+      "bytes": 49,
+      "imports": [],
+      "format": "esm"
+    },
+    "foo.js": {
+      "bytes": 244,
+      "imports": [
+        {
+          "path": "../lib/hello.js",
+          "kind": "import-statement",
+          "original": "../lib/hello.js"
+        }
+      ],
+      "format": "esm"
+    },
+    "foo/foo.js": {
+      "bytes": 55,
+      "imports": [],
+      "format": "esm"
+    }
+  },
+  "outputs": {
+    "__output/foo_empty.js": {
+      "imports": [],
+      "exports": [],
+      "entryPoint": "foo_empty.js",
+      "inputs": {
+        "foo_empty.js": {
+          "bytesInOutput": 0
+        }
+      },
+      "bytes": 0
+    },
+    "__output/foo.js": {
+      "imports": [],
+      "exports": [
+        "bar",
+        "default",
+        "foo",
+        "fooWithParam"
+      ],
+      "entryPoint": "foo.js",
+      "inputs": {
+        "foo.js": {
+          "bytesInOutput": 178
+        }
+      },
+      "bytes": 255
+    },
+    "__output/foo/foo.js": {
+      "imports": [],
+      "exports": [
+        "default"
+      ],
+      "entryPoint": "foo/foo.js",
+      "inputs": {
+        "foo/foo.js": {
+          "bytesInOutput": 40
+        }
+      },
+      "bytes": 83
+    }
+  }
+}

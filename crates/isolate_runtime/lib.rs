@@ -29,7 +29,7 @@ impl DarxIsolate {
         let extensions = vec![
             permissions::darx_permissions::init_ops_and_esm(
                 permissions::Options {
-                    tenant_dir: PathBuf::from(project_dir.as_ref()),
+                    project_dir: PathBuf::from(project_dir.as_ref()),
                 },
             ),
             deno_webidl::deno_webidl::init_ops_and_esm(),
@@ -69,6 +69,8 @@ impl DarxIsolate {
         }
     }
 
+    /// Loads and evaluates a module from a file.
+    /// The `file_path` is the path to the file relative to the project directory.
     pub async fn load_and_eval_module_file(
         &mut self,
         file_path: &str,
@@ -91,6 +93,8 @@ impl DarxIsolate {
             .with_context(|| format!("Couldn't execute '{}'", file_path))
     }
 
+    /// Loads and evaluates a module from a code string.
+    /// The `file_path` does not have to be a real file path.
     pub async fn load_and_evaluate_module_code(
         &mut self,
         file_path: &str,

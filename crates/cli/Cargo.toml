@@ -12,3 +12,4 @@ darx_api_server.workspace = true
 anyhow.workspace = true
 clap.workspace = true
 tokio.workspace = true
+notify.workspace = true

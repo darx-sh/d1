@@ -49,8 +49,8 @@ pub type DeploymentId = u64;
 
 #[derive(Deserialize)]
 pub struct Bundle {
-    path: String,
-    code: String,
+    pub path: String,
+    pub code: String,
 }
 
 #[derive(Serialize)]
