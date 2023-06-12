@@ -1,7 +1,5 @@
-import { useDB } from "darx";
-
 export async function viewPublishedPost(context, post_id) {
-  const db = useDB();
+  const db = await useDB();
   const posts = await db.exec(
     "SELECT * FROM posts WHERE id = ? AND status = ? LIMIT 1",
     [post_id, "published"]
@@ -14,7 +12,7 @@ export async function viewPublishedPost(context, post_id) {
 }
 
 export async function createPost(context, content) {
-  const db = useDB();
+  const db = await useDB();
   const { auth } = context;
 
   if (!auth) {
@@ -29,7 +27,7 @@ export async function createPost(context, content) {
 }
 
 export async function publishPost(context, post_id) {
-  const db = useDB();
+  const db = await useDB();
   const { auth } = context;
 
   if (!auth) {

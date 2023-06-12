@@ -1,5 +1,5 @@
 export async function viewPublishedPost(context, post_id) {
-  const { db } = context;
+  const { db } = await useDB();
   const post = await db.table("posts").findOne({
     id: post_id,
     status: "published",
@@ -8,7 +8,8 @@ export async function viewPublishedPost(context, post_id) {
 }
 
 export async function createPost(context, content) {
-  const { auth, db } = context;
+  const db = await useDB();
+  const { auth } = context;
 
   if (!auth.uid) {
     return new Response().status(403).json({ error: "not authorized" });
@@ -22,7 +23,8 @@ export async function createPost(context, content) {
 }
 
 export async function publishPost(context, post_id) {
-  const { auth, db } = context;
+  const db = await useDB();
+  const { auth } = context;
 
   if (!auth) {
     return new Response().status(403).json({ error: "not authorized" });
