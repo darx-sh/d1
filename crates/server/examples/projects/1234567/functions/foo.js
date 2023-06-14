@@ -1,6 +1,7 @@
 import hello from "../lib/hello.js";
 
 export function bar() {
+  let h = hello();
   return "/foo.bar";
 }
 

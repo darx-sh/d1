@@ -1,5 +1,11 @@
+// ../lib/hello.js
+function hello_default() {
+  return "hello";
+}
+
 // foo.js
 function bar() {
+  let h = hello_default();
   return "/foo.bar";
 }
 function foo() {

@@ -1,9 +1,9 @@
-use crate::ApiError;
 use anyhow::{anyhow, Context, Result};
 use axum::extract::{Path as AxumPath, State};
 use axum::http::StatusCode;
 use axum::routing::{get, post};
 use axum::{Json, Router};
+use darx_api::ApiError;
 use rusqlite::types::{
     FromSql, FromSqlError, FromSqlResult, ToSqlOutput, Value, ValueRef,
 };
@@ -16,6 +16,11 @@ use std::sync::Arc;
 use tokio::fs;
 
 use crate::worker::{WorkerEvent, WorkerPool};
+use darx_api::{
+    CreatProjectRequest, DeployFunctionsRequest, DeployFunctionsResponse,
+    DeploySchemaRequest, DeploySchemaResponse, GetDeploymentResponse,
+    RollbackFunctionsRequest, RollbackFunctionsResponse,
+};
 use darx_db::mysql::MySqlPool;
 use darx_db::{
     Bundle, DBType, DeploymentId, DeploymentStatus, DeploymentType, Migration,
@@ -383,57 +388,10 @@ struct CreateModuleRequest {
 }
 
 #[derive(Deserialize)]
-struct CreatProjectRequest {
-    // project_id should unique in the system.
-    project_id: String,
-    db_type: DBType,
-    db_url: String,
-}
-
-#[derive(Deserialize)]
 struct ConnectDBRequest {
     project_id: String,
     db_type: DBType,
     db_url: String,
-}
-
-#[derive(Deserialize)]
-pub struct DeploySchemaRequest {
-    migrations: Vec<Migration>,
-}
-
-#[derive(Serialize)]
-struct DeploySchemaResponse {
-    deployment_id: DeploymentId,
-}
-
-#[derive(Deserialize)]
-struct DeployFunctionsRequest {
-    bundles: Vec<Bundle>,
-    bundle_meta: serde_json::Value,
-    description: Option<String>,
-}
-
-#[derive(Serialize)]
-struct DeployFunctionsResponse {
-    deployment_id: DeploymentId,
-}
-
-#[derive(Serialize)]
-struct GetDeploymentResponse {
-    deploy_type: DeploymentType,
-    status: DeploymentStatus,
-}
-
-#[derive(Deserialize)]
-struct RollbackFunctionsRequest {
-    target_deployment_id: i64,
-}
-
-/// Rollback will create another deployment [`new_deployment_id`].
-#[derive(Serialize)]
-struct RollbackFunctionsResponse {
-    new_deployment_id: i64,
 }
 
 struct ServerState {

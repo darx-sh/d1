@@ -2,17 +2,19 @@
 members = [
     "crates/isolate_runtime",
     "crates/cli",
-    "crates/api_server",
-    "crates/utils"
+    "crates/server",
+    "crates/utils",
+    "crates/api"
 ]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [workspace.dependencies]
 darx_isolate_runtime = { path = "./crates/isolate_runtime" }
-darx_api_server = { path = "./crates/api_server" }
+darx_server = { path = "./crates/server" }
 darx_db = { path = "./crates/db" }
 darx_utils = { path = "./crates/utils" }
+darx_api = {path = "./crates/api" }
 
 
 # Deno related crates from v1.32.3
@@ -41,6 +43,7 @@ futures = { version = "0.3" }
 serde = {version = "1.0.157", features = ["derive"]}
 serde_json = { version = "1.0", features = ["raw_value"] }
 notify = {version = "6.0.0", default-features = false, features = ["macos_kqueue"]}
+reqwest = { version = "0.11.18", features = ["blocking", "json"] }
 
 
 
