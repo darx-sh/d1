@@ -1,9 +1,9 @@
-use crate::ApiError;
 use anyhow::{anyhow, Context, Result};
 use axum::extract::{Path as AxumPath, State};
 use axum::http::StatusCode;
 use axum::routing::{get, post};
 use axum::{Json, Router};
+use darx_api::ApiError;
 use rusqlite::types::{
     FromSql, FromSqlError, FromSqlResult, ToSqlOutput, Value, ValueRef,
 };
@@ -16,6 +16,11 @@ use std::sync::Arc;
 use tokio::fs;
 
 use crate::worker::{WorkerEvent, WorkerPool};
+use darx_api::{
+    CreatProjectRequest, DeployFunctionsRequest, DeployFunctionsResponse,
+    DeploySchemaRequest, DeploySchemaResponse, GetDeploymentResponse,
+    RollbackFunctionsRequest, RollbackFunctionsResponse,
+};
 use darx_db::mysql::MySqlPool;
 use darx_db::{
     Bundle, DBType, DeploymentId, DeploymentStatus, DeploymentType, Migration,
@@ -24,24 +29,20 @@ use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::oneshot;
 
-pub async fn run_server(
-    port: u16,
-    projects_dir: &str,
-    sqlite_dir: &str,
-) -> Result<()> {
+pub async fn run_server(port: u16, projects_dir: &str) -> Result<()> {
     let projects_dir = fs::canonicalize(projects_dir).await?;
-    let sqlite_dir = fs::canonicalize(sqlite_dir).await?;
+    // let sqlite_dir = fs::canonicalize(sqlite_dir).await?;
     let projects_dir = projects_dir.join("darx_projects");
     fs::create_dir_all(projects_dir.as_path()).await?;
 
     // sqlite dir needs to exist before we run the server.
     // This is because we need a mounted litefs directory.
-    if !sqlite_dir.exists() {
-        return Err(anyhow!(
-            "sqlite directory does not exist: {}",
-            sqlite_dir.display()
-        ));
-    }
+    // if !sqlite_dir.exists() {
+    //     return Err(anyhow!(
+    //         "sqlite directory does not exist: {}",
+    //         sqlite_dir.display()
+    //     ));
+    // }
 
     let worker_pool = WorkerPool::new();
     let server_state = Arc::new(ServerState {
@@ -187,8 +188,12 @@ async fn deploy_functions(
     let db_type = darx_db::get_db_type(project_id.as_str())?;
     let deployment_id = match db_type {
         DBType::MySQL => {
-            darx_db::mysql::deploy_functions(project_id.as_str(), &req.bundles)
-                .await?
+            darx_db::mysql::deploy_functions(
+                project_id.as_str(),
+                &req.bundles,
+                &req.bundle_meta,
+            )
+            .await?
         }
         DBType::Sqlite => {
             darx_db::sqlite::deploy_functions(project_id.as_str(), &req.bundles)
@@ -276,6 +281,105 @@ fn project_db_conn(
     })
 }
 
+async fn load_bundles_from_db(
+    project_id: &str,
+    deployment_id: &str,
+) -> Result<(Vec<Bundle>, serde_json::Value)> {
+    let db_type = darx_db::get_db_type(project_id)?;
+    match db_type {
+        DBType::MySQL => {
+            darx_db::mysql::load_bundles_from_db(project_id, deployment_id)
+                .await
+        }
+        DBType::Sqlite => {
+            unimplemented!()
+        }
+    }
+}
+
+async fn create_local_bundles(
+    projects_dir: &Path,
+    project_id: &str,
+    deployment_id: DeploymentId,
+    bundles: &Vec<Bundle>,
+    bundle_meta: &serde_json::Value,
+) -> Result<()> {
+    let project_dir = project_bundle_dir(projects_dir, project_id);
+    fs::create_dir_all(project_dir.as_path())
+        .await
+        .with_context(|| {
+            format!(
+                "failed to create directory: {}",
+                project_dir.to_str().unwrap()
+            )
+        })?;
+
+    // setup a clean temporary path.
+
+    let tmp_dir = project_dir.join("tmp");
+    fs::create_dir_all(tmp_dir.as_path()).await?;
+    fs::remove_dir_all(tmp_dir.as_path()).await?;
+    fs::create_dir_all(tmp_dir.as_path())
+        .await
+        .with_context(|| {
+            format!(
+                "failed to create tmp directory: {}",
+                tmp_dir.to_str().unwrap()
+            )
+        })?;
+
+    let bundle_meta_file = tmp_dir.join("meta.json");
+    let mut f = File::create(bundle_meta_file.as_path())
+        .await
+        .with_context(|| {
+            format!(
+                "failed to create file: {}",
+                bundle_meta_file.to_str().unwrap()
+            )
+        })?;
+    f.write_all(bundle_meta.to_string().as_ref())
+        .await
+        .with_context(|| {
+            format!(
+                "failed to write file: {}",
+                bundle_meta_file.to_str().unwrap()
+            )
+        })?;
+
+    for bundle in bundles {
+        let bundle_path = tmp_dir.join(bundle.path.as_str());
+        if let Some(parent) = bundle_path.parent() {
+            fs::create_dir_all(parent).await?;
+        }
+        let mut f =
+            File::create(bundle_path.as_path()).await.with_context(|| {
+                format!(
+                    "failed to create file: {}",
+                    bundle_path.to_str().unwrap()
+                )
+            })?;
+
+        f.write_all(bundle.code.as_ref()).await.with_context(|| {
+            format!("failed to write file: {}", bundle_path.to_str().unwrap())
+        })?;
+    }
+
+    let meta_path = tmp_dir.join("meta.json");
+    let mut f = File::create(meta_path.as_path()).await.with_context(|| {
+        format!("failed to create file: {}", meta_path.to_str().unwrap())
+    })?;
+
+    f.write_all(bundle_meta.to_string().as_ref()).await?;
+
+    // rename the temporary directory to final directory.
+    let deploy_path = project_dir.join(deployment_id.to_string().as_str());
+    fs::rename(tmp_dir.as_path(), deploy_path.as_path()).await?;
+
+    // delete the temporary directory.
+    fs::remove_dir_all(tmp_dir.as_path()).await?;
+    Ok(())
+}
+
 #[derive(Deserialize)]
 struct CreateModuleRequest {
     dir: Option<String>,
@@ -284,49 +388,10 @@ struct CreateModuleRequest {
 }
 
 #[derive(Deserialize)]
-struct CreatProjectRequest {
-    // project_id should unique in the system.
+struct ConnectDBRequest {
     project_id: String,
     db_type: DBType,
     db_url: String,
-}
-
-#[derive(Deserialize)]
-pub struct DeploySchemaRequest {
-    migrations: Vec<Migration>,
-}
-
-#[derive(Serialize)]
-struct DeploySchemaResponse {
-    deployment_id: DeploymentId,
-}
-
-#[derive(Deserialize)]
-struct DeployFunctionsRequest {
-    bundles: Vec<Bundle>,
-    description: Option<String>,
-}
-
-#[derive(Serialize)]
-struct DeployFunctionsResponse {
-    deployment_id: DeploymentId,
-}
-
-#[derive(Serialize)]
-struct GetDeploymentResponse {
-    deploy_type: DeploymentType,
-    status: DeploymentStatus,
-}
-
-#[derive(Deserialize)]
-struct RollbackFunctionsRequest {
-    target_deployment_id: i64,
-}
-
-/// Rollback will create another deployment [`new_deployment_id`].
-#[derive(Serialize)]
-struct RollbackFunctionsResponse {
-    new_deployment_id: i64,
 }
 
 struct ServerState {

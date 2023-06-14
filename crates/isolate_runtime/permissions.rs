@@ -3,19 +3,19 @@ use deno_core::url::Url;
 use std::path::{Path, PathBuf};
 
 pub struct Permissions {
-    tenant_dir: PathBuf,
+    project_dir: PathBuf,
 }
 
 impl Permissions {
     pub fn new(options: Options) -> Self {
         Self {
-            tenant_dir: options.tenant_dir,
+            project_dir: options.project_dir,
         }
     }
 }
 
 pub struct Options {
-    pub tenant_dir: PathBuf,
+    pub project_dir: PathBuf,
 }
 
 deno_core::extension!(

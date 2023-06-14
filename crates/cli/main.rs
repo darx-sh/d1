@@ -12,11 +12,17 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Initialize a Darx project.
-    Init,
     /// Starts the Darx development server that watches local files.
+    ///
+    /// This command will:
+    /// 1. Guide the user to login into the Darx platform and save the
+    /// api key in [`~/.darx/config.json`] file.
+    /// 2. Create a new project with dev and production environments,
+    /// create a directory [`darx_server`], and save environment's
+    /// deployment url in [`darx_server/darx.json`] file.
+    /// 3. Creates a [`functions`] directory and watch for change.
     Dev {
-        /// The project directory to watch.
+        /// The project's working directory.
         #[arg(short, long, default_value_t = String::from("."))]
         dir: String,
     },
@@ -27,8 +33,6 @@ enum Commands {
         port: u16,
         #[arg(long, default_value_t = String::from("."))]
         projects_dir: String,
-        #[arg(long, default_value_t = String::from("."))]
-        sqlite_dir: String,
     },
     /// Manage database schema
     #[command(subcommand)]
@@ -60,12 +64,8 @@ enum Api {
 async fn main() -> Result<()> {
     let cli = Cli::parse();
     match &cli.command {
-        Commands::Server {
-            port,
-            projects_dir,
-            sqlite_dir,
-        } => {
-            darx_api_server::run_server(*port, projects_dir, sqlite_dir).await?
+        Commands::Server { port, projects_dir } => {
+            darx_server::run_server(*port, projects_dir).await?
         }
         Commands::Dev { dir } => dev::run_dev(dir).await?,
         _ => {

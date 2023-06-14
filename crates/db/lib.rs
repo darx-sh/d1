@@ -47,10 +47,10 @@ pub struct Migration {
 
 pub type DeploymentId = u64;
 
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct Bundle {
-    path: String,
-    code: String,
+    pub path: String,
+    pub code: String,
 }
 
 #[derive(Serialize)]

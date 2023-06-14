@@ -1,5 +1,5 @@
 {
-  "name": "@darx/server",
+  "name": "dataplane",
   "version": "0.0.1",
   "description": "Darx data plan server",
   "private": true,
@@ -7,6 +7,6 @@
     "build": "cargo build",
     "test": "cargo test-all-features",
     "lint": "cargo clippy -- -Dwarnings --no-deps",
-    "dev": "cargo run -- server"
+    "dev": "cargo run -- server && cargo run -- dev ./tmp"
   }
 }
