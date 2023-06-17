@@ -7,14 +7,17 @@ import {
 } from "~/server/api/trpc";
 
 export const exampleRouter = createTRPCRouter({
-  hello: publicProcedure
-    .input(z.object({ text: z.string() }))
-    .query(({ input }) => {
-      return {
-        greeting: `Hello ${input.text}`,
-      };
-    }),
-
+  // hello: publicProcedure
+  //   .input(z.object({ text: z.string() }))
+  //   .query(({ input }) => {
+  //     return {
+  //       greeting: `Hello ${input.text}`,
+  //     };
+  //   }),
+  hello: publicProcedure.input(z.string()).query(({ input }) => {
+    console.log(input);
+    return { greeting: `hello` };
+  }),
   getAll: publicProcedure.query(({ ctx }) => {
     return ctx.prisma.example.findMany();
   }),
