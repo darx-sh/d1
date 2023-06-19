@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "~/server/db";
 
+// prepare a deployment
 export async function POST(req: NextRequest) {
-  let data = await req.json();
+  const data = (await req.json()) as { environmentId: string };
   return NextResponse.json({ data: data });
 }
