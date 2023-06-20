@@ -24,17 +24,17 @@ const navigation = [
     icon: CircleStackIcon,
   },
   {
-    id: "API",
-    icon: CloudIcon,
+    id: "Functions",
+    icon: CodeBracketSquareIcon,
   },
-  {
-    id: "Users",
-    icon: UserGroupIcon,
-  },
-  {
-    id: "Plugins",
-    icon: RectangleGroupIcon,
-  },
+  // {
+  //   id: "Users",
+  //   icon: UserGroupIcon,
+  // },
+  // {
+  //   id: "Plugins",
+  //   icon: RectangleGroupIcon,
+  // },
   {
     id: "Logs",
     icon: Bars4Icon,
