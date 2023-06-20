@@ -6,3 +6,4 @@ node_modules
 .turbo
 .env
 *.db
+.DS_Store
