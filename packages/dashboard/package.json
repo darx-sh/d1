@@ -10,6 +10,8 @@
     "start": "next start"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.354.0",
+    "@aws-sdk/s3-request-presigner": "^3.354.0",
     "@codemirror/lang-javascript": "^6.1.9",
     "@codemirror/view": "^6.13.2",
     "@headlessui/react": "^1.7.14",

@@ -254,3 +254,32 @@ struct ProjectConfig {
     project_id: String,
     url: String,
 }
+
+#[derive(Serialize)]
+struct PrepareDeployReq {
+    environmentId: String,
+    tag: Option<String>,
+    description: Option<String>,
+    bundles: Vec<BundleReq>,
+}
+
+#[derive(Serialize)]
+struct BundleReq {
+    path: String,
+    bytes: i64,
+    checksum: String,
+    checksumType: String,
+}
+
+#[derive(Deserialize)]
+struct PrepareDeployRsp {
+    deploymentId: String,
+    bundles: Vec<BundleRsp>,
+}
+
+#[derive(Deserialize)]
+struct BundleRsp {
+    id: String,
+    path: String,
+    upload_url: String,
+}

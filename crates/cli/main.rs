@@ -1,5 +1,4 @@
 mod dev;
-mod trpc;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};

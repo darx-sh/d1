@@ -15,12 +15,6 @@ datasource db {
   relationMode = "prisma"
 }
 
-model Example {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
 // Necessary for Next auth
 model Account {
   id                String  @id @default(cuid())
@@ -120,24 +114,33 @@ model Environment {
 }
 
 model Deployment {
-  id            String        @id @default(cuid())
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  tag           String?
-  description   String?
-  environmentId String
-  environment   Environment   @relation(fields: [environmentId], references: [id])
-  functions     Function[]
-  envVars       EnvVariable[]
+  id              String        @id @default(cuid())
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  tag             String?
+  description     String?
+  // the number of bundles uploaded
+  bundleUploadCnt Int           @default(0)
+  // the number fo bundles to be uploaded
+  bundleCount     Int
+  environmentId   String
+  environment     Environment   @relation(fields: [environmentId], references: [id])
+  bundles         Bundle[]
+  envVars         EnvVariable[]
 
   @@index([environmentId])
 }
 
-model Function {
+model Bundle {
   id           String     @id @default(cuid())
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
   path         String     @db.Text
+  bytes        Int
+  // - running
+  // - success
+  // - failed
+  uploadStatus String     @default("running")
   deploymentId String
   deployment   Deployment @relation(fields: [deploymentId], references: [id])
 
