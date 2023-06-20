@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  let urlPromises = deployment.bundles.map((bundle) => {
+  const urlPromises = deployment.bundles.map((bundle) => {
     const putCommand = new PutObjectCommand({
       Bucket: env.S3_BUCKET,
       Key: `${deployment.id}/${bundle.id}`,
@@ -99,9 +99,19 @@ export async function POST(req: NextRequest) {
         upload_url: url,
       });
     } else {
-      throw new Error(
-        `failed to prepare deployment: deploymentId = ${deployment.id}, i = ${i}, bundle = ${bundle}, url = ${url}`
-      );
+      if (bundle === undefined && url === undefined) {
+        throw new Error(
+          `failed to prepare deployment: deploymentId = ${deployment.id}, i = ${i}, bundle undefined, url undefined`
+        );
+      } else if (url === undefined) {
+        throw new Error(
+          `failed to prepare deployment: deploymentId = ${deployment.id}, i = ${i}, url undefined`
+        );
+      } else if (bundle === undefined) {
+        throw new Error(
+          `failed to prepare deployment: deploymentId = ${deployment.id}, i = ${i}, bundle undefined`
+        );
+      }
     }
   }
   return NextResponse.json(rsp);
