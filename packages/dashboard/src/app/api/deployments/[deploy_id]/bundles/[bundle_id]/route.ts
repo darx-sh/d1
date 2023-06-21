@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "~/server/db";
+import redis from "~/server/redis";
 import { UPLOAD_FAILED, UPLOAD_SUCCESS } from "~/server/constants";
 
 // update deployment status
@@ -40,6 +41,7 @@ async function success_upload(deploy_id: string, func_id: string) {
       },
     }),
   ]);
+  await redis.xadd("deploy", "*", "deploy_id", deploy.id);
 }
 
 async function fail_upload(deploy_id: string, func_id: string) {
