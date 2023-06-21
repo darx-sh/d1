@@ -2,7 +2,9 @@ use anyhow::{anyhow, bail, Context, Result};
 use darx_api::{
     ApiError, Bundle, DBType, DeployFunctionsRequest, DeployFunctionsResponse,
 };
+use notify::event::ModifyKind;
 use notify::{Config, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+use notify_debouncer_mini::{new_debouncer, DebouncedEventKind};
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -11,6 +13,7 @@ use std::fs;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::time::Duration;
 
 #[cfg(windows)]
 const ESBUILD: &str = "esbuild.cmd";
@@ -32,8 +35,11 @@ pub async fn run_dev(root_dir: &str) -> Result<()> {
     }
 
     let (tx, rx) = std::sync::mpsc::channel();
-    let mut watcher = RecommendedWatcher::new(tx, Config::default())?;
 
+    let mut watcher = RecommendedWatcher::new(
+        tx,
+        Config::default().with_poll_interval(Duration::from_millis(35)),
+    )?;
     watcher
         .watch(functions_path.as_path(), RecursiveMode::Recursive)
         .with_context(|| {
@@ -43,43 +49,55 @@ pub async fn run_dev(root_dir: &str) -> Result<()> {
             )
         })?;
     for event in rx.into_iter().flatten() {
-        if let EventKind::Modify(modify) = event.kind {
-            // todo: we can buffer the events and only run this once per batch.
-            // or maybe try debouncer?
-            let mut file_list = vec![];
-            collect_js_file_list(&mut file_list, functions_path.as_path())?;
-            let file_list = file_list
-                .iter()
-                .map(|path| {
-                    path.strip_prefix(functions_path.as_path())
-                        .unwrap()
-                        .to_str()
-                        .unwrap()
-                })
-                .collect::<Vec<_>>();
-            let output_dir = "../__output";
-            bundle_file_list(functions_path.as_path(), output_dir, file_list)?;
-            let bundles = new_deploy_func_request(
-                functions_path.join(output_dir).as_path(),
-            )?;
-            let deploy_rsp =
-                prepare_deploy("123456", None, None, bundles).await?;
-            for bundle in deploy_rsp.bundles.iter() {
-                let path =
-                    functions_path.join(output_dir).join(bundle.path.as_str());
-                let code = fs::read_to_string(path)?;
-                upload_bundle(
-                    deploy_rsp.deploymentId.clone(),
-                    bundle.id.clone(),
-                    bundle.upload_url.clone(),
-                    code.clone(),
-                )
-                .await?;
-                println!("upload bundle success deploy_id: {}, bundle_id: {}, url: {}", deploy_rsp.deploymentId, bundle.id, bundle.upload_url);
-            }
+        let should_update = if let EventKind::Modify(modify) = event.kind {
+            matches!(modify, ModifyKind::Name(_))
+                || matches!(modify, ModifyKind::Data(_))
+        } else {
+            false
+        };
+
+        if should_update {
+            handle_file_changed(functions_path.as_path()).await?;
         }
     }
 
+    Ok(())
+}
+
+async fn handle_file_changed(functions_path: &Path) -> Result<()> {
+    let mut file_list = vec![];
+    collect_js_file_list(&mut file_list, functions_path)?;
+    let file_list = file_list
+        .iter()
+        .map(|path| {
+            path.strip_prefix(functions_path).unwrap().to_str().unwrap()
+        })
+        .collect::<Vec<_>>();
+    let output_dir = "../__output";
+    let start_time = std::time::Instant::now();
+    println!("Prepare files to bundle...");
+    bundle_file_list(functions_path, output_dir, file_list)?;
+    let bundles =
+        new_deploy_func_request(functions_path.join(output_dir).as_path())?;
+    let deploy_rsp = prepare_deploy("123456", None, None, bundles).await?;
+    let mut join_set = tokio::task::JoinSet::new();
+    for bundle in deploy_rsp.bundles.iter() {
+        let path = functions_path.join(output_dir).join(bundle.path.as_str());
+        let code = fs::read_to_string(path)?;
+        join_set.spawn(upload_bundle(
+            deploy_rsp.deploymentId.clone(),
+            bundle.id.clone(),
+            bundle.upload_url.clone(),
+            bundle.path.clone(),
+            code.clone(),
+        ));
+    }
+
+    while let Some(result) = join_set.join_next().await {
+        result?.with_context(|| "Failed to upload bundle")?;
+    }
+    let duration = start_time.elapsed();
+    println!("Uploaded all files, duration: {:?}", duration.as_secs_f32());
     Ok(())
 }
 
@@ -130,7 +148,6 @@ fn bundle_file_list(
     if !status.success() {
         println!("esbuild finished with status: {:?}", status);
     } else {
-        println!("Preparing bundle");
     }
     Ok(())
 }
@@ -191,6 +208,7 @@ async fn upload_bundle(
     deployment_id: String,
     bundle_id: String,
     url: String,
+    path: String,
     code: String,
 ) -> Result<()> {
     let rsp = reqwest::Client::new()
@@ -217,6 +235,7 @@ async fn upload_bundle(
         .send()
         .await
         .with_context(|| format!("failed to update bundle status"))?;
+    println!("Uploaded file: {}", path);
     Ok(())
 }
 
