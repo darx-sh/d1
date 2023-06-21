@@ -1,15 +1,19 @@
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use darx_api::{
     ApiError, Bundle, DBType, DeployFunctionsRequest, DeployFunctionsResponse,
 };
+use notify::event::ModifyKind;
 use notify::{Config, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+use notify_debouncer_mini::{new_debouncer, DebouncedEventKind};
 use reqwest::Url;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use serde_json::json;
 use std::env;
 use std::fs;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::time::Duration;
 
 #[cfg(windows)]
 const ESBUILD: &str = "esbuild.cmd";
@@ -31,8 +35,11 @@ pub async fn run_dev(root_dir: &str) -> Result<()> {
     }
 
     let (tx, rx) = std::sync::mpsc::channel();
-    let mut watcher = RecommendedWatcher::new(tx, Config::default())?;
 
+    let mut watcher = RecommendedWatcher::new(
+        tx,
+        Config::default().with_poll_interval(Duration::from_millis(35)),
+    )?;
     watcher
         .watch(functions_path.as_path(), RecursiveMode::Recursive)
         .with_context(|| {
@@ -42,50 +49,55 @@ pub async fn run_dev(root_dir: &str) -> Result<()> {
             )
         })?;
     for event in rx.into_iter().flatten() {
-        if let EventKind::Modify(modify) = event.kind {
-            // todo: we can buffer the events and only run this once per batch.
-            // or maybe try debouncer?
-            let mut file_list = vec![];
-            collect_js_file_list(&mut file_list, functions_path.as_path())?;
-            let file_list = file_list
-                .iter()
-                .map(|path| {
-                    path.strip_prefix(functions_path.as_path())
-                        .unwrap()
-                        .to_str()
-                        .unwrap()
-                })
-                .collect::<Vec<_>>();
-            let output_dir = "../__output";
-            bundle_file_list(functions_path.as_path(), output_dir, file_list)?;
-            let req = build_deploy_func_request(
-                functions_path.join(output_dir).as_path(),
-            )?;
-            let client = reqwest::Client::new();
-            match client
-                .post("http://localhost:4001/app/123456/deploy_functions")
-                .json(&req)
-                .send()
-                .await
-            {
-                Err(e) => println!("failed to deploy: {:?}", e),
-                Ok(rsp) => {
-                    let status = rsp.status();
+        let should_update = if let EventKind::Modify(modify) = event.kind {
+            matches!(modify, ModifyKind::Name(_))
+                || matches!(modify, ModifyKind::Data(_))
+        } else {
+            false
+        };
 
-                    if status.is_success() {
-                        println!("deployed successfully");
-                    } else {
-                        let error = rsp.json::<serde_json::Value>().await?;
-                        println!(
-                            "failed to deploy. status code = {:}, body = {:}",
-                            status, error
-                        );
-                    }
-                }
-            }
+        if should_update {
+            handle_file_changed(functions_path.as_path()).await?;
         }
     }
 
+    Ok(())
+}
+
+async fn handle_file_changed(functions_path: &Path) -> Result<()> {
+    let mut file_list = vec![];
+    collect_js_file_list(&mut file_list, functions_path)?;
+    let file_list = file_list
+        .iter()
+        .map(|path| {
+            path.strip_prefix(functions_path).unwrap().to_str().unwrap()
+        })
+        .collect::<Vec<_>>();
+    let output_dir = "../__output";
+    let start_time = std::time::Instant::now();
+    println!("Prepare files to bundle...");
+    bundle_file_list(functions_path, output_dir, file_list)?;
+    let bundles =
+        new_deploy_func_request(functions_path.join(output_dir).as_path())?;
+    let deploy_rsp = prepare_deploy("123456", None, None, bundles).await?;
+    let mut join_set = tokio::task::JoinSet::new();
+    for bundle in deploy_rsp.bundles.iter() {
+        let path = functions_path.join(output_dir).join(bundle.path.as_str());
+        let code = fs::read_to_string(path)?;
+        join_set.spawn(upload_bundle(
+            deploy_rsp.deploymentId.clone(),
+            bundle.id.clone(),
+            bundle.upload_url.clone(),
+            bundle.path.clone(),
+            code.clone(),
+        ));
+    }
+
+    while let Some(result) = join_set.join_next().await {
+        result?.with_context(|| "Failed to upload bundle")?;
+    }
+    let duration = start_time.elapsed();
+    println!("Uploaded all files, duration: {:?}", duration.as_secs_f32());
     Ok(())
 }
 
@@ -136,14 +148,11 @@ fn bundle_file_list(
     if !status.success() {
         println!("esbuild finished with status: {:?}", status);
     } else {
-        println!("Preparing bundle");
     }
     Ok(())
 }
 
-fn build_deploy_func_request(
-    output_dir: &Path,
-) -> Result<DeployFunctionsRequest> {
+fn new_deploy_func_request(output_dir: &Path) -> Result<Vec<BundleReq>> {
     let meta_file = output_dir.join("meta.json");
     let meta = fs::read_to_string(meta_file.as_path()).with_context(|| {
         format!("Failed to read meta file: {}", meta_file.display())
@@ -184,17 +193,50 @@ fn build_deploy_func_request(
         let file_path = output_dir.join(entry_point.clone());
         let code = fs::read_to_string(file_path)
             .with_context(|| format!("Failed to read file: {}", entry_point))?;
-        bundles.push(Bundle {
+        bundles.push(BundleReq {
             path: entry_point.clone(),
-            code,
+            bytes: nbytes,
+            checksum: "".to_string(),
+            checksumType: "".to_string(),
         });
     }
 
-    Ok(DeployFunctionsRequest {
-        bundles,
-        bundle_meta: meta,
-        description: Some("Deployed from local dev".to_string()),
-    })
+    Ok(bundles)
+}
+
+async fn upload_bundle(
+    deployment_id: String,
+    bundle_id: String,
+    url: String,
+    path: String,
+    code: String,
+) -> Result<()> {
+    let rsp = reqwest::Client::new()
+        .put(url)
+        .body(code)
+        .send()
+        .await
+        .with_context(|| format!("failed to upload code, url"))?;
+
+    if !rsp.status().is_success() {
+        bail!("failed to upload code, rsp {:?}", rsp);
+    }
+
+    // update bundle upload status
+    let req = json!({
+        "status": "success"
+    });
+    let rsp = reqwest::Client::new()
+        .post(format!(
+            "http://localhost:3000/api/deployments/{}/bundles/{}",
+            deployment_id, bundle_id
+        ))
+        .json(&req)
+        .send()
+        .await
+        .with_context(|| format!("failed to update bundle status"))?;
+    println!("Uploaded file: {}", path);
+    Ok(())
 }
 
 async fn configure_project(dir: &Path) -> Result<ProjectConfig> {
@@ -216,37 +258,77 @@ async fn configure_project(dir: &Path) -> Result<ProjectConfig> {
         config
     };
 
-    let req = CreateProjectRequest {
-        project_id: config.project_id.clone(),
-        db_type: DBType::MySQL,
-        db_url: None,
+    // let req = CreateProjectRequest {
+    //     project_id: config.project_id.clone(),
+    //     db_type: DBType::MySQL,
+    //     db_url: None,
+    // };
+    //
+    // match reqwest::Client::new()
+    //     .post(format!("{}/create_project", config.url))
+    //     .json(&req)
+    //     .send()
+    //     .await
+    // {
+    //     Err(e) => println!("failed to create project: {:?}", e),
+    //     Ok(rsp) => {
+    //         let status = rsp.status();
+    //         if status.is_success() {
+    //             println!("project created successfully");
+    //         } else {
+    //             let error = rsp
+    //                 .json::<serde_json::Value>()
+    //                 .await
+    //                 .with_context("failed to parse error response")?;
+    //             println!(
+    //                 "failed to create project. status code = {}, body = {}",
+    //                 status, error
+    //             );
+    //         }
+    //     }
+    // }
+
+    todo!()
+}
+
+async fn prepare_deploy(
+    environment_id: &str,
+    tag: Option<String>,
+    description: Option<String>,
+    bundles: Vec<BundleReq>,
+) -> Result<PrepareDeployRsp> {
+    let req = PrepareDeployReq {
+        environmentId: environment_id.to_string(),
+        tag,
+        description,
+        bundles,
     };
 
-    match reqwest::Client::new()
-        .post(format!("{}/create_project", config.url))
+    let rsp = reqwest::Client::new()
+        .post(format!("http://localhost:3000/api/deployments"))
         .json(&req)
         .send()
         .await
-    {
-        Err(e) => println!("failed to create project: {:?}", e),
-        Ok(rsp) => {
-            let status = rsp.status();
-            if status.is_success() {
-                println!("project created successfully");
-            } else {
-                let error = rsp
-                    .json::<serde_json::Value>()
-                    .await
-                    .with_context("failed to parse error response")?;
-                println!(
-                    "failed to create project. status code = {}, body = {}",
-                    status, error
-                );
-            }
-        }
-    }
+        .with_context(|| "failed to send request POST to deployments")?;
 
-    todo!()
+    let status = rsp.status();
+    if status.is_success() {
+        let rsp = rsp
+            .json::<PrepareDeployRsp>()
+            .await
+            .with_context(|| "failed to parse response")?;
+        Ok(rsp)
+    } else {
+        let error = rsp
+            .json::<serde_json::Value>()
+            .await
+            .with_context(|| "failed to parse error response")?;
+        bail!(
+            "failed to prepare deploy. status code = {}, body = {}",
+            status,
+            error
+        );
+    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -263,18 +345,18 @@ struct PrepareDeployReq {
     bundles: Vec<BundleReq>,
 }
 
+#[derive(Deserialize)]
+struct PrepareDeployRsp {
+    deploymentId: String,
+    bundles: Vec<BundleRsp>,
+}
+
 #[derive(Serialize)]
 struct BundleReq {
     path: String,
     bytes: i64,
     checksum: String,
     checksumType: String,
-}
-
-#[derive(Deserialize)]
-struct PrepareDeployRsp {
-    deploymentId: String,
-    bundles: Vec<BundleRsp>,
 }
 
 #[derive(Deserialize)]
