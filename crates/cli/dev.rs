@@ -226,7 +226,9 @@ async fn upload_bundle(
     let req = json!({
         "status": "success"
     });
-    let rsp = reqwest::Client::new()
+    let rsp = reqwest::Client::builder()
+        .timeout(Duration::from_secs(5))
+        .build()?
         .post(format!(
             "http://localhost:3000/api/deployments/{}/bundles/{}",
             deployment_id, bundle_id
