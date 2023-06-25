@@ -21,9 +21,14 @@ const ESBUILD: &str = "esbuild.cmd";
 #[cfg(not(windows))]
 const ESBUILD: &str = "esbuild";
 
+const DARX_FUNCTIONS_DIR: &str = "darx_server/functions";
+
+// todo: used for mvp test only. will be removed in the future
+const MVP_TEST_ENV_ID: &str = "cljb3ovlt0002e38vwo0xi5ge";
+
 pub async fn run_dev(root_dir: &str) -> Result<()> {
     let dir_path = PathBuf::from(root_dir);
-    let functions_path = dir_path.join("darx_server/functions");
+    let functions_path = dir_path.join(DARX_FUNCTIONS_DIR);
     fs::create_dir_all(functions_path.as_path())?;
 
     if let Err(error) = Command::new(ESBUILD).arg("--version").output() {
@@ -79,7 +84,8 @@ async fn handle_file_changed(functions_path: &Path) -> Result<()> {
     bundle_file_list(functions_path, output_dir, file_list)?;
     let bundles =
         new_deploy_func_request(functions_path.join(output_dir).as_path())?;
-    let deploy_rsp = prepare_deploy("123456", None, None, bundles).await?;
+    let deploy_rsp =
+        prepare_deploy(MVP_TEST_ENV_ID, None, None, bundles).await?;
     let mut join_set = tokio::task::JoinSet::new();
     for bundle in deploy_rsp.bundles.iter() {
         let path = functions_path.join(output_dir).join(bundle.path.as_str());

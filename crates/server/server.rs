@@ -4,6 +4,9 @@ use axum::http::StatusCode;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use darx_api::ApiError;
+use dotenv::dotenv;
+use futures_util::StreamExt as _;
+use redis::AsyncCommands;
 use rusqlite::types::{
     FromSql, FromSqlError, FromSqlResult, ToSqlOutput, Value, ValueRef,
 };
@@ -11,6 +14,7 @@ use rusqlite::{params, ToSql};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::HashMap;
+use std::env;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::fs;
@@ -29,20 +33,21 @@ use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::oneshot;
 
+// todo: move to config
+const DARX_SERVER_WORKING_DIR: &str = "./tmp/darx_bundles";
+
 pub async fn run_server(port: u16, projects_dir: &str) -> Result<()> {
     let projects_dir = fs::canonicalize(projects_dir).await?;
-    // let sqlite_dir = fs::canonicalize(sqlite_dir).await?;
-    let projects_dir = projects_dir.join("darx_projects");
+    let projects_dir = projects_dir.join(DARX_SERVER_WORKING_DIR);
     fs::create_dir_all(projects_dir.as_path()).await?;
 
-    // sqlite dir needs to exist before we run the server.
-    // This is because we need a mounted litefs directory.
-    // if !sqlite_dir.exists() {
-    //     return Err(anyhow!(
-    //         "sqlite directory does not exist: {}",
-    //         sqlite_dir.display()
-    //     ));
-    // }
+    #[cfg(debug_assertions)]
+    dotenv().expect("failed to load .env file");
+
+    let redis_client = redis::Client::open(
+        env::var("REDIS_URL").expect("REDIS_URL should be configured"),
+    )?;
+    let mut pubsub = redis_client.get_async_connection().await?.into_pubsub();
 
     let worker_pool = WorkerPool::new();
     let server_state = Arc::new(ServerState {
@@ -52,22 +57,9 @@ pub async fn run_server(port: u16, projects_dir: &str) -> Result<()> {
 
     let app = Router::new()
         .route("/", get(|| async { "darx api healthy." }))
-        .route("/create_project", post(create_project))
-        .route(
-            "/app/:project_id/invoke/:function_name",
-            post(invoke_function),
-        )
-        .route("/app/:project_id/deploy_schema", post(deploy_schema))
-        .route("/app/:project_id/deploy_functions", post(deploy_functions))
-        .route(
-            "/app/:project_id/rollback_functions",
-            post(rollback_functions),
-        )
-        .route(
-            "/app/:project_id/deployments/:deployment_id",
-            get(get_deployment),
-        )
-        .route("/app/:project_id/deployments", get(list_deployments))
+        .route("/invoke/:function_name", post(invoke_function))
+        .route("/deploy_schema", post(deploy_schema))
+        .route("/deploy_functions", post(deploy_functions))
         .with_state(server_state);
 
     let socket_addr = format!("127.0.0.1:{}", port);
@@ -78,25 +70,6 @@ pub async fn run_server(port: u16, projects_dir: &str) -> Result<()> {
         .serve(app.into_make_service())
         .await?;
     Ok(())
-}
-
-async fn create_project(
-    State(server_state): State<Arc<ServerState>>,
-    Json(req): Json<CreatProjectRequest>,
-) -> Result<StatusCode, ApiError> {
-    let project_dir = server_state.projects_dir.join(&req.project_id);
-    fs::create_dir(&project_dir).await?;
-    //
-    // let sqlite_file =
-    //     project_db_file(server_state.sqlite_dir.as_path(), &req.project_id);
-    //
-    // let conn = rusqlite::Connection::open(sqlite_file.as_path())?;
-    // conn.pragma_update(None, "journal_mode", &"WAL")?;
-    // conn.pragma_update(None, "synchronous", &"NORMAL")?;
-    //
-    // let schema_sql = include_str!("schema.sql");
-    // conn.execute_batch(schema_sql)?;
-    Ok(StatusCode::CREATED)
 }
 
 async fn invoke_function(
@@ -159,27 +132,6 @@ async fn deploy_schema(
     Ok(Json(DeploySchemaResponse { deployment_id }))
 }
 
-async fn get_deployment(
-    State(server_state): State<Arc<ServerState>>,
-    AxumPath(project_id): AxumPath<String>,
-    AxumPath(deployment_id): AxumPath<i64>,
-) -> Result<Json<GetDeploymentResponse>, ApiError> {
-    todo!()
-    // let conn = project_db_conn(
-    //     server_state.sqlite_dir.as_path(),
-    //     project_id.as_str(),
-    // )?;
-    // let mut stmt =
-    //     conn.prepare("SELECT type, status FROM deployments WHERE id = ?")?;
-    // let mut rows = stmt.query(params![deployment_id])?;
-    // let row = rows.next()?.unwrap();
-    // let rsp = GetDeploymentResponse {
-    //     deploy_type: row.get(0)?,
-    //     status: row.get(1)?,
-    // };
-    // Ok(Json(rsp))
-}
-
 async fn deploy_functions(
     State(server_state): State<Arc<ServerState>>,
     AxumPath(project_id): AxumPath<String>,
@@ -201,62 +153,6 @@ async fn deploy_functions(
         }
     };
     Ok(Json(DeployFunctionsResponse { deployment_id }))
-}
-
-async fn rollback_functions(
-    AxumPath(project_id): AxumPath<String>,
-    Json(body): Json<RollbackFunctionsRequest>,
-) -> Result<Json<RollbackFunctionsResponse>, ApiError> {
-    todo!()
-}
-
-async fn create_draft_module(
-    Json(req): Json<CreateModuleRequest>,
-) -> Result<StatusCode, ApiError> {
-    todo!()
-    // save file to tenant's directory
-    // let tenant_dir_path = PathBuf::from(project_dir());
-    // fs::create_dir_all(tenant_dir_path.as_path())
-    //     .await
-    //     .with_context(|| {
-    //         format!(
-    //             "failed to create directory: {}",
-    //             tenant_dir_path.to_str().unwrap()
-    //         )
-    //     })?;
-    //
-    // let file_full_path = if let Some(dir) = req.dir {
-    //     let mut file_dir_path = tenant_dir_path.clone();
-    //     file_dir_path.push(&dir);
-    //     fs::create_dir_all(file_dir_path.as_path())
-    //         .await
-    //         .with_context(|| {
-    //             format!(
-    //                 "failed to create directory: {}",
-    //                 file_dir_path.to_str().unwrap()
-    //             )
-    //         })?;
-    //     format!("{}/{}/{}", project_dir(), dir, req.file_name)
-    // } else {
-    //     format!("{}/{}", project_dir(), req.file_name)
-    // };
-    //
-    // let mut f = File::create(PathBuf::from(file_full_path.as_str()))
-    //     .await
-    //     .with_context(|| {
-    //         format!("failed to create module file: {}", file_full_path.as_str())
-    //     })?;
-    //
-    // f.write_all(req.code.as_ref()).await.with_context(|| {
-    //     format!("failed to write module file: {}", file_full_path.as_str())
-    // })?;
-    //
-    // Ok(StatusCode::CREATED)
-}
-
-async fn list_deployments() -> Result<Json<Vec<GetDeploymentResponse>>, ApiError>
-{
-    todo!()
 }
 
 fn project_bundle_dir(projects_dir: &Path, project_id: &str) -> PathBuf {
@@ -378,13 +274,6 @@ async fn create_local_bundles(
     // delete the temporary directory.
     fs::remove_dir_all(tmp_dir.as_path()).await?;
     Ok(())
-}
-
-#[derive(Deserialize)]
-struct CreateModuleRequest {
-    dir: Option<String>,
-    file_name: String,
-    code: String,
 }
 
 #[derive(Deserialize)]

@@ -36,19 +36,18 @@ type BundleRsp = {
 export async function POST(req: NextRequest) {
   const prepare_req = (await req.json()) as PrepareDeploymentReq;
   const { environmentId, tag, description, bundles } = prepare_req;
-  // todo: add this later
-  // const theEnv = await prisma.environment.findFirst({
-  //   where: {
-  //     id: environmentId,
-  //   },
-  // });
+  const theEnv = await prisma.environment.findFirst({
+    where: {
+      id: environmentId,
+    },
+  });
 
-  // if (!theEnv) {
-  //   return NextResponse.json(
-  //     { error: `Environment Not found: ${environmentId}` },
-  //     { status: 400 }
-  //   );
-  // }
+  if (!theEnv) {
+    return NextResponse.json(
+      { error: `Environment Not found: ${environmentId}` },
+      { status: 400 }
+    );
+  }
 
   const bundlesData = bundles.map((bundle) => {
     return {

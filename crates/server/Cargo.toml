@@ -23,3 +23,6 @@ anyhow.workspace = true
 tokio.workspace = true
 mysql_async.workspace = true
 rusqlite.workspace = true
+dotenv.workspace = true
+redis.workspace = true
+futures-util.workspace = true
