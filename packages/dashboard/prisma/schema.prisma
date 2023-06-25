@@ -96,12 +96,13 @@ model Project {
   name           String
   organizationId String
   organization   Organization  @relation(fields: [organizationId], references: [id])
-  envrioments    Environment[]
+  environments   Environment[]
 
   @@index([organizationId])
 }
 
 model Environment {
+  // id also acts as the subdomain of the environment.
   id          String       @id @default(cuid())
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt

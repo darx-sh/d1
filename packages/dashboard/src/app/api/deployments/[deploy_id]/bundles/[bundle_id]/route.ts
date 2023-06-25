@@ -39,9 +39,34 @@ async function success_upload(deploy_id: string, func_id: string) {
           increment: 1,
         },
       },
+      include: {
+        bundles: true,
+        environment: true,
+      },
     }),
   ]);
-  await redis.xadd("deploy", "*", "deploy_id", deploy.id);
+
+  if (deploy.bundleUploadCnt === deploy.bundleCount) {
+    // todo: we might considering the following:
+    // 1. add a auto increment field to `Deployment` model.
+    // 2. use redis stream to publish the deploy_id, and use the above sequence for the stream id.
+    // await redis.xadd("deploy", "*", "deploy_id", deploy.id);
+    const bundles = deploy.bundles.map((bundle) => {
+      return {
+        id: bundle.id,
+        path: bundle.path,
+      };
+    });
+    redis.publish(
+      "deploy",
+      JSON.stringify({
+        project_id: deploy.environment.projectId,
+        environment_id: deploy.environmentId,
+        deployment_id: deploy.id,
+        bundles: bundles,
+      })
+    );
+  }
 }
 
 async function fail_upload(deploy_id: string, func_id: string) {
