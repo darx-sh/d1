@@ -57,7 +57,7 @@ async function success_upload(deploy_id: string, func_id: string) {
         path: bundle.path,
       };
     });
-    redis.publish(
+    await redis.publish(
       "deploy",
       JSON.stringify({
         project_id: deploy.environment.projectId,
