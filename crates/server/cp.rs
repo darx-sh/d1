@@ -4,7 +4,7 @@ use dotenv::dotenv;
 use futures_util::StreamExt as _;
 use redis::AsyncCommands;
 use s3::creds::Credentials;
-use s3::Bucket;
+use s3::{Bucket, Region};
 use serde::Deserialize;
 use std::env;
 use std::path::Path;
@@ -29,7 +29,6 @@ pub async fn start_control_plane_handler() -> Result<()> {
     while let Some(msg) = pubsub_stream.next().await {
         let payload: String = msg.get_payload()?;
         let deployment = serde_json::from_str::<Deployment>(&payload).unwrap();
-        println!("Got message: {:?}", deployment);
         deploy_bundles(&deployment).await.with_context(|| {
             format!("Failed to deploy bundles: {:?}", deployment)
         })?;
@@ -91,6 +90,10 @@ async fn deploy_bundles(deploy: &Deployment) -> Result<()> {
                 )
             })?;
     }
+    println!(
+        "deployed environment_id: {:}, deployment_id: {:}",
+        deploy.environment_id, deploy.deployment_id
+    );
     Ok(())
 }
 
@@ -98,15 +101,12 @@ fn new_bucket() -> Result<Bucket> {
     let bucket_name =
         env::var("S3_BUCKET").expect("S3_BUCKET should be configured");
 
-    let region = env::var("S3_REGION").expect("S3_REGION should be configured");
+    let region_code =
+        env::var("S3_REGION").expect("S3_REGION should be configured");
     let access_key_id = env::var("S3_ACCESS_KEY_ID")
         .expect("S3_ACCESS_KEY should be configured");
     let secret_access_key = env::var("S3_SECRET_ACCESS_KEY")
         .expect("S3_SECRET_ACCESS_KEY should be configured");
-    println!(
-        "access_key_id: {}, secret_access_key: {}",
-        access_key_id, secret_access_key
-    );
 
     let credentials = Credentials::new(
         Some(&access_key_id),
@@ -115,7 +115,12 @@ fn new_bucket() -> Result<Bucket> {
         None,
         None,
     )?;
-    let bucket =
-        Bucket::new(bucket_name.as_str(), region.parse()?, credentials)?;
+
+    let endpoint = format!("s3.{}.amazonaws.com", region_code);
+    let region = Region::Custom {
+        region: region_code,
+        endpoint,
+    };
+    let bucket = Bucket::new(bucket_name.as_str(), region, credentials)?;
     Ok(bucket)
 }
