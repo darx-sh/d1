@@ -16,7 +16,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::fs;
 
-use crate::command::start_control_plane_handler;
+use crate::cp::start_control_plane_handler;
 use crate::worker::{WorkerEvent, WorkerPool};
 use darx_api::{
     CreatProjectRequest, DeployFunctionsRequest, DeployFunctionsResponse,
@@ -32,12 +32,9 @@ use tokio::io::AsyncWriteExt;
 use tokio::sync::oneshot;
 use tokio::task::JoinSet;
 
-// todo: move to config
-const DARX_SERVER_WORKING_DIR: &str = "./tmp/darx_bundles";
-
 pub async fn run_server(port: u16, projects_dir: &str) -> Result<()> {
     let projects_dir = fs::canonicalize(projects_dir).await?;
-    let projects_dir = projects_dir.join(DARX_SERVER_WORKING_DIR);
+    let projects_dir = projects_dir.join(crate::DARX_SERVER_WORKING_DIR);
     fs::create_dir_all(projects_dir.as_path()).await?;
 
     let mut join_set: JoinSet<Result<()>> = JoinSet::new();

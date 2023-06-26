@@ -26,3 +26,5 @@ rusqlite.workspace = true
 dotenv.workspace = true
 redis.workspace = true
 futures-util.workspace = true
+dashmap.workspace = true
+rust-s3.workspace = true

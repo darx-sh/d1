@@ -5,8 +5,11 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 mod api_builder;
-mod command;
+mod cp;
 mod server;
 mod worker;
 
 pub use server::run_server;
+
+// todo: move to config
+pub const DARX_SERVER_WORKING_DIR: &str = "./tmp/darx_bundles";
