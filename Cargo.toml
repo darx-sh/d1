@@ -47,6 +47,6 @@ notify = {version = "6.0.0", default-features = false, features = ["macos_kqueue
 notify-debouncer-mini = {version = "0.3.0"}
 reqwest = { version = "0.11.18", features = ["blocking", "json"] }
 dotenv = { version = "0.15.0" }
-redis = {version = "0.23.0", features = ["tokio-comp"] }
+redis = {version = "0.23.0", features = ["tokio-native-tls-comp"] }
 
 

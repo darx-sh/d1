@@ -55,12 +55,12 @@ async function success_upload(deploy_id: string, func_id: string) {
     const bundles = deploy.bundles.map((bundle) => {
       return {
         id: bundle.id,
-        path: bundle.path,
+        fs_path: bundle.fsPath,
       };
     });
     const httpRoutes = deploy.httpRoutes.map((route) => {
       return {
-        path: route.path,
+        http_path: route.httpPath,
         method: route.method,
         js_entry_point: route.jsEntryPoint,
         js_export: route.jsExport,

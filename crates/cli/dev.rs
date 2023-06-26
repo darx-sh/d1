@@ -88,13 +88,15 @@ async fn handle_file_changed(functions_path: &Path) -> Result<()> {
         prepare_deploy(MVP_TEST_ENV_ID, None, None, metas, bundles).await?;
     let mut join_set = tokio::task::JoinSet::new();
     for bundle in deploy_rsp.bundles.iter() {
-        let path = functions_path.join(output_dir).join(bundle.path.as_str());
+        let path = functions_path
+            .join(output_dir)
+            .join(bundle.fs_path.as_str());
         let code = fs::read_to_string(path)?;
         join_set.spawn(upload_bundle(
             deploy_rsp.deployment_id.clone(),
             bundle.id.clone(),
             bundle.upload_url.clone(),
-            bundle.path.clone(),
+            bundle.fs_path.clone(),
             code.clone(),
         ));
     }
@@ -217,7 +219,7 @@ fn new_deploy_func_request(
         });
 
         bundles.push(BundleReq {
-            path: entry_point.clone(),
+            fs_path: entry_point.clone(),
             bytes: nbytes,
             checksum: "".to_string(),
             checksum_type: "".to_string(),
@@ -343,13 +345,13 @@ async fn prepare_deploy(
         let rsp = rsp
             .json::<PrepareDeployRsp>()
             .await
-            .with_context(|| "failed to parse response")?;
+            .with_context(|| "Failed to parse response")?;
         Ok(rsp)
     } else {
-        let error = rsp
-            .json::<serde_json::Value>()
-            .await
-            .with_context(|| "failed to parse error response")?;
+        let error =
+            rsp.json::<serde_json::Value>().await.with_context(|| {
+                "Failed to parse error response: /api/deployments"
+            })?;
         bail!(
             "failed to prepare deploy. status code = {}, body = {}",
             status,
@@ -381,7 +383,7 @@ struct PrepareDeployRsp {
 
 #[derive(Serialize)]
 struct BundleReq {
-    path: String,
+    fs_path: String,
     bytes: i64,
     checksum: String,
     checksum_type: String,
@@ -390,7 +392,7 @@ struct BundleReq {
 #[derive(Deserialize)]
 struct BundleRsp {
     id: String,
-    path: String,
+    fs_path: String,
     upload_url: String,
 }
 

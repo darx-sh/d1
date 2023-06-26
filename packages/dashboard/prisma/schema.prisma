@@ -137,7 +137,7 @@ model HttpRoute {
   id           String     @id @default(cuid())
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
-  path         String
+  httpPath     String
   method       String
   jsEntryPoint String
   jsExport     String
@@ -151,7 +151,7 @@ model Bundle {
   id           String     @id @default(cuid())
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
-  path         String     @db.Text
+  fsPath       String     @db.Text
   bytes        Int
   // - running
   // - success

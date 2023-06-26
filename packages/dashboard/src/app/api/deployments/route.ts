@@ -21,7 +21,7 @@ type PrepareDeploymentRsp = {
 };
 
 type BundleReq = {
-  path: string;
+  fs_path: string;
   bytes: number;
   checksum: string;
   checksum_type: string;
@@ -29,7 +29,7 @@ type BundleReq = {
 
 type BundleRsp = {
   id: string;
-  path: string;
+  fs_path: string;
   upload_url: string;
 };
 
@@ -39,7 +39,7 @@ type BundleMeta = {
 };
 
 type HttpRoute = {
-  path: string;
+  httpPath: string;
   method: string;
   jsEntryPoint: string;
   jsExport: string;
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
 
   const bundlesData = bundles.map((bundle) => {
     return {
-      path: bundle.path,
+      fsPath: bundle.fs_path,
       bytes: bundle.bytes,
     };
   });
@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
     .map((meta) => {
       const routes = meta.exports.map((jsExport) => {
         const route: HttpRoute = {
-          path: buildHttpRoute(meta.entry_point, jsExport),
+          httpPath: buildHttpRoute(meta.entry_point, jsExport),
           method: "POST",
           jsEntryPoint: meta.entry_point,
           jsExport: jsExport,
@@ -124,7 +124,7 @@ export async function POST(req: NextRequest) {
     if (bundle !== undefined && url !== undefined) {
       rsp.bundles.push({
         id: bundle.id,
-        path: bundle.path,
+        fs_path: bundle.fsPath,
         upload_url: url,
       });
     } else {

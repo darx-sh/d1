@@ -4,9 +4,6 @@ use axum::http::StatusCode;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use darx_api::ApiError;
-use dotenv::dotenv;
-use futures_util::StreamExt as _;
-use redis::AsyncCommands;
 use rusqlite::types::{
     FromSql, FromSqlError, FromSqlResult, ToSqlOutput, Value, ValueRef,
 };
@@ -19,6 +16,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::fs;
 
+use crate::command::start_control_plane_handler;
 use crate::worker::{WorkerEvent, WorkerPool};
 use darx_api::{
     CreatProjectRequest, DeployFunctionsRequest, DeployFunctionsResponse,
@@ -32,6 +30,7 @@ use darx_db::{
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::oneshot;
+use tokio::task::JoinSet;
 
 // todo: move to config
 const DARX_SERVER_WORKING_DIR: &str = "./tmp/darx_bundles";
@@ -41,13 +40,7 @@ pub async fn run_server(port: u16, projects_dir: &str) -> Result<()> {
     let projects_dir = projects_dir.join(DARX_SERVER_WORKING_DIR);
     fs::create_dir_all(projects_dir.as_path()).await?;
 
-    #[cfg(debug_assertions)]
-    dotenv().expect("failed to load .env file");
-
-    let redis_client = redis::Client::open(
-        env::var("REDIS_URL").expect("REDIS_URL should be configured"),
-    )?;
-    let mut pubsub = redis_client.get_async_connection().await?.into_pubsub();
+    let mut join_set: JoinSet<Result<()>> = JoinSet::new();
 
     let worker_pool = WorkerPool::new();
     let server_state = Arc::new(ServerState {
@@ -55,20 +48,30 @@ pub async fn run_server(port: u16, projects_dir: &str) -> Result<()> {
         projects_dir,
     });
 
-    let app = Router::new()
-        .route("/", get(|| async { "darx api healthy." }))
-        .route("/invoke/:function_name", post(invoke_function))
-        .route("/deploy_schema", post(deploy_schema))
-        .route("/deploy_functions", post(deploy_functions))
-        .with_state(server_state);
+    join_set.spawn(async move {
+        let app = Router::new()
+            .route("/", get(|| async { "darx api healthy." }))
+            .route("/invoke/:function_name", post(invoke_function))
+            .route("/deploy_schema", post(deploy_schema))
+            .route("/deploy_functions", post(deploy_functions))
+            .with_state(server_state);
 
-    let socket_addr = format!("127.0.0.1:{}", port);
+        let socket_addr = format!("127.0.0.1:{}", port);
 
-    println!("darx server listen on {}", socket_addr);
+        println!("darx server listen on {}", socket_addr);
 
-    axum::Server::bind(&socket_addr.parse().unwrap())
-        .serve(app.into_make_service())
-        .await?;
+        axum::Server::bind(&socket_addr.parse().unwrap())
+            .serve(app.into_make_service())
+            .await?;
+        Ok(())
+    });
+
+    join_set.spawn(start_control_plane_handler());
+
+    while let Some(result) = join_set.join_next().await {
+        result?.with_context(|| "Failed to exit")?;
+    }
+
     Ok(())
 }
 
