@@ -82,19 +82,21 @@ async fn handle_file_changed(functions_path: &Path) -> Result<()> {
     let start_time = std::time::Instant::now();
     println!("Prepare files to bundle...");
     bundle_file_list(functions_path, output_dir, file_list)?;
-    let bundles =
+    let (metas, bundles) =
         new_deploy_func_request(functions_path.join(output_dir).as_path())?;
     let deploy_rsp =
-        prepare_deploy(MVP_TEST_ENV_ID, None, None, bundles).await?;
+        prepare_deploy(MVP_TEST_ENV_ID, None, None, metas, bundles).await?;
     let mut join_set = tokio::task::JoinSet::new();
     for bundle in deploy_rsp.bundles.iter() {
-        let path = functions_path.join(output_dir).join(bundle.path.as_str());
+        let path = functions_path
+            .join(output_dir)
+            .join(bundle.fs_path.as_str());
         let code = fs::read_to_string(path)?;
         join_set.spawn(upload_bundle(
-            deploy_rsp.deploymentId.clone(),
+            deploy_rsp.deployment_id.clone(),
             bundle.id.clone(),
             bundle.upload_url.clone(),
-            bundle.path.clone(),
+            bundle.fs_path.clone(),
             code.clone(),
         ));
     }
@@ -158,12 +160,15 @@ fn bundle_file_list(
     Ok(())
 }
 
-fn new_deploy_func_request(output_dir: &Path) -> Result<Vec<BundleReq>> {
+fn new_deploy_func_request(
+    output_dir: &Path,
+) -> Result<(Vec<BundleMeta>, Vec<BundleReq>)> {
     let meta_file = output_dir.join("meta.json");
     let meta = fs::read_to_string(meta_file.as_path()).with_context(|| {
         format!("Failed to read meta file: {}", meta_file.display())
     })?;
     let meta: serde_json::Value = serde_json::from_str(&meta)?;
+    let mut metas = vec![];
     let mut bundles = vec![];
     let outputs = meta
         .get("outputs")
@@ -195,19 +200,33 @@ fn new_deploy_func_request(output_dir: &Path) -> Result<Vec<BundleReq>> {
             .as_str()
             .ok_or_else(|| anyhow!("entryPoint is not a string"))?
             .to_string();
+        let exports = output
+            .get("exports")
+            .ok_or_else(|| anyhow!("exports not found"))?
+            .as_array()
+            .ok_or_else(|| anyhow!("exports is not an array"))?
+            .iter()
+            .map(|export| {
+                export
+                    .as_str()
+                    .ok_or_else(|| anyhow!("export is not a string"))
+                    .map(|s| s.to_string())
+            })
+            .collect::<Result<Vec<_>>>()?;
+        metas.push(BundleMeta {
+            entry_point: entry_point.clone(),
+            exports,
+        });
 
-        let file_path = output_dir.join(entry_point.clone());
-        let code = fs::read_to_string(file_path)
-            .with_context(|| format!("Failed to read file: {}", entry_point))?;
         bundles.push(BundleReq {
-            path: entry_point.clone(),
+            fs_path: entry_point.clone(),
             bytes: nbytes,
             checksum: "".to_string(),
-            checksumType: "".to_string(),
+            checksum_type: "".to_string(),
         });
     }
 
-    Ok(bundles)
+    Ok((metas, bundles))
 }
 
 async fn upload_bundle(
@@ -303,12 +322,14 @@ async fn prepare_deploy(
     environment_id: &str,
     tag: Option<String>,
     description: Option<String>,
+    metas: Vec<BundleMeta>,
     bundles: Vec<BundleReq>,
 ) -> Result<PrepareDeployRsp> {
     let req = PrepareDeployReq {
-        environmentId: environment_id.to_string(),
+        environment_id: environment_id.to_string(),
         tag,
         description,
+        metas,
         bundles,
     };
 
@@ -324,13 +345,13 @@ async fn prepare_deploy(
         let rsp = rsp
             .json::<PrepareDeployRsp>()
             .await
-            .with_context(|| "failed to parse response")?;
+            .with_context(|| "Failed to parse response")?;
         Ok(rsp)
     } else {
-        let error = rsp
-            .json::<serde_json::Value>()
-            .await
-            .with_context(|| "failed to parse error response")?;
+        let error =
+            rsp.json::<serde_json::Value>().await.with_context(|| {
+                "Failed to parse error response: /api/deployments"
+            })?;
         bail!(
             "failed to prepare deploy. status code = {}, body = {}",
             status,
@@ -347,29 +368,36 @@ struct ProjectConfig {
 
 #[derive(Serialize)]
 struct PrepareDeployReq {
-    environmentId: String,
+    environment_id: String,
     tag: Option<String>,
     description: Option<String>,
     bundles: Vec<BundleReq>,
+    metas: Vec<BundleMeta>,
 }
 
 #[derive(Deserialize)]
 struct PrepareDeployRsp {
-    deploymentId: String,
+    deployment_id: String,
     bundles: Vec<BundleRsp>,
 }
 
 #[derive(Serialize)]
 struct BundleReq {
-    path: String,
+    fs_path: String,
     bytes: i64,
     checksum: String,
-    checksumType: String,
+    checksum_type: String,
 }
 
 #[derive(Deserialize)]
 struct BundleRsp {
     id: String,
-    path: String,
+    fs_path: String,
     upload_url: String,
+}
+
+#[derive(Serialize)]
+struct BundleMeta {
+    entry_point: String,
+    exports: Vec<String>,
 }

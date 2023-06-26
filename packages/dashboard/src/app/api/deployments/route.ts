@@ -8,62 +8,92 @@ import s3 from "~/server/s3";
 import { PRESIGNED_URL_EXPIRES_SECONDS } from "~/server/constants";
 
 type PrepareDeploymentReq = {
-  environmentId: string;
+  environment_id: string;
   tag: string | null;
   description: string | null;
   bundles: BundleReq[];
+  metas: BundleMeta[];
 };
 
 type PrepareDeploymentRsp = {
-  deploymentId: string;
+  deployment_id: string;
   bundles: BundleRsp[];
 };
 
 type BundleReq = {
-  path: string;
+  fs_path: string;
   bytes: number;
   checksum: string;
-  checksumType: string;
+  checksum_type: string;
 };
 
 type BundleRsp = {
   id: string;
-  path: string;
+  fs_path: string;
   upload_url: string;
+};
+
+type BundleMeta = {
+  entry_point: string;
+  exports: [string];
+};
+
+type HttpRoute = {
+  httpPath: string;
+  method: string;
+  jsEntryPoint: string;
+  jsExport: string;
 };
 
 // prepare a deployment
 export async function POST(req: NextRequest) {
   const prepare_req = (await req.json()) as PrepareDeploymentReq;
-  const { environmentId, tag, description, bundles } = prepare_req;
+  const { environment_id, tag, description, bundles, metas } = prepare_req;
   const theEnv = await prisma.environment.findFirst({
     where: {
-      id: environmentId,
+      id: environment_id,
     },
   });
 
   if (!theEnv) {
     return NextResponse.json(
-      { error: `Environment Not found: ${environmentId}` },
+      { error: `Environment Not found: ${environment_id}` },
       { status: 400 }
     );
   }
 
   const bundlesData = bundles.map((bundle) => {
     return {
-      path: bundle.path,
+      fsPath: bundle.fs_path,
       bytes: bundle.bytes,
     };
   });
   const bundleCount = bundles.length;
+  const routes = metas
+    .map((meta) => {
+      const routes = meta.exports.map((jsExport) => {
+        const route: HttpRoute = {
+          httpPath: buildHttpRoute(meta.entry_point, jsExport),
+          method: "POST",
+          jsEntryPoint: meta.entry_point,
+          jsExport: jsExport,
+        };
+        return route;
+      });
+      return routes;
+    })
+    .flat();
   const deployment = await prisma.deployment.create({
     data: {
       tag,
       description,
-      environmentId,
+      environmentId: environment_id,
       bundleCount,
       bundles: {
         create: bundlesData,
+      },
+      httpRoutes: {
+        create: routes,
       },
     },
     include: {
@@ -84,7 +114,7 @@ export async function POST(req: NextRequest) {
 
   const urls = await Promise.all(urlPromises);
   const rsp: PrepareDeploymentRsp = {
-    deploymentId: deployment.id,
+    deployment_id: deployment.id,
     bundles: [],
   };
 
@@ -94,7 +124,7 @@ export async function POST(req: NextRequest) {
     if (bundle !== undefined && url !== undefined) {
       rsp.bundles.push({
         id: bundle.id,
-        path: bundle.path,
+        fs_path: bundle.fsPath,
         upload_url: url,
       });
     } else {
@@ -114,4 +144,22 @@ export async function POST(req: NextRequest) {
     }
   }
   return NextResponse.json(rsp);
+}
+
+function buildHttpRoute(jsEntryPoint: string, jsExport: string) {
+  let path: string;
+  if (
+    jsEntryPoint.endsWith(".js") ||
+    jsEntryPoint.endsWith(".ts") ||
+    jsEntryPoint.endsWith(".mjs")
+  ) {
+    path = jsEntryPoint.slice(0, jsEntryPoint.lastIndexOf("."));
+  } else {
+    throw new Error("invalid meta");
+  }
+
+  if (jsExport !== "default") {
+    path = `${path}.${jsExport}`;
+  }
+  return path;
 }

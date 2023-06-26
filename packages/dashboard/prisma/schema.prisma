@@ -128,15 +128,30 @@ model Deployment {
   environment     Environment   @relation(fields: [environmentId], references: [id])
   bundles         Bundle[]
   envVars         EnvVariable[]
+  httpRoutes      HttpRoute[]
 
   @@index([environmentId])
+}
+
+model HttpRoute {
+  id           String     @id @default(cuid())
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  httpPath     String
+  method       String
+  jsEntryPoint String
+  jsExport     String
+  deploymentId String
+  deployment   Deployment @relation(fields: [deploymentId], references: [id])
+
+  @@index([deploymentId])
 }
 
 model Bundle {
   id           String     @id @default(cuid())
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
-  path         String     @db.Text
+  fsPath       String     @db.Text
   bytes        Int
   // - running
   // - success

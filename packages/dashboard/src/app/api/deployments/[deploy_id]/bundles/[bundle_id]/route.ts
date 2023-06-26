@@ -42,6 +42,7 @@ async function success_upload(deploy_id: string, func_id: string) {
       include: {
         bundles: true,
         environment: true,
+        httpRoutes: true,
       },
     }),
   ]);
@@ -54,7 +55,15 @@ async function success_upload(deploy_id: string, func_id: string) {
     const bundles = deploy.bundles.map((bundle) => {
       return {
         id: bundle.id,
-        path: bundle.path,
+        fs_path: bundle.fsPath,
+      };
+    });
+    const httpRoutes = deploy.httpRoutes.map((route) => {
+      return {
+        http_path: route.httpPath,
+        method: route.method,
+        js_entry_point: route.jsEntryPoint,
+        js_export: route.jsExport,
       };
     });
     await redis.publish(
@@ -64,6 +73,7 @@ async function success_upload(deploy_id: string, func_id: string) {
         environment_id: deploy.environmentId,
         deployment_id: deploy.id,
         bundles: bundles,
+        http_routes: httpRoutes,
       })
     );
   }
