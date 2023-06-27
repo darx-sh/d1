@@ -16,7 +16,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::fs;
 
-use crate::cp::start_control_plane_handler;
+use crate::contorl_plane::start_cmd_handler;
 use crate::worker::{WorkerEvent, WorkerPool};
 use darx_api::{
     CreatProjectRequest, DeployFunctionsRequest, DeployFunctionsResponse,
@@ -63,7 +63,7 @@ pub async fn run_server(port: u16, projects_dir: &str) -> Result<()> {
         Ok(())
     });
 
-    join_set.spawn(start_control_plane_handler());
+    join_set.spawn(start_cmd_handler());
 
     while let Some(result) = join_set.join_next().await {
         result?.with_context(|| "Failed to exit")?;
