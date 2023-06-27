@@ -28,3 +28,4 @@ redis.workspace = true
 futures-util.workspace = true
 dashmap.workspace = true
 rust-s3.workspace = true
+once_cell.workspace = true

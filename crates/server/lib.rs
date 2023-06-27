@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 mod api_builder;
-mod cp;
+mod contorl_plane;
 mod server;
 mod worker;
 

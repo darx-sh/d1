@@ -2,6 +2,7 @@ use anyhow::{Context, Result};
 use dashmap::DashMap;
 use dotenv::dotenv;
 use futures_util::StreamExt as _;
+use once_cell::sync::Lazy;
 use redis::AsyncCommands;
 use s3::creds::Credentials;
 use s3::{Bucket, Region};
@@ -11,7 +12,7 @@ use std::path::Path;
 use tokio::fs;
 use tokio::task::JoinSet;
 
-pub async fn start_control_plane_handler() -> Result<()> {
+pub async fn start_cmd_handler() -> Result<()> {
     #[cfg(debug_assertions)]
     dotenv().expect("failed to load .env file");
 
@@ -39,7 +40,7 @@ pub async fn start_control_plane_handler() -> Result<()> {
     Ok(())
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Clone, Debug, Deserialize)]
 struct Deployment {
     project_id: String,
     environment_id: String,
@@ -48,21 +49,19 @@ struct Deployment {
     http_routes: Vec<HttpRoute>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Clone, Debug, Deserialize)]
 struct Bundle {
     id: String,
     fs_path: String,
 }
 
-#[derive(Deserialize, Debug)]
-struct HttpRoute {
+#[derive(Clone, Debug, Deserialize)]
+pub struct HttpRoute {
     http_path: String,
     method: String,
     js_entry_point: String,
     js_export: String,
 }
-
-type GlobalRouter = DashMap<String, Deployment>;
 
 async fn deploy_bundles(deploy: &Deployment) -> Result<()> {
     let working_dir = Path::new(crate::DARX_SERVER_WORKING_DIR);
@@ -123,4 +122,35 @@ fn new_bucket() -> Result<Bucket> {
     };
     let bucket = Bucket::new(bucket_name.as_str(), region, credentials)?;
     Ok(bucket)
+}
+
+static GLOBAL_ROUTER: Lazy<DashMap<String, Vec<Deployment>>> =
+    Lazy::new(|| DashMap::new());
+
+pub fn match_route(
+    environment_id: &String,
+    url: &str,
+    method: &str,
+) -> Option<HttpRoute> {
+    if let Some(entry) = GLOBAL_ROUTER.get(environment_id) {
+        let mut cur_deploy = entry[0].clone();
+        // sort a deployment's route based on url
+        cur_deploy
+            .http_routes
+            .sort_by(|a, b| a.http_path.cmp(&b.http_path));
+        for route in cur_deploy.http_routes.iter() {
+            if route.http_path == url && route.method == method {
+                return Some(route.clone());
+            }
+        }
+        None
+    } else {
+        None
+    }
+}
+
+fn add_route(deployment: &Deployment) {
+    let env_id = deployment.environment_id.clone();
+    let mut routes = GLOBAL_ROUTER.entry(env_id).or_insert_with(|| Vec::new());
+    routes.insert(0, deployment.clone());
 }
