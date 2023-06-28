@@ -44,7 +44,7 @@ impl WorkerPool {
 pub enum WorkerEvent {
     InvokeFunction {
         env_id: String,
-        deploy_id: String,
+        deploy_seq: i64,
         bundle_dir: PathBuf,
         js_entry_point: String,
         js_export: String,
@@ -59,7 +59,7 @@ async fn handle_event(event: WorkerEvent) {
     match event {
         WorkerEvent::InvokeFunction {
             env_id,
-            deploy_id,
+            deploy_seq,
             bundle_dir,
             js_entry_point,
             js_export,
@@ -67,11 +67,8 @@ async fn handle_event(event: WorkerEvent) {
             resp,
         } => {
             // todo: use some thing real. this is just for testing
-            let mut isolate = DarxIsolate::new(
-                env_id.as_str(),
-                deploy_id.as_str(),
-                bundle_dir,
-            );
+            let mut isolate =
+                DarxIsolate::new(env_id.as_str(), deploy_seq, bundle_dir);
             // evaluate the module here to check the syntax.
             let r = isolate
                 .load_and_eval_module_file(js_entry_point.as_str())

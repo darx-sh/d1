@@ -72,6 +72,7 @@ async function success_upload(deploy_id: string, func_id: string) {
         project_id: deploy.environment.projectId,
         environment_id: deploy.environmentId,
         deployment_id: deploy.id,
+        deploy_seq: deploy.deploySeq,
         bundles: bundles,
         http_routes: httpRoutes,
       })
