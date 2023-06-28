@@ -22,7 +22,10 @@ pub trait Connection {
     ) -> Result<serde_json::Value>;
 }
 
-pub async fn get_conn(project_id: &str) -> Result<Rc<RefCell<dyn Connection>>> {
+pub async fn get_conn(
+    env_id: &str,
+    deploy_id: &str,
+) -> Result<Rc<RefCell<dyn Connection>>> {
     // todo: use per project_id cache for connection pool.
     let pool = MySqlPool::new("mysql://root:12345678@localhost:3306/test");
     let conn = pool.get_conn().await?;

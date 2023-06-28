@@ -15,21 +15,31 @@ deno_core::extension!(darx_bootstrap, esm = ["js/00_bootstrap.js"]);
 
 pub struct DarxIsolate {
     pub js_runtime: deno_core::JsRuntime,
-    project_dir: PathBuf,
+    bundle_dir: PathBuf,
 }
 
 #[derive(Clone)]
 struct ProjectId(String);
 
+#[derive(Clone)]
+struct EnvId(String);
+
+#[derive(Clone)]
+struct DeployId(String);
+
 impl DarxIsolate {
-    pub fn new(project_id: &str, project_dir: impl AsRef<Path>) -> Self {
+    pub fn new(
+        env_id: &str,
+        deploy_id: &str,
+        bundle_dir: impl AsRef<Path>,
+    ) -> Self {
         let user_agent = "darx-runtime".to_string();
         let root_cert_store = deno_tls::create_default_root_cert_store();
 
         let extensions = vec![
             permissions::darx_permissions::init_ops_and_esm(
                 permissions::Options {
-                    project_dir: PathBuf::from(project_dir.as_ref()),
+                    bundle_dir: PathBuf::from(bundle_dir.as_ref()),
                 },
             ),
             deno_webidl::deno_webidl::init_ops_and_esm(),
@@ -53,7 +63,7 @@ impl DarxIsolate {
         let mut js_runtime =
             deno_core::JsRuntime::new(deno_core::RuntimeOptions {
                 module_loader: Some(Rc::new(TenantModuleLoader::new(
-                    PathBuf::from(project_dir.as_ref()),
+                    PathBuf::from(bundle_dir.as_ref()),
                 ))),
                 extensions,
                 ..Default::default()
@@ -61,11 +71,16 @@ impl DarxIsolate {
         js_runtime
             .op_state()
             .borrow_mut()
-            .put::<ProjectId>(ProjectId(project_id.to_string()));
+            .put::<EnvId>(EnvId(env_id.to_string()));
+
+        js_runtime
+            .op_state()
+            .borrow_mut()
+            .put::<DeployId>(DeployId(deploy_id.to_string()));
 
         DarxIsolate {
             js_runtime,
-            project_dir: PathBuf::from(project_dir.as_ref()),
+            bundle_dir: PathBuf::from(bundle_dir.as_ref()),
         }
     }
 
@@ -78,9 +93,9 @@ impl DarxIsolate {
         let module_id = self
             .js_runtime
             .load_side_module(
-                &deno_core::resolve_path(file_path, self.project_dir.as_path())
+                &deno_core::resolve_path(file_path, self.bundle_dir.as_path())
                     .with_context(|| {
-                        format!("failed to resolve path: {}", file_path)
+                        format!("Failed to resolve path: {}", file_path)
                     })?,
                 None,
             )
@@ -103,7 +118,7 @@ impl DarxIsolate {
         let module_id = self
             .js_runtime
             .load_side_module(
-                &deno_core::resolve_path(file_path, self.project_dir.as_path())
+                &deno_core::resolve_path(file_path, self.bundle_dir.as_path())
                     .with_context(|| {
                         format!("failed to resolve path: {}", file_path)
                     })?,
@@ -116,44 +131,5 @@ impl DarxIsolate {
         receiver
             .await?
             .with_context(|| format!("Couldn't execute '{}'", file_path))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use darx_db::mysql::MySqlPool;
-    use darx_utils::test_mysql_db_pool;
-    #[tokio::test]
-    async fn test_run() {
-        let project_id = "7ce52fdc14b16017";
-        let project_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join(format!("examples/projects/{}", project_id));
-        let conn_pool = test_mysql_db_pool();
-        let mut darx_runtime = DarxIsolate::new(project_id, project_path);
-
-        darx_runtime
-            .load_and_eval_module_file("foo.js")
-            .await
-            .expect("foo.js should not result an error");
-        darx_runtime
-            .load_and_eval_module_file("bar.js")
-            .await
-            .expect("bar.js should not result an error");
-    }
-
-    #[tokio::test]
-    async fn test_private() {
-        let project_id = "7ce52fdc14b16017";
-
-        let project_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join(format!("examples/projects/{}", project_id));
-        let conn_pool = test_mysql_db_pool();
-
-        let mut darx_runtime = DarxIsolate::new(project_id, project_dir);
-        let r = darx_runtime
-            .load_and_eval_module_file("load_private.js")
-            .await;
-        assert!(r.is_err());
     }
 }

@@ -64,6 +64,8 @@ pub enum ApiError {
     Auth,
     #[error("IO error: {0}")]
     IoError(#[from] std::io::Error),
+    #[error("Domain {0} not found")]
+    DomainNotFound(String),
     #[error("Function {0} not found")]
     FunctionNotFound(String),
     #[error("Function parameter error: {0}")]
@@ -91,10 +93,14 @@ impl IntoResponse for ApiError {
                 (http::StatusCode::INTERNAL_SERVER_ERROR, format!("{:#}", e))
                     .into_response()
             }
-            ApiError::FunctionNotFound(_) => {
-                (http::StatusCode::NOT_FOUND, format!("{}", self))
-                    .into_response()
+            ApiError::DomainNotFound(e) => {
+                (http::StatusCode::NOT_FOUND, format!("{}", e)).into_response()
             }
+            ApiError::FunctionNotFound(e) => (
+                http::StatusCode::NOT_FOUND,
+                format!("function not found: {}", e),
+            )
+                .into_response(),
             ApiError::FunctionParameterError(_) => {
                 (http::StatusCode::BAD_REQUEST, format!("{}", self))
                     .into_response()
