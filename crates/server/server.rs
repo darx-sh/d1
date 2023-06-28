@@ -16,7 +16,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::fs;
 
-use crate::contorl_plane::{match_route, start_cmd_handler};
+use crate::control_plane::{match_route, start_cmd_handler};
 use crate::worker::{WorkerEvent, WorkerPool};
 use crate::DARX_SERVER_WORKING_DIR;
 use darx_api::{
@@ -82,7 +82,7 @@ async fn invoke_function(
     let domain = host.0;
     let env_id = extract_env_id(domain.as_str())?;
 
-    let (deploy_id, route) =
+    let (deploy_seq, route) =
         match_route(env_id.as_str(), func_url.as_str(), "POST").ok_or(
             ApiError::FunctionNotFound(format!(
                 "domain: {}, env_id: {}",
@@ -99,12 +99,11 @@ async fn invoke_function(
         )
     })?;
     let working_dir = Path::new(DARX_SERVER_WORKING_DIR);
-    let bundle_dir =
-        deployment_dir(working_dir, env_id.as_str(), deploy_id.as_str())
-            .canonicalize()?;
+    let bundle_dir = deployment_dir(working_dir, env_id.as_str(), deploy_seq)
+        .canonicalize()?;
     let event = WorkerEvent::InvokeFunction {
         env_id,
-        deploy_id,
+        deploy_seq,
         bundle_dir,
         js_entry_point: route.js_entry_point,
         js_export: route.js_export,
@@ -173,9 +172,11 @@ async fn deploy_functions(
 fn deployment_dir(
     working_dir: &Path,
     env_id: &str,
-    deployment_id: &str,
+    deploy_seq: i64,
 ) -> PathBuf {
-    working_dir.join(env_id).join(deployment_id)
+    working_dir
+        .join(env_id)
+        .join(deploy_seq.to_string().as_str())
 }
 
 fn project_db_file(db_dir: &Path, project_id: &str) -> PathBuf {

@@ -25,12 +25,12 @@ struct ProjectId(String);
 struct EnvId(String);
 
 #[derive(Clone)]
-struct DeployId(String);
+struct DeploySeq(i64);
 
 impl DarxIsolate {
     pub fn new(
         env_id: &str,
-        deploy_id: &str,
+        deploy_seq: i64,
         bundle_dir: impl AsRef<Path>,
     ) -> Self {
         let user_agent = "darx-runtime".to_string();
@@ -76,7 +76,7 @@ impl DarxIsolate {
         js_runtime
             .op_state()
             .borrow_mut()
-            .put::<DeployId>(DeployId(deploy_id.to_string()));
+            .put::<DeploySeq>(DeploySeq(deploy_seq));
 
         DarxIsolate {
             js_runtime,

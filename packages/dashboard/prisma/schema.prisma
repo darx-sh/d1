@@ -103,13 +103,14 @@ model Project {
 
 model Environment {
   // id also acts as the subdomain of the environment.
-  id          String       @id @default(cuid())
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  name        String
-  projectId   String
-  project     Project      @relation(fields: [projectId], references: [id])
-  deployments Deployment[]
+  id            String       @id @default(cuid())
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  name          String
+  projectId     String
+  project       Project      @relation(fields: [projectId], references: [id])
+  deployments   Deployment[]
+  nextDeploySeq Int          @default(0)
 
   @@index([projectId])
 }
@@ -126,11 +127,12 @@ model Deployment {
   bundleCount     Int
   environmentId   String
   environment     Environment   @relation(fields: [environmentId], references: [id])
+  deploySeq       Int           @default(0)
   bundles         Bundle[]
   envVars         EnvVariable[]
   httpRoutes      HttpRoute[]
 
-  @@index([environmentId])
+  @@unique([environmentId, deploySeq])
 }
 
 model HttpRoute {

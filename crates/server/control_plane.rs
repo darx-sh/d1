@@ -45,6 +45,7 @@ struct Deployment {
     project_id: String,
     environment_id: String,
     deployment_id: String,
+    deploy_seq: i64,
     bundles: Vec<Bundle>,
     http_routes: Vec<HttpRoute>,
 }
@@ -66,7 +67,7 @@ pub struct HttpRoute {
 async fn deploy_bundles(deploy: &Deployment) -> Result<()> {
     let working_dir = Path::new(crate::DARX_SERVER_WORKING_DIR);
     let env_dir = working_dir.join(deploy.environment_id.as_str());
-    let deploy_dir = env_dir.join(deploy.deployment_id.as_str());
+    let deploy_dir = env_dir.join(deploy.deploy_seq.to_string().as_str());
 
     for bundle in deploy.bundles.iter() {
         let bundle_fs_path = deploy_dir.join(bundle.fs_path.as_str());
@@ -79,7 +80,10 @@ async fn deploy_bundles(deploy: &Deployment) -> Result<()> {
         let mut file = fs::File::create(bundle_fs_path).await?;
         let bucket =
             new_bucket().with_context(|| format!("Failed to new bucket"))?;
-        let s3_path = format!("/{}/{}", deploy.deployment_id, bundle.id);
+        let s3_path = format!(
+            "/{}/{}/{}",
+            deploy.environment_id, deploy.deploy_seq, bundle.fs_path
+        );
         bucket
             .get_object_to_writer(s3_path, &mut file)
             .await
@@ -92,8 +96,8 @@ async fn deploy_bundles(deploy: &Deployment) -> Result<()> {
     }
     add_route(&deploy);
     println!(
-        "deployed environment_id: {:}, deployment_id: {:}",
-        deploy.environment_id, deploy.deployment_id
+        "deployed environment_id: {}, deploy_seq: {}",
+        deploy.environment_id, deploy.deploy_seq
     );
     // println!("GLOBAL_ROUTER: {:?}", GLOBAL_ROUTER);
     Ok(())
@@ -134,7 +138,7 @@ pub fn match_route(
     environment_id: &str,
     func_url: &str,
     method: &str,
-) -> Option<(String, HttpRoute)> {
+) -> Option<(i64, HttpRoute)> {
     if let Some(entry) = GLOBAL_ROUTER.get(environment_id) {
         let mut cur_deploy = entry[0].clone();
         // sort a deployment's route based on url
@@ -143,7 +147,7 @@ pub fn match_route(
             .sort_by(|a, b| a.http_path.cmp(&b.http_path));
         for route in cur_deploy.http_routes.iter() {
             if route.http_path == func_url && route.method == method {
-                return Some((cur_deploy.deployment_id, route.clone()));
+                return Some((cur_deploy.deploy_seq, route.clone()));
             }
         }
         None
@@ -156,4 +160,5 @@ fn add_route(deployment: &Deployment) {
     let env_id = deployment.environment_id.clone();
     let mut routes = GLOBAL_ROUTER.entry(env_id).or_insert_with(|| Vec::new());
     routes.insert(0, deployment.clone());
+    routes.sort_by(|a, b| a.deploy_seq.cmp(&b.deploy_seq));
 }

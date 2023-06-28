@@ -83,28 +83,41 @@ export async function POST(req: NextRequest) {
       return routes;
     })
     .flat();
-  const deployment = await prisma.deployment.create({
-    data: {
-      tag,
-      description,
-      environmentId: environment_id,
-      bundleCount,
-      bundles: {
-        create: bundlesData,
+  const [_, deployment] = await prisma.$transaction([
+    prisma.environment.update({
+      where: {
+        id: environment_id,
       },
-      httpRoutes: {
-        create: routes,
+      data: {
+        nextDeploySeq: {
+          increment: 1,
+        },
       },
-    },
-    include: {
-      bundles: true,
-    },
-  });
+    }),
+    prisma.deployment.create({
+      data: {
+        tag,
+        description,
+        environmentId: environment_id,
+        deploySeq: theEnv.nextDeploySeq,
+        bundleCount,
+        bundles: {
+          create: bundlesData,
+        },
+        httpRoutes: {
+          create: routes,
+        },
+      },
+      include: {
+        bundles: true,
+      },
+    }),
+  ]);
 
   const urlPromises = deployment.bundles.map((bundle) => {
     const putCommand = new PutObjectCommand({
       Bucket: env.S3_BUCKET,
-      Key: `${deployment.id}/${bundle.id}`,
+      Key: `${environment_id}/${deployment.deploySeq}/${bundle.fsPath}`,
       ContentLength: bundle.bytes,
     });
     return getSignedUrl(s3, putCommand, {

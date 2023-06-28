@@ -1,5 +1,5 @@
 use crate::types::{MySqlQueryResult, XDatum};
-use crate::{DeployId, EnvId, ProjectId};
+use crate::{DeploySeq, EnvId, ProjectId};
 use darx_db::get_conn;
 use darx_db::{Connection, ConnectionPool};
 use deno_core::error::AnyError;
@@ -33,9 +33,9 @@ pub async fn op_use_db(
     op_state: Rc<RefCell<OpState>>,
 ) -> Result<ResourceId, AnyError> {
     let env_id = op_state.borrow().borrow::<EnvId>().clone();
-    let deploy_id = op_state.borrow().borrow::<DeployId>().clone();
+    let deploy_seq = op_state.borrow().borrow::<DeploySeq>().clone();
 
-    let r = get_conn(env_id.0.as_str(), deploy_id.0.as_str()).await;
+    let r = get_conn(env_id.0.as_str(), deploy_seq.0).await;
     match r {
         Err(e) => {
             println!("useDB error: {}", e);
