@@ -1,3 +1,4 @@
+use anyhow::Context;
 use darx_db::ConnectionPool;
 use darx_isolate_runtime::DarxIsolate;
 use deno_core::{serde_v8, v8};
@@ -42,9 +43,11 @@ impl WorkerPool {
 
 pub enum WorkerEvent {
     InvokeFunction {
-        project_id: String,
+        env_id: String,
+        deploy_id: String,
         bundle_dir: PathBuf,
-        func_name: String,
+        js_entry_point: String,
+        js_export: String,
         params: Box<serde_json::value::RawValue>,
         resp: Responder<serde_json::Value>,
     },
@@ -55,27 +58,45 @@ type Responder<T> = oneshot::Sender<anyhow::Result<T>>;
 async fn handle_event(event: WorkerEvent) {
     match event {
         WorkerEvent::InvokeFunction {
-            project_id,
-            bundle_dir: tenant_dir,
-            func_name,
+            env_id,
+            deploy_id,
+            bundle_dir,
+            js_entry_point,
+            js_export,
             params,
             resp,
         } => {
             // todo: use some thing real. this is just for testing
-            let project_dir = PathBuf::from(tenant_dir);
-            let mut isolate =
-                DarxIsolate::new(project_id.as_str(), project_dir);
-            let func_path = format!("./api/{}.js", func_name);
+            let mut isolate = DarxIsolate::new(
+                env_id.as_str(),
+                deploy_id.as_str(),
+                bundle_dir,
+            );
             // evaluate the module here to check the syntax.
-            let r = isolate.load_and_eval_module_file(&func_path).await;
+            let r = isolate
+                .load_and_eval_module_file(js_entry_point.as_str())
+                .await
+                .with_context(|| {
+                    format!("Failed to load module {}", js_entry_point.as_str())
+                });
             match r {
                 Ok(()) => {
                     // register the function
-                    println!("{}", registry_code(&func_path));
+                    println!(
+                        "{}",
+                        registry_code(
+                            js_entry_point.as_str(),
+                            js_export.as_str()
+                        )
+                    );
                     isolate
                         .load_and_evaluate_module_code(
                             "./registry.js",
-                            registry_code(&func_path).as_str(),
+                            registry_code(
+                                js_entry_point.as_str(),
+                                js_export.as_str(),
+                            )
+                            .as_str(),
                         )
                         .await
                         .unwrap();
@@ -107,12 +128,13 @@ async fn handle_event(event: WorkerEvent) {
     }
 }
 
-fn registry_code(import_name: &str) -> String {
+fn registry_code(js_entry_point: &str, js_export: &str) -> String {
+    // https://doc.rust-lang.org/std/fmt/index.html#escaping
     format!(
         "
-    import {{handler}} from \"{}\";
-    globalThis.handler = handler;
+    import {{{}}} from \"./{}\";
+    globalThis.handler = {};
     ",
-        import_name
+        js_export, js_entry_point, js_export
     )
 }

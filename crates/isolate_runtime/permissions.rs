@@ -9,13 +9,13 @@ pub struct Permissions {
 impl Permissions {
     pub fn new(options: Options) -> Self {
         Self {
-            project_dir: options.project_dir,
+            project_dir: options.bundle_dir,
         }
     }
 }
 
 pub struct Options {
-    pub project_dir: PathBuf,
+    pub bundle_dir: PathBuf,
 }
 
 deno_core::extension!(

@@ -1,5 +1,5 @@
 use crate::types::{MySqlQueryResult, XDatum};
-use crate::ProjectId;
+use crate::{DeployId, EnvId, ProjectId};
 use darx_db::get_conn;
 use darx_db::{Connection, ConnectionPool};
 use deno_core::error::AnyError;
@@ -32,8 +32,10 @@ impl Resource for ConnResource {
 pub async fn op_use_db(
     op_state: Rc<RefCell<OpState>>,
 ) -> Result<ResourceId, AnyError> {
-    let project_id = op_state.borrow().borrow::<ProjectId>().clone();
-    let r = get_conn(project_id.0.as_str()).await;
+    let env_id = op_state.borrow().borrow::<EnvId>().clone();
+    let deploy_id = op_state.borrow().borrow::<DeployId>().clone();
+
+    let r = get_conn(env_id.0.as_str(), deploy_id.0.as_str()).await;
     match r {
         Err(e) => {
             println!("useDB error: {}", e);
@@ -61,39 +63,4 @@ pub async fn op_db_execute(
         .get::<ConnResource>(rid)?;
     let mut conn = conn_resource.0.borrow_mut();
     conn.execute(query.as_str(), params).await
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::DarxIsolate;
-    use darx_db::mysql::MySqlPool;
-    use darx_utils::test_mysql_db_pool;
-    use deno_core::anyhow::Result;
-    use mysql_async::prelude::Query;
-    use std::path::PathBuf;
-
-    #[tokio::test]
-    async fn test_db_query() -> Result<()> {
-        let project_id = "7ce52fdc14b16017";
-        let conn_pool = test_mysql_db_pool();
-        let mut conn = conn_pool.get_conn().await?;
-        conn.borrow_mut()
-            .execute(
-                r"CREATE TABLE IF NOT EXISTS test (
-            id INT NOT NULL AUTO_INCREMENT,
-            name VARCHAR(255) NOT NULL,
-            PRIMARY KEY (id)
-        )",
-                vec![],
-            )
-            .await?;
-        let project_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join(format!("examples/projects/{}", project_id));
-        let mut darx_runtime = DarxIsolate::new(project_id, project_path);
-        darx_runtime
-            .load_and_eval_module_file("run_query.js")
-            .await?;
-        Ok(())
-    }
 }

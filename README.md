@@ -13,9 +13,15 @@ cargo run -- server
 # 2. Install httpie.
 
 
-# 3. Create a JS module
-http POST localhost:4001/c/draft/modules < module_simple.json
+# 3. Run the dev server
+```bash
+mkdir -p ./tmp
+cargo run -- dev --dir=./tmp
+```
 
-# 4. Invoke function with POST
-http localhost:4001/invoke/preview/pub/foo name=abc age=18
+# 4. Write your function in ./tmp/darx_server/functions/foo.js
+
+
+# 5. Invoke function with POST
+http localhost:4001/foo name=abc age=18 Host:cljb3ovlt0002e38vwo0xi5ge.darx.sh
 ```
