@@ -4,6 +4,7 @@ use axum::http::{HeaderMap, StatusCode};
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use darx_api::ApiError;
+use dotenv::dotenv;
 use rusqlite::types::{
     FromSql, FromSqlError, FromSqlResult, ToSqlOutput, Value, ValueRef,
 };
@@ -19,15 +20,9 @@ use tokio::fs;
 use crate::control_plane::{match_route, start_cmd_handler};
 use crate::worker::{WorkerEvent, WorkerPool};
 use crate::DARX_SERVER_WORKING_DIR;
-use darx_api::{
-    CreatProjectRequest, DeployFunctionsRequest, DeployFunctionsResponse,
-    DeploySchemaRequest, DeploySchemaResponse, GetDeploymentResponse,
-    RollbackFunctionsRequest, RollbackFunctionsResponse,
-};
+use darx_api::CreatProjectRequest;
 use darx_db::mysql::MySqlPool;
-use darx_db::{
-    Bundle, DBType, DeploymentId, DeploymentStatus, DeploymentType, Migration,
-};
+use darx_db::DBType;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::oneshot;
@@ -37,6 +32,9 @@ pub async fn run_server(port: u16, projects_dir: &str) -> Result<()> {
     let projects_dir = fs::canonicalize(projects_dir).await?;
     let projects_dir = projects_dir.join(crate::DARX_SERVER_WORKING_DIR);
     fs::create_dir_all(projects_dir.as_path()).await?;
+
+    #[cfg(debug_assertions)]
+    dotenv().expect("failed to load .env file");
 
     let mut join_set: JoinSet<Result<()>> = JoinSet::new();
 
@@ -50,8 +48,8 @@ pub async fn run_server(port: u16, projects_dir: &str) -> Result<()> {
         let app = Router::new()
             .route("/", get(|| async { "darx api healthy." }))
             .route("/invoke/:function_name", post(invoke_function))
-            .route("/deploy_schema", post(deploy_schema))
-            .route("/deploy_functions", post(deploy_functions))
+            // .route("/deploy_schema", post(deploy_schema))
+            // .route("/deploy_functions", post(deploy_functions))
             .with_state(server_state);
 
         let socket_addr = format!("127.0.0.1:{}", port);
@@ -126,48 +124,48 @@ async fn invoke_function(
     })?;
     Ok(Json(result.unwrap()))
 }
+//
+// async fn deploy_schema(
+//     State(server_state): State<Arc<ServerState>>,
+//     AxumPath(project_id): AxumPath<String>,
+//     Json(req): Json<DeploySchemaRequest>,
+// ) -> Result<Json<DeploySchemaResponse>, ApiError> {
+//     let db_type = darx_db::get_db_type(project_id.as_str())?;
+//     let deployment_id = match db_type {
+//         DBType::MySQL => {
+//             darx_db::mysql::deploy_schema(project_id.as_str(), req.migrations)
+//                 .await?
+//         }
+//         DBType::Sqlite => {
+//             darx_db::sqlite::deploy_schema(project_id.as_str(), req.migrations)
+//                 .await?
+//         }
+//     };
+//     Ok(Json(DeploySchemaResponse { deployment_id }))
+// }
 
-async fn deploy_schema(
-    State(server_state): State<Arc<ServerState>>,
-    AxumPath(project_id): AxumPath<String>,
-    Json(req): Json<DeploySchemaRequest>,
-) -> Result<Json<DeploySchemaResponse>, ApiError> {
-    let db_type = darx_db::get_db_type(project_id.as_str())?;
-    let deployment_id = match db_type {
-        DBType::MySQL => {
-            darx_db::mysql::deploy_schema(project_id.as_str(), req.migrations)
-                .await?
-        }
-        DBType::Sqlite => {
-            darx_db::sqlite::deploy_schema(project_id.as_str(), req.migrations)
-                .await?
-        }
-    };
-    Ok(Json(DeploySchemaResponse { deployment_id }))
-}
-
-async fn deploy_functions(
-    State(server_state): State<Arc<ServerState>>,
-    AxumPath(project_id): AxumPath<String>,
-    Json(req): Json<DeployFunctionsRequest>,
-) -> Result<Json<DeployFunctionsResponse>, ApiError> {
-    let db_type = darx_db::get_db_type(project_id.as_str())?;
-    let deployment_id = match db_type {
-        DBType::MySQL => {
-            darx_db::mysql::deploy_functions(
-                project_id.as_str(),
-                &req.bundles,
-                &req.bundle_meta,
-            )
-            .await?
-        }
-        DBType::Sqlite => {
-            darx_db::sqlite::deploy_functions(project_id.as_str(), &req.bundles)
-                .await?
-        }
-    };
-    Ok(Json(DeployFunctionsResponse { deployment_id }))
-}
+// async fn deploy_functions(
+//     State(server_state): State<Arc<ServerState>>,
+//     AxumPath(project_id): AxumPath<String>,
+//     Json(req): Json<DeployFunctionsRequest>,
+// ) -> Result<Json<DeployFunctionsResponse>, ApiError> {
+//     let db_type = darx_db::get_db_type(project_id.as_str())?;
+//     let deployment_id = match db_type {
+//         DBType::MySQL => {
+//             darx_db::mysql::deploy_functions(
+//                 project_id.as_str(),
+//                 &req.bundles,
+//                 &req.bundle_meta,
+//             )
+//             .await?
+//         }
+//         DBType::Sqlite => {
+//             darx_db::sqlite::deploy_functions(project_id.as_str(), &req.bundles)
+//                 .await?
+//         }
+//     };
+//     Ok(Json(DeployFunctionsResponse { deployment_id }))
+// }
 
 fn deployment_dir(
     working_dir: &Path,
@@ -197,21 +195,21 @@ fn project_db_conn(
     })
 }
 
-async fn load_bundles_from_db(
-    project_id: &str,
-    deployment_id: &str,
-) -> Result<(Vec<Bundle>, serde_json::Value)> {
-    let db_type = darx_db::get_db_type(project_id)?;
-    match db_type {
-        DBType::MySQL => {
-            darx_db::mysql::load_bundles_from_db(project_id, deployment_id)
-                .await
-        }
-        DBType::Sqlite => {
-            unimplemented!()
-        }
-    }
-}
+// async fn load_bundles_from_db(
+//     project_id: &str,
+//     deployment_id: &str,
+// ) -> Result<(Vec<Bundle>, serde_json::Value)> {
+//     let db_type = darx_db::get_db_type(project_id)?;
+//     match db_type {
+//         DBType::MySQL => {
+//             darx_db::mysql::load_bundles_from_db(project_id, deployment_id)
+//                 .await
+//         }
+//         DBType::Sqlite => {
+//             unimplemented!()
+//         }
+//     }
+// }
 
 // async fn create_local_bundles(
 //     projects_dir: &Path,

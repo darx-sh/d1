@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use dashmap::DashMap;
-use dotenv::dotenv;
+
 use futures_util::StreamExt as _;
 use once_cell::sync::Lazy;
 use redis::AsyncCommands;
@@ -13,9 +13,6 @@ use tokio::fs;
 use tokio::task::JoinSet;
 
 pub async fn start_cmd_handler() -> Result<()> {
-    #[cfg(debug_assertions)]
-    dotenv().expect("failed to load .env file");
-
     let redis_client = redis::Client::open(
         env::var("REDIS_URL").expect("REDIS_URL should be configured"),
     )?;
@@ -38,6 +35,10 @@ pub async fn start_cmd_handler() -> Result<()> {
     panic!("no more messages");
 
     Ok(())
+}
+
+pub async fn init_global_router() -> Result<()> {
+    todo!()
 }
 
 #[derive(Clone, Debug, Deserialize)]
