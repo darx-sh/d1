@@ -1,7 +1,4 @@
-use crate::{
-    Bundle, Connection, ConnectionPool, DBMigrationStatus, DeploymentId,
-    DeploymentStatus, DeploymentType, Migration,
-};
+use crate::{Connection, ConnectionPool};
 use anyhow::{anyhow, Error, Result};
 use async_trait::async_trait;
 use darx_utils::test_mysql_db_url;
@@ -12,199 +9,199 @@ use serde::ser::{Serialize, SerializeMap, Serializer};
 use std::cell::RefCell;
 use std::rc::Rc;
 
-impl From<DeploymentType> for mysql_async::Value {
-    fn from(t: DeploymentType) -> Self {
-        match t {
-            DeploymentType::Schema => mysql_async::Value::Int(0),
-            DeploymentType::Functions => mysql_async::Value::Int(1),
-        }
-    }
-}
+// impl From<DeploymentType> for mysql_async::Value {
+//     fn from(t: DeploymentType) -> Self {
+//         match t {
+//             DeploymentType::Schema => mysql_async::Value::Int(0),
+//             DeploymentType::Functions => mysql_async::Value::Int(1),
+//         }
+//     }
+// }
+//
+// impl From<DeploymentStatus> for mysql_async::Value {
+//     fn from(t: DeploymentStatus) -> Self {
+//         match t {
+//             DeploymentStatus::Doing => mysql_async::Value::Int(0),
+//             DeploymentStatus::Done => mysql_async::Value::Int(1),
+//             DeploymentStatus::Failed => mysql_async::Value::Int(2),
+//         }
+//     }
+// }
+//
+// impl From<DBMigrationStatus> for mysql_async::Value {
+//     fn from(value: DBMigrationStatus) -> Self {
+//         match value {
+//             DBMigrationStatus::Doing => mysql_async::Value::Int(0),
+//             DBMigrationStatus::Done => mysql_async::Value::Int(1),
+//             DBMigrationStatus::Failed => mysql_async::Value::Int(2),
+//         }
+//     }
+// }
 
-impl From<DeploymentStatus> for mysql_async::Value {
-    fn from(t: DeploymentStatus) -> Self {
-        match t {
-            DeploymentStatus::Doing => mysql_async::Value::Int(0),
-            DeploymentStatus::Done => mysql_async::Value::Int(1),
-            DeploymentStatus::Failed => mysql_async::Value::Int(2),
-        }
-    }
-}
+// pub async fn deploy_schema(
+//     project_id: &str,
+//     migrations: Vec<Migration>,
+// ) -> Result<DeploymentId> {
+//     let mut conn = raw_conn(project_id).await?;
+//     let res = r"INSERT INTO deployments (project_id, type, status) VALUES (:project_id, :type, :status)"
+//         .with(params! {
+//             "project_id" => project_id,
+//             "type" => DeploymentType::Schema,
+//             "status" => DeploymentStatus::Doing,
+//         })
+//         .run(&mut conn)
+//         .await?;
+//
+//     let deployment_id = res.last_insert_id().unwrap();
+//
+//     for m in migrations.iter() {
+//         r"INSERT INTO db_migrations (file_name, sql, status, deployment_id) VALUES (:file_name, :sql, :status, :deployment_id)".with(params!{
+//             "file_name" => &m.file_name,
+//             "sql" => &m.sql,
+//             "status" => DBMigrationStatus::Doing,
+//             "deployment_id" => &deployment_id,
+//         }).run(&mut conn).await?;
+//     }
+//
+//     for m in migrations.iter() {
+//         match m.sql.as_str().run(&mut conn).await {
+//             Ok(_) => {
+//                 r"UPDATE db_migrations SET status = :status WHERE file_name = :file_name"
+//                     .with(params! {
+//                 "status" => DBMigrationStatus::Done,
+//                 "file_name" => &m.file_name,
+//                     })
+//                     .run(&mut conn)
+//                     .await?;
+//             }
+//             Err(e) => {
+//                 r"UPDATE db_migrations SET status = :status, error = :error WHERE file_name = :file_name"
+//                     .with(params! {
+//                 "status" => DBMigrationStatus::Failed,
+//                         "error" => e.to_string(),
+//                 "file_name" => &m.file_name,
+//                     })
+//                     .run(&mut conn)
+//                     .await?;
+//
+//                 r"UPDATE deployments SET status = :status WHERE id = :deployment_id"
+//                     .with(params! {
+//             "status" => DeploymentStatus::Failed,
+//             "deployment_id" => &deployment_id,
+//                     })
+//                     .run(&mut conn)
+//                     .await?;
+//                 return Err(anyhow!("failed to run migration {}", m.file_name));
+//             }
+//         }
+//     }
+//
+//     r"UPDATE deployments SET status = :status WHERE id = :deployment_id"
+//         .with(params! {
+//             "status" => DeploymentStatus::Done,
+//             "deployment_id" => &deployment_id,
+//         })
+//         .run(&mut conn)
+//         .await?;
+//     Ok(deployment_id)
+// }
 
-impl From<DBMigrationStatus> for mysql_async::Value {
-    fn from(value: DBMigrationStatus) -> Self {
-        match value {
-            DBMigrationStatus::Doing => mysql_async::Value::Int(0),
-            DBMigrationStatus::Done => mysql_async::Value::Int(1),
-            DBMigrationStatus::Failed => mysql_async::Value::Int(2),
-        }
-    }
-}
+// pub async fn deploy_functions(
+//     project_id: &str,
+//     bundles: &Vec<Bundle>,
+//     meta: &serde_json::Value,
+// ) -> Result<DeploymentId> {
+//     let mut conn = raw_conn(project_id).await?;
+//     let res = r"INSERT INTO deployments (project_id, type, status) VALUES (:project_id, :type, :status)"
+//         .with(params! {
+//             "project_id" => project_id,
+//             "type" => DeploymentType::Functions,
+//             "status" => DeploymentStatus::Doing,
+//         })
+//         .run(&mut conn)
+//         .await?;
+//     let deployment_id = res.last_insert_id().unwrap();
+//
+//     match insert_code(&mut conn, deployment_id, bundles, meta).await {
+//         Ok(_) => {
+//             let mut txn = conn
+//                 .start_transaction(mysql_async::TxOpts::default())
+//                 .await?;
+//
+//             r"UPDATE deployments SET status = :status WHERE id = :deployment_id"
+//                 .with(params! {
+//                     "status" => DeploymentStatus::Done,
+//                     "deployment_id" => &deployment_id,
+//                 })
+//                 .run(&mut txn)
+//                 .await?;
+//             r"REPLACE INTO current_deployments (project_id, deployment_id) VALUES (:project_id, :deployment_id)"
+//                 .with(params! {
+//                     "project_id" => project_id,
+//                     "deployment_id" => &deployment_id,
+//                 })
+//                 .run(&mut txn)
+//                 .await?;
+//             txn.commit().await?;
+//         }
+//         Err(e) => {
+//             r"UPDATE deployments SET status = :status WHERE id = :deployment_id"
+//                 .with(params! {
+//                     "status" => DeploymentStatus::Failed,
+//                     "deployment_id" => &deployment_id,
+//                 })
+//                 .run(&mut conn)
+//                 .await?;
+//             return Err(e);
+//         }
+//     }
+//     Ok(deployment_id)
+// }
 
-pub async fn deploy_schema(
-    project_id: &str,
-    migrations: Vec<Migration>,
-) -> Result<DeploymentId> {
-    let mut conn = raw_conn(project_id).await?;
-    let res = r"INSERT INTO deployments (project_id, type, status) VALUES (:project_id, :type, :status)"
-        .with(params! {
-            "project_id" => project_id,
-            "type" => DeploymentType::Schema,
-            "status" => DeploymentStatus::Doing,
-        })
-        .run(&mut conn)
-        .await?;
-
-    let deployment_id = res.last_insert_id().unwrap();
-
-    for m in migrations.iter() {
-        r"INSERT INTO db_migrations (file_name, sql, status, deployment_id) VALUES (:file_name, :sql, :status, :deployment_id)".with(params!{
-            "file_name" => &m.file_name,
-            "sql" => &m.sql,
-            "status" => DBMigrationStatus::Doing,
-            "deployment_id" => &deployment_id,
-        }).run(&mut conn).await?;
-    }
-
-    for m in migrations.iter() {
-        match m.sql.as_str().run(&mut conn).await {
-            Ok(_) => {
-                r"UPDATE db_migrations SET status = :status WHERE file_name = :file_name"
-                    .with(params! {
-                "status" => DBMigrationStatus::Done,
-                "file_name" => &m.file_name,
-                    })
-                    .run(&mut conn)
-                    .await?;
-            }
-            Err(e) => {
-                r"UPDATE db_migrations SET status = :status, error = :error WHERE file_name = :file_name"
-                    .with(params! {
-                "status" => DBMigrationStatus::Failed,
-                        "error" => e.to_string(),
-                "file_name" => &m.file_name,
-                    })
-                    .run(&mut conn)
-                    .await?;
-
-                r"UPDATE deployments SET status = :status WHERE id = :deployment_id"
-                    .with(params! {
-            "status" => DeploymentStatus::Failed,
-            "deployment_id" => &deployment_id,
-                    })
-                    .run(&mut conn)
-                    .await?;
-                return Err(anyhow!("failed to run migration {}", m.file_name));
-            }
-        }
-    }
-
-    r"UPDATE deployments SET status = :status WHERE id = :deployment_id"
-        .with(params! {
-            "status" => DeploymentStatus::Done,
-            "deployment_id" => &deployment_id,
-        })
-        .run(&mut conn)
-        .await?;
-    Ok(deployment_id)
-}
-
-pub async fn deploy_functions(
-    project_id: &str,
-    bundles: &Vec<Bundle>,
-    meta: &serde_json::Value,
-) -> Result<DeploymentId> {
-    let mut conn = raw_conn(project_id).await?;
-    let res = r"INSERT INTO deployments (project_id, type, status) VALUES (:project_id, :type, :status)"
-        .with(params! {
-            "project_id" => project_id,
-            "type" => DeploymentType::Functions,
-            "status" => DeploymentStatus::Doing,
-        })
-        .run(&mut conn)
-        .await?;
-    let deployment_id = res.last_insert_id().unwrap();
-
-    match insert_code(&mut conn, deployment_id, bundles, meta).await {
-        Ok(_) => {
-            let mut txn = conn
-                .start_transaction(mysql_async::TxOpts::default())
-                .await?;
-
-            r"UPDATE deployments SET status = :status WHERE id = :deployment_id"
-                .with(params! {
-                    "status" => DeploymentStatus::Done,
-                    "deployment_id" => &deployment_id,
-                })
-                .run(&mut txn)
-                .await?;
-            r"REPLACE INTO current_deployments (project_id, deployment_id) VALUES (:project_id, :deployment_id)"
-                .with(params! {
-                    "project_id" => project_id,
-                    "deployment_id" => &deployment_id,
-                })
-                .run(&mut txn)
-                .await?;
-            txn.commit().await?;
-        }
-        Err(e) => {
-            r"UPDATE deployments SET status = :status WHERE id = :deployment_id"
-                .with(params! {
-                    "status" => DeploymentStatus::Failed,
-                    "deployment_id" => &deployment_id,
-                })
-                .run(&mut conn)
-                .await?;
-            return Err(e);
-        }
-    }
-    Ok(deployment_id)
-}
-
-pub async fn load_bundles_from_db(
-    project_id: &str,
-    deployment_id: &str,
-) -> Result<(Vec<Bundle>, serde_json::Value)> {
-    let mut conn = raw_conn(project_id).await?;
-    let bundles = r"SELECT path, code FROM js_bundles WHERE deployment_id = :deployment_id"
-        .with(params! {
-            "deployment_id" => deployment_id,
-        }).map(&mut conn, |(path, code)| Bundle{path, code}).await?;
-
-    let meta: Option<String> =
-        r"SELECT meta FROM js_bundle_metas WHERE deployment_id = :deployment_id"
-            .with(params! {
-                "deployment_id" => deployment_id,
-            })
-            .first(&mut conn)
-            .await?;
-    let meta = meta.ok_or_else(|| {
-        anyhow!("no bundle meta found for deployment {}", deployment_id)
-    })?;
-
-    Ok((bundles, serde_json::from_str(&meta)?))
-}
-
-async fn insert_code(
-    conn: &mut Conn,
-    deployment_id: DeploymentId,
-    bundles: &Vec<Bundle>,
-    meta: &serde_json::Value,
-) -> Result<()> {
-    for bundle in bundles.iter() {
-        r"INSERT INTO js_bundles (path, code, deployment_id) VALUES (:path, :code, :deployment_id)".with(params!{
-            "path" => &bundle.path,
-            "code" => &bundle.code,
-            "deployment_id" => &deployment_id,
-        }).run(&mut *conn).await?;
-    }
-
-    r"INSERT INTO js_bundle_metas (deployment_id, meta) VALUES (:deployment_id, :meta)".with(params!{
-        "deployment_id" => &deployment_id,
-        "content" => meta.to_string(),
-    }).run(conn).await?;
-    Ok(())
-}
+// pub async fn load_bundles_from_db(
+//     project_id: &str,
+//     deployment_id: &str,
+// ) -> Result<(Vec<Bundle>, serde_json::Value)> {
+//     let mut conn = raw_conn(project_id).await?;
+//     let bundles = r"SELECT path, code FROM js_bundles WHERE deployment_id = :deployment_id"
+//         .with(params! {
+//             "deployment_id" => deployment_id,
+//         }).map(&mut conn, |(path, code)| Bundle{path, code}).await?;
+//
+//     let meta: Option<String> =
+//         r"SELECT meta FROM js_bundle_metas WHERE deployment_id = :deployment_id"
+//             .with(params! {
+//                 "deployment_id" => deployment_id,
+//             })
+//             .first(&mut conn)
+//             .await?;
+//     let meta = meta.ok_or_else(|| {
+//         anyhow!("no bundle meta found for deployment {}", deployment_id)
+//     })?;
+//
+//     Ok((bundles, serde_json::from_str(&meta)?))
+// }
+//
+// async fn insert_code(
+//     conn: &mut Conn,
+//     deployment_id: DeploymentId,
+//     bundles: &Vec<Bundle>,
+//     meta: &serde_json::Value,
+// ) -> Result<()> {
+//     for bundle in bundles.iter() {
+//         r"INSERT INTO js_bundles (path, code, deployment_id) VALUES (:path, :code, :deployment_id)".with(params!{
+//             "path" => &bundle.path,
+//             "code" => &bundle.code,
+//             "deployment_id" => &deployment_id,
+//         }).run(&mut *conn).await?;
+//     }
+//
+//     r"INSERT INTO js_bundle_metas (deployment_id, meta) VALUES (:deployment_id, :meta)".with(params!{
+//         "deployment_id" => &deployment_id,
+//         "content" => meta.to_string(),
+//     }).run(conn).await?;
+//     Ok(())
+// }
 
 async fn raw_conn(project_id: &str) -> mysql_async::Result<Conn> {
     // todo: per project connection pool

@@ -1,7 +1,5 @@
 use anyhow::{anyhow, bail, Context, Result};
-use darx_api::{
-    ApiError, Bundle, DBType, DeployFunctionsRequest, DeployFunctionsResponse,
-};
+use darx_api::{ApiError, DBType};
 use notify::event::ModifyKind;
 use notify::{Config, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use notify_debouncer_mini::{new_debouncer, DebouncedEventKind};

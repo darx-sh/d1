@@ -42,35 +42,35 @@ pub fn get_db_type(project_id: &str) -> Result<DBType> {
     Ok(DBType::MySQL)
 }
 
-#[derive(Deserialize)]
-pub struct Migration {
-    file_name: String,
-    sql: String,
-}
+// #[derive(Deserialize)]
+// pub struct Migration {
+//     file_name: String,
+//     sql: String,
+// }
+//
+// pub type DeploymentId = u64;
+//
+// #[derive(Serialize, Deserialize)]
+// pub struct Bundle {
+//     pub path: String,
+//     pub code: String,
+// }
+//
+// #[derive(Serialize)]
+// pub enum DeploymentType {
+//     Schema,
+//     Functions,
+// }
 
-pub type DeploymentId = u64;
-
-#[derive(Serialize, Deserialize)]
-pub struct Bundle {
-    pub path: String,
-    pub code: String,
-}
-
-#[derive(Serialize)]
-pub enum DeploymentType {
-    Schema,
-    Functions,
-}
-
-#[derive(Serialize)]
-pub enum DeploymentStatus {
-    Doing,
-    Done,
-    Failed,
-}
-
-pub enum DBMigrationStatus {
-    Doing,
-    Done,
-    Failed,
-}
+// #[derive(Serialize)]
+// pub enum DeploymentStatus {
+//     Doing,
+//     Done,
+//     Failed,
+// }
+//
+// pub enum DBMigrationStatus {
+//     Doing,
+//     Done,
+//     Failed,
+// }
