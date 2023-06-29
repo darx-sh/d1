@@ -15,5 +15,7 @@ serde_json.workspace = true
 async-trait.workspace = true
 mysql_async.workspace = true
 rusqlite.workspace = true
-
+sqlx.workspace = true
+futures.workspace = true
+futures-util.workspace = true
 darx_utils.workspace = true

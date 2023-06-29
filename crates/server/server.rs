@@ -4,7 +4,7 @@ use axum::http::{HeaderMap, StatusCode};
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use darx_api::ApiError;
-use dotenv::dotenv;
+use dotenvy::dotenv;
 use rusqlite::types::{
     FromSql, FromSqlError, FromSqlResult, ToSqlOutput, Value, ValueRef,
 };
@@ -21,7 +21,6 @@ use crate::control_plane::{match_route, start_cmd_handler};
 use crate::worker::{WorkerEvent, WorkerPool};
 use crate::DARX_SERVER_WORKING_DIR;
 use darx_api::CreatProjectRequest;
-use darx_db::mysql::MySqlPool;
 use darx_db::DBType;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
