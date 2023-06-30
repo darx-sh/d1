@@ -27,14 +27,14 @@ pub async fn get_conn(
     deploy_seq: i64,
 ) -> Result<Rc<RefCell<dyn Connection>>> {
     // todo: use per project_id cache for connection pool.
-    let pool = mysql_simple::MySqlPool::new(
-        "mysql://root:12345678@localhost:3306/test",
-    );
-    let conn = pool.get_conn().await?;
-    // let pool =
-    //     mysql_sqlx::MySqlPool::new("mysql://root:12345678@localhost:3306/test")
-    //         .await?;
+    // let pool = mysql_simple::MySqlPool::new(
+    //     "mysql://root:12345678@localhost:3306/test",
+    // );
     // let conn = pool.get_conn().await?;
+    let pool =
+        mysql_sqlx::MySqlPool::new("mysql://root:12345678@localhost:3306/test")
+            .await?;
+    let conn = pool.get_conn().await?;
     Ok(conn)
 }
 
