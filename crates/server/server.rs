@@ -14,7 +14,7 @@ use std::sync::Arc;
 use tokio::fs;
 
 use crate::control_plane::{
-    init_global_router, match_route, start_cmd_handler,
+    download_bundles, init_global_router, match_route, start_cmd_handler,
 };
 use crate::worker::{WorkerEvent, WorkerPool};
 use crate::DARX_SERVER_WORKING_DIR;
@@ -34,6 +34,8 @@ pub async fn run_server(port: u16, projects_dir: &str) -> Result<()> {
     dotenv().expect("failed to load .env file");
 
     init_global_router().await?;
+
+    download_bundles().await?;
 
     let mut join_set: JoinSet<Result<()>> = JoinSet::new();
 

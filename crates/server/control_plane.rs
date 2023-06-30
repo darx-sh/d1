@@ -129,6 +129,19 @@ WHERE Deployment.bundleUploadCnt = Deployment.bundleCnt
     Ok(())
 }
 
+pub async fn download_bundles() -> Result<()> {
+    let mut join_set = JoinSet::new();
+    for deploys in GLOBAL_ROUTER.iter() {
+        for deploy in deploys.iter() {
+            join_set.spawn(deploy_bundles(deploy.clone()));
+        }
+    }
+    while let Some(result) = join_set.join_next().await {
+        result?.with_context(|| "Failed to finish bundle download")?;
+    }
+    Ok(())
+}
+
 #[derive(Clone, Debug, Deserialize)]
 struct Deployment {
     environment_id: String,
@@ -163,6 +176,11 @@ async fn deploy_bundles(deploy: Deployment) -> Result<()> {
             fs::create_dir_all(parent).await.with_context(|| {
                 format!("Failed to create directory: {:?}", parent)
             })?;
+        }
+
+        // todo: do a checksum check and then skip the download.
+        if bundle_fs_path.exists() {
+            continue;
         }
 
         let mut file = fs::File::create(bundle_fs_path).await?;
