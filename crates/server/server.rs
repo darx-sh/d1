@@ -5,10 +5,6 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use darx_api::ApiError;
 use dotenvy::dotenv;
-use rusqlite::types::{
-    FromSql, FromSqlError, FromSqlResult, ToSqlOutput, Value, ValueRef,
-};
-use rusqlite::{params, ToSql};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::HashMap;
@@ -176,23 +172,23 @@ fn deployment_dir(
         .join(deploy_seq.to_string().as_str())
 }
 
-fn project_db_file(db_dir: &Path, project_id: &str) -> PathBuf {
-    db_dir.join(project_id)
-}
-
-fn project_db_conn(
-    db_dir: &Path,
-    project_id: &str,
-) -> Result<rusqlite::Connection, ApiError> {
-    let db_file = project_db_file(db_dir, project_id);
-    rusqlite::Connection::open(db_file.as_path()).map_err(|e| {
-        ApiError::Internal(anyhow!(
-            "failed to open sqlite file: {}, error: {}",
-            db_file.to_str().unwrap(),
-            e
-        ))
-    })
-}
+// fn project_db_file(db_dir: &Path, project_id: &str) -> PathBuf {
+//     db_dir.join(project_id)
+// }
+//
+// fn project_db_conn(
+//     db_dir: &Path,
+//     project_id: &str,
+// ) -> Result<rusqlite::Connection, ApiError> {
+//     let db_file = project_db_file(db_dir, project_id);
+//     rusqlite::Connection::open(db_file.as_path()).map_err(|e| {
+//         ApiError::Internal(anyhow!(
+//             "failed to open sqlite file: {}, error: {}",
+//             db_file.to_str().unwrap(),
+//             e
+//         ))
+//     })
+// }
 
 // async fn load_bundles_from_db(
 //     project_id: &str,
