@@ -13,7 +13,9 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::fs;
 
-use crate::control_plane::{match_route, start_cmd_handler};
+use crate::control_plane::{
+    init_global_router, match_route, start_cmd_handler,
+};
 use crate::worker::{WorkerEvent, WorkerPool};
 use crate::DARX_SERVER_WORKING_DIR;
 use darx_api::CreatProjectRequest;
@@ -31,6 +33,8 @@ pub async fn run_server(port: u16, projects_dir: &str) -> Result<()> {
     #[cfg(debug_assertions)]
     dotenv().expect("failed to load .env file");
 
+    init_global_router().await?;
+
     let mut join_set: JoinSet<Result<()>> = JoinSet::new();
 
     let worker_pool = WorkerPool::new();
@@ -42,7 +46,7 @@ pub async fn run_server(port: u16, projects_dir: &str) -> Result<()> {
     join_set.spawn(async move {
         let app = Router::new()
             .route("/", get(|| async { "darx api healthy." }))
-            .route("/invoke/:function_name", post(invoke_function))
+            .route("/invoke/*func_url", post(invoke_function))
             // .route("/deploy_schema", post(deploy_schema))
             // .route("/deploy_functions", post(deploy_functions))
             .with_state(server_state);

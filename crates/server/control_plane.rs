@@ -7,6 +7,7 @@ use redis::AsyncCommands;
 use s3::creds::Credentials;
 use s3::{Bucket, Region};
 use serde::Deserialize;
+use sqlx::MySqlPool;
 use std::env;
 use std::path::Path;
 use tokio::fs;
@@ -27,7 +28,7 @@ pub async fn start_cmd_handler() -> Result<()> {
     while let Some(msg) = pubsub_stream.next().await {
         let payload: String = msg.get_payload()?;
         let deployment = serde_json::from_str::<Deployment>(&payload).unwrap();
-        deploy_bundles(&deployment).await.with_context(|| {
+        deploy_bundles(deployment.clone()).await.with_context(|| {
             format!("Failed to deploy bundles: {:?}", deployment)
         })?;
     }
@@ -38,14 +39,99 @@ pub async fn start_cmd_handler() -> Result<()> {
 }
 
 pub async fn init_global_router() -> Result<()> {
-    todo!()
+    let pool = MySqlPool::connect(
+        &env::var("DATABASE_URL").expect("DATABASE_URL should be configured"),
+    )
+    .await?;
+    // todo: use fetch to and stream to avoid loading all records into memory.
+    let records = sqlx::query!(
+        r#"
+SELECT 
+    environmentId AS environment_id, 
+    deploySeq AS deploy_seq, 
+    Bundle.id AS bundle_id,
+    Bundle.fsPath AS bundle_fs_path,
+    HttpRoute.id AS http_route_id,
+    HttpRoute.httpPath AS http_path,
+    HttpRoute.method AS http_method,
+    HttpRoute.jsEntryPoint AS js_entry_point,
+    HttpRoute.jsExport AS js_export
+FROM 
+    Deployment
+INNER JOIN Bundle ON Bundle.deploymentId = Deployment.id
+LEFT JOIN HttpRoute ON HttpRoute.deploymentId = Deployment.id
+WHERE Deployment.bundleUploadCnt = Deployment.bundleCnt
+"#
+    )
+    .fetch_all(&pool)
+    .await?;
+
+    for r in records.iter() {
+        let env_id = r.environment_id.clone();
+        let deploy_seq = r.deploy_seq as i64;
+        let bundle = Bundle {
+            id: r.bundle_id.clone(),
+            fs_path: r.bundle_fs_path.clone(),
+        };
+        let http_route = HttpRoute {
+            id: r.http_route_id.as_ref().unwrap().clone(),
+            http_path: r.http_path.as_ref().unwrap().clone(),
+            method: r.http_method.as_ref().unwrap().clone(),
+            js_entry_point: r.js_entry_point.as_ref().unwrap().clone(),
+            js_export: r.js_export.as_ref().unwrap().clone(),
+        };
+
+        let mut entry = GLOBAL_ROUTER
+            .entry(env_id.clone())
+            .or_insert_with(|| Vec::new());
+        let mut found_deploy_seq = false;
+        for deploy in entry.iter_mut() {
+            if deploy.deploy_seq == deploy_seq {
+                let mut found_bundle = false;
+                for bundle in deploy.bundles.iter_mut() {
+                    if bundle.id == r.bundle_id {
+                        found_bundle = true;
+                        break;
+                    }
+                }
+
+                if !found_bundle {
+                    deploy.bundles.push(bundle.clone());
+                }
+
+                let mut found_route = false;
+                for route in deploy.http_routes.iter_mut() {
+                    if route.id == http_route.id {
+                        found_route = true;
+                        break;
+                    }
+                }
+                if !found_route {
+                    deploy.http_routes.push(http_route.clone());
+                }
+                deploy
+                    .http_routes
+                    .sort_by(|a, b| a.http_path.cmp(&b.http_path));
+                found_deploy_seq = true;
+                break;
+            }
+        }
+        if !found_deploy_seq {
+            entry.push(Deployment {
+                environment_id: env_id.clone(),
+                deploy_seq,
+                bundles: vec![bundle.clone()],
+                http_routes: vec![http_route.clone()],
+            });
+            entry.sort_by(|a, b| b.deploy_seq.cmp(&a.deploy_seq));
+        }
+    }
+    Ok(())
 }
 
 #[derive(Clone, Debug, Deserialize)]
 struct Deployment {
-    project_id: String,
     environment_id: String,
-    deployment_id: String,
     deploy_seq: i64,
     bundles: Vec<Bundle>,
     http_routes: Vec<HttpRoute>,
@@ -59,13 +145,14 @@ struct Bundle {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct HttpRoute {
+    pub id: String,
     pub http_path: String,
     pub method: String,
     pub js_entry_point: String,
     pub js_export: String,
 }
 
-async fn deploy_bundles(deploy: &Deployment) -> Result<()> {
+async fn deploy_bundles(deploy: Deployment) -> Result<()> {
     let working_dir = Path::new(crate::DARX_SERVER_WORKING_DIR);
     let env_dir = working_dir.join(deploy.environment_id.as_str());
     let deploy_dir = env_dir.join(deploy.deploy_seq.to_string().as_str());
@@ -91,11 +178,11 @@ async fn deploy_bundles(deploy: &Deployment) -> Result<()> {
             .with_context(|| {
                 format!(
                     "Failed to get object from s3 to file: {}/{}",
-                    deploy.deployment_id, bundle.id
+                    deploy.deploy_seq, bundle.id
                 )
             })?;
     }
-    add_route(&deploy);
+    add_route(deploy.clone());
     println!(
         "deployed environment_id: {}, deploy_seq: {}",
         deploy.environment_id, deploy.deploy_seq
@@ -140,12 +227,9 @@ pub fn match_route(
     func_url: &str,
     method: &str,
 ) -> Option<(i64, HttpRoute)> {
+    println!("match_route: func_url: {}", func_url);
     if let Some(entry) = GLOBAL_ROUTER.get(environment_id) {
-        let mut cur_deploy = entry[0].clone();
-        // sort a deployment's route based on url
-        cur_deploy
-            .http_routes
-            .sort_by(|a, b| a.http_path.cmp(&b.http_path));
+        let cur_deploy = entry[0].clone();
         for route in cur_deploy.http_routes.iter() {
             if route.http_path == func_url && route.method == method {
                 return Some((cur_deploy.deploy_seq, route.clone()));
@@ -157,9 +241,12 @@ pub fn match_route(
     }
 }
 
-fn add_route(deployment: &Deployment) {
+fn add_route(mut deployment: Deployment) {
     let env_id = deployment.environment_id.clone();
-    let mut routes = GLOBAL_ROUTER.entry(env_id).or_insert_with(|| Vec::new());
-    routes.insert(0, deployment.clone());
-    routes.sort_by(|a, b| a.deploy_seq.cmp(&b.deploy_seq));
+    deployment
+        .http_routes
+        .sort_by(|a, b| a.http_path.cmp(&b.http_path));
+    let mut entry = GLOBAL_ROUTER.entry(env_id).or_insert_with(|| Vec::new());
+    entry.insert(0, deployment.clone());
+    entry.sort_by(|a, b| b.deploy_seq.cmp(&a.deploy_seq));
 }

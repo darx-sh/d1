@@ -47,7 +47,7 @@ async function success_upload(deploy_id: string, func_id: string) {
     }),
   ]);
 
-  if (deploy.bundleUploadCnt === deploy.bundleCount) {
+  if (deploy.bundleUploadCnt === deploy.bundleCnt) {
     // todo: we might considering the following:
     // 1. add a auto increment field to `Deployment` model.
     // 2. use redis stream to publish the deploy_id, and use the above sequence for the stream id.
@@ -60,6 +60,7 @@ async function success_upload(deploy_id: string, func_id: string) {
     });
     const httpRoutes = deploy.httpRoutes.map((route) => {
       return {
+        id: route.id,
         http_path: route.httpPath,
         method: route.method,
         js_entry_point: route.jsEntryPoint,

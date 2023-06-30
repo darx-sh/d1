@@ -124,7 +124,7 @@ model Deployment {
   // the number of bundles uploaded
   bundleUploadCnt Int           @default(0)
   // the number fo bundles to be uploaded
-  bundleCount     Int
+  bundleCnt       Int
   environmentId   String
   environment     Environment   @relation(fields: [environmentId], references: [id])
   deploySeq       Int           @default(0)
@@ -133,20 +133,6 @@ model Deployment {
   httpRoutes      HttpRoute[]
 
   @@unique([environmentId, deploySeq])
-}
-
-model HttpRoute {
-  id           String     @id @default(cuid())
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  httpPath     String
-  method       String
-  jsEntryPoint String
-  jsExport     String
-  deploymentId String
-  deployment   Deployment @relation(fields: [deploymentId], references: [id])
-
-  @@index([deploymentId])
 }
 
 model Bundle {
@@ -159,6 +145,25 @@ model Bundle {
   // - success
   // - failed
   uploadStatus String     @default("running")
+  deploymentId String
+  deployment   Deployment @relation(fields: [deploymentId], references: [id])
+
+  @@index([deploymentId])
+}
+
+// todo: maybe we should use a different table for
+// - jsEntryPoint
+// - jsExport
+//  and make "HttpRoute" more general to support other types
+// of route.
+model HttpRoute {
+  id           String     @id @default(cuid())
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  httpPath     String
+  method       String
+  jsEntryPoint String
+  jsExport     String
   deploymentId String
   deployment   Deployment @relation(fields: [deploymentId], references: [id])
 

@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
       bytes: bundle.bytes,
     };
   });
-  const bundleCount = bundles.length;
+  const bundleCnt = bundles.length;
   const routes = metas
     .map((meta) => {
       const routes = meta.exports.map((jsExport) => {
@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
         description,
         environmentId: environment_id,
         deploySeq: theEnv.nextDeploySeq,
-        bundleCount,
+        bundleCnt,
         bundles: {
           create: bundlesData,
         },

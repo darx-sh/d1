@@ -56,6 +56,7 @@ pub enum WorkerEvent {
 type Responder<T> = oneshot::Sender<anyhow::Result<T>>;
 
 async fn handle_event(event: WorkerEvent) {
+    println!("handle event");
     match event {
         WorkerEvent::InvokeFunction {
             env_id,
