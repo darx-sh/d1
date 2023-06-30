@@ -1,10 +1,10 @@
 use crate::{Connection, ConnectionPool};
-use anyhow::Result;
+use anyhow::{Context, Result};
 use async_trait::async_trait;
 use futures::StreamExt;
 use futures_util::TryStreamExt;
 use serde::ser::SerializeMap;
-use serde::{Serialize, Serializer};
+use serde::{Deserialize, Serialize, Serializer};
 use serde_json::Value;
 use sqlx::mysql::{MySqlRow, MySqlValue};
 use sqlx::{Column, Either, Encode, MySql, Row, Type, TypeInfo};
@@ -42,10 +42,10 @@ impl Connection for MySqlConn {
         query_str: &str,
         params: Vec<Value>,
     ) -> Result<Value> {
-        // self.conn.
         let mut query = sqlx::query(query_str);
         for p in params.iter() {
             match p {
+                // we Option<String> here because sqlx::query() doesn't have native Null type.
                 Value::Null => query = query.bind::<Option<String>>(None),
                 Value::Bool(v) => query = query.bind::<bool>(*v),
                 Value::Number(v) => {
@@ -76,30 +76,26 @@ impl Connection for MySqlConn {
                 }
             }
         }
-        // let a = query.fetch_many(&mut self.conn).map_ok(|e| match e {
-        //     Either::Left(l) => todo!(),
-        //     Either::right(r) => todo!(),
-        // });
-        // let mut final_result: MySqlFetchResult;
-        // let mut rows = vec![];
-        // for r in fetch_result.into_iter() {
-        //     match r {
-        //         Ok(Either::Left(r)) => {
-        //             final_result = MySqlFetchResult::Empty {
-        //                 affected_rows: r.affected_rows(),
-        //                 last_insert_id: Some(r.last_insert_id()),
-        //             };
-        //             break;
-        //         }
-        //         Ok(Either::Right(r)) => {
-        //             let row = XRow(r);
-        //             rows.push(row);
-        //         }
-        //         Err(e) => return Err(e.into()),
-        //     }
-        // }
-        todo!()
-        // Ok(serde_json::to_value(fetch_result)?)
+
+        let mut result_set = ResultSet::default();
+        let mut stream = query.fetch_many(&mut self.conn);
+        while let Some(r) = stream
+            .try_next()
+            .await
+            .with_context(|| "Failed to get result from query")?
+        {
+            match r {
+                Either::Left(r) => {
+                    result_set.rowsAffected = r.rows_affected();
+                    result_set.lastInsertId = Some(r.last_insert_id());
+                }
+                Either::Right(r) => {
+                    let row = XRow(r);
+                    result_set.rows.push(row);
+                }
+            }
+        }
+        Ok(serde_json::to_value(result_set)?)
     }
 }
 
@@ -132,10 +128,9 @@ impl Serialize for XRow {
     }
 }
 
-enum MySqlFetchResult {
-    Row(Vec<XRow>),
-    Empty {
-        affected_rows: u64,
-        last_insert_id: Option<u64>,
-    },
+#[derive(Serialize, Default)]
+struct ResultSet {
+    rows: Vec<XRow>,
+    rowsAffected: u64,
+    lastInsertId: Option<u64>,
 }

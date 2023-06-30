@@ -58,15 +58,8 @@ class DBConn {
     this.rid = rid;
   }
 
-  // Execute the query and return the total number of rows affected.
-  // This is used for queries like INSERT, UPDATE, DELETE that modify the database.
   execute(query, ...params) {
     return core.opAsync("op_db_execute", this.rid, query, params);
-  }
-
-  // Execute the query and return all the generated results, collected into an array.
-  fetchAll(query, ...params) {
-    return core.opAsync("op_db_fetch_all", this.rid, query, params);
   }
 }
 
