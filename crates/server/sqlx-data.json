@@ -1,0 +1,132 @@
+{
+  "db": "MySQL",
+  "61f780dfd39b36b88ab920429b716ca066a0db8da70533fb7cfcabc197ad7fc5": {
+    "describe": {
+      "columns": [
+        {
+          "name": "environment_id",
+          "ordinal": 0,
+          "type_info": {
+            "char_set": 224,
+            "flags": {
+              "bits": 4105
+            },
+            "max_size": 764,
+            "type": "VarString"
+          }
+        },
+        {
+          "name": "deploy_seq",
+          "ordinal": 1,
+          "type_info": {
+            "char_set": 63,
+            "flags": {
+              "bits": 1
+            },
+            "max_size": 11,
+            "type": "Long"
+          }
+        },
+        {
+          "name": "bundle_id",
+          "ordinal": 2,
+          "type_info": {
+            "char_set": 224,
+            "flags": {
+              "bits": 4099
+            },
+            "max_size": 764,
+            "type": "VarString"
+          }
+        },
+        {
+          "name": "bundle_fs_path",
+          "ordinal": 3,
+          "type_info": {
+            "char_set": 224,
+            "flags": {
+              "bits": 4113
+            },
+            "max_size": 262140,
+            "type": "Blob"
+          }
+        },
+        {
+          "name": "http_route_id",
+          "ordinal": 4,
+          "type_info": {
+            "char_set": 224,
+            "flags": {
+              "bits": 4098
+            },
+            "max_size": 764,
+            "type": "VarString"
+          }
+        },
+        {
+          "name": "http_path",
+          "ordinal": 5,
+          "type_info": {
+            "char_set": 224,
+            "flags": {
+              "bits": 4096
+            },
+            "max_size": 764,
+            "type": "VarString"
+          }
+        },
+        {
+          "name": "http_method",
+          "ordinal": 6,
+          "type_info": {
+            "char_set": 224,
+            "flags": {
+              "bits": 4096
+            },
+            "max_size": 764,
+            "type": "VarString"
+          }
+        },
+        {
+          "name": "js_entry_point",
+          "ordinal": 7,
+          "type_info": {
+            "char_set": 224,
+            "flags": {
+              "bits": 4096
+            },
+            "max_size": 764,
+            "type": "VarString"
+          }
+        },
+        {
+          "name": "js_export",
+          "ordinal": 8,
+          "type_info": {
+            "char_set": 224,
+            "flags": {
+              "bits": 4096
+            },
+            "max_size": 764,
+            "type": "VarString"
+          }
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "parameters": {
+        "Right": 0
+      }
+    },
+    "query": "\nSELECT \n    environmentId AS environment_id, \n    deploySeq AS deploy_seq, \n    Bundle.id AS bundle_id,\n    Bundle.fsPath AS bundle_fs_path,\n    HttpRoute.id AS http_route_id,\n    HttpRoute.httpPath AS http_path,\n    HttpRoute.method AS http_method,\n    HttpRoute.jsEntryPoint AS js_entry_point,\n    HttpRoute.jsExport AS js_export\nFROM \n    Deployment\nINNER JOIN Bundle ON Bundle.deploymentId = Deployment.id\nLEFT JOIN HttpRoute ON HttpRoute.deploymentId = Deployment.id\nWHERE Deployment.bundleUploadCnt = Deployment.bundleCnt\n"
+  }
+}

@@ -5,10 +5,6 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use darx_api::ApiError;
 use dotenvy::dotenv;
-use rusqlite::types::{
-    FromSql, FromSqlError, FromSqlResult, ToSqlOutput, Value, ValueRef,
-};
-use rusqlite::{params, ToSql};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::HashMap;
@@ -17,7 +13,9 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::fs;
 
-use crate::control_plane::{match_route, start_cmd_handler};
+use crate::control_plane::{
+    download_bundles, init_global_router, match_route, start_cmd_handler,
+};
 use crate::worker::{WorkerEvent, WorkerPool};
 use crate::DARX_SERVER_WORKING_DIR;
 use darx_api::CreatProjectRequest;
@@ -35,6 +33,10 @@ pub async fn run_server(port: u16, projects_dir: &str) -> Result<()> {
     #[cfg(debug_assertions)]
     dotenv().expect("failed to load .env file");
 
+    init_global_router().await?;
+
+    download_bundles().await?;
+
     let mut join_set: JoinSet<Result<()>> = JoinSet::new();
 
     let worker_pool = WorkerPool::new();
@@ -46,7 +48,7 @@ pub async fn run_server(port: u16, projects_dir: &str) -> Result<()> {
     join_set.spawn(async move {
         let app = Router::new()
             .route("/", get(|| async { "darx api healthy." }))
-            .route("/invoke/:function_name", post(invoke_function))
+            .route("/invoke/*func_url", post(invoke_function))
             // .route("/deploy_schema", post(deploy_schema))
             // .route("/deploy_functions", post(deploy_functions))
             .with_state(server_state);
@@ -176,23 +178,23 @@ fn deployment_dir(
         .join(deploy_seq.to_string().as_str())
 }
 
-fn project_db_file(db_dir: &Path, project_id: &str) -> PathBuf {
-    db_dir.join(project_id)
-}
-
-fn project_db_conn(
-    db_dir: &Path,
-    project_id: &str,
-) -> Result<rusqlite::Connection, ApiError> {
-    let db_file = project_db_file(db_dir, project_id);
-    rusqlite::Connection::open(db_file.as_path()).map_err(|e| {
-        ApiError::Internal(anyhow!(
-            "failed to open sqlite file: {}, error: {}",
-            db_file.to_str().unwrap(),
-            e
-        ))
-    })
-}
+// fn project_db_file(db_dir: &Path, project_id: &str) -> PathBuf {
+//     db_dir.join(project_id)
+// }
+//
+// fn project_db_conn(
+//     db_dir: &Path,
+//     project_id: &str,
+// ) -> Result<rusqlite::Connection, ApiError> {
+//     let db_file = project_db_file(db_dir, project_id);
+//     rusqlite::Connection::open(db_file.as_path()).map_err(|e| {
+//         ApiError::Internal(anyhow!(
+//             "failed to open sqlite file: {}, error: {}",
+//             db_file.to_str().unwrap(),
+//             e
+//         ))
+//     })
+// }
 
 // async fn load_bundles_from_db(
 //     project_id: &str,
