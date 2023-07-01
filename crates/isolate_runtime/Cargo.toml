@@ -19,7 +19,7 @@ deno_tls.workspace = true
 
 serde.workspace = true
 serde_json.workspace = true
-mysql_async.workspace = true
+sqlx.workspace = true
 anyhow.workspace = true
 tracing.workspace = true
 

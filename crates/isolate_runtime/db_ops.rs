@@ -1,4 +1,3 @@
-use crate::types::{MySqlQueryResult, XDatum};
 use crate::{DeploySeq, EnvId, ProjectId};
 use darx_db::get_conn;
 use darx_db::{Connection, ConnectionPool};
