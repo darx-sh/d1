@@ -1,7 +1,6 @@
 use anyhow::Result;
 use darx_isolate_runtime::DarxIsolate;
 use darx_utils::test_mysql_db_url;
-use mysql_async::prelude::Query;
 use std::path::PathBuf;
 
 pub fn isolate_inputs() -> (String, i64, PathBuf) {
@@ -15,7 +14,6 @@ pub fn isolate_inputs() -> (String, i64, PathBuf) {
 #[tokio::test]
 async fn test_run() {
     let (env_id, deploy_seq, bundle_path) = isolate_inputs();
-    let conn_pool = mysql_async::Pool::new(test_mysql_db_url());
     let mut darx_runtime =
         DarxIsolate::new(env_id.as_str(), deploy_seq, bundle_path.as_path());
 
@@ -43,14 +41,15 @@ async fn test_private() {
 
 #[tokio::test]
 async fn test_db_query() -> Result<()> {
-    let conn_pool = mysql_async::Pool::new(test_mysql_db_url());
-    let mut conn = conn_pool.get_conn().await?;
-    r"CREATE TABLE IF NOT EXISTS test (
+    let pool = sqlx::mysql::MySqlPool::connect(test_mysql_db_url()).await?;
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS test (
             id INT NOT NULL AUTO_INCREMENT,
             name VARCHAR(255) NOT NULL,
             PRIMARY KEY (id)
-        )"
-    .run(&mut conn)
+        )",
+    )
+    .execute(&pool)
     .await?;
 
     let (env_id, deploy_seq, bundle_path) = isolate_inputs();

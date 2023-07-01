@@ -1,7 +1,6 @@
 mod db_ops;
 mod module_loader;
 mod permissions;
-mod types;
 
 use anyhow::{Context, Result};
 use darx_db::ConnectionPool;
