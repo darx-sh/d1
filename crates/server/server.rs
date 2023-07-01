@@ -25,17 +25,41 @@ use tokio::io::AsyncWriteExt;
 use tokio::sync::oneshot;
 use tokio::task::JoinSet;
 
-pub async fn run_server(port: u16, projects_dir: &str) -> Result<()> {
-    let projects_dir = fs::canonicalize(projects_dir).await?;
+use tracing_subscriber::filter::LevelFilter;
+use tracing_subscriber::prelude::__tracing_subscriber_SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::Layer;
+
+pub async fn run_server(port: u16, working_dir: &str) -> Result<()> {
+    let registry = tracing_subscriber::registry();
+    registry
+        .with(
+            tracing_subscriber::fmt::layer()
+                .with_ansi(false)
+                .with_filter(
+                    tracing_subscriber::EnvFilter::builder()
+                        .with_default_directive(LevelFilter::INFO.into())
+                        .from_env_lossy(),
+                ),
+        )
+        .init();
+
+    let projects_dir = fs::canonicalize(working_dir)
+        .await
+        .context("Failed to canonicalize working dir")?;
     let projects_dir = projects_dir.join(crate::DARX_SERVER_WORKING_DIR);
     fs::create_dir_all(projects_dir.as_path()).await?;
 
     #[cfg(debug_assertions)]
-    dotenv().expect("failed to load .env file");
+    dotenv().expect("Failed to load .env file");
 
-    init_global_router().await?;
+    init_global_router()
+        .await
+        .context("Failed to init global router on startup")?;
 
-    download_bundles().await?;
+    download_bundles()
+        .await
+        .context("Failed to download bundles on startup")?;
 
     let mut join_set: JoinSet<Result<()>> = JoinSet::new();
 
@@ -55,11 +79,12 @@ pub async fn run_server(port: u16, projects_dir: &str) -> Result<()> {
 
         let socket_addr = format!("127.0.0.1:{}", port);
 
-        println!("darx server listen on {}", socket_addr);
+        tracing::info!("darx server listen on {}", socket_addr);
 
         axum::Server::bind(&socket_addr.parse().unwrap())
             .serve(app.into_make_service())
-            .await?;
+            .await
+            .context("Failed to start http server")?;
         Ok(())
     });
 

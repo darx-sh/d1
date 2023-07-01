@@ -21,7 +21,7 @@ pub async fn start_cmd_handler() -> Result<()> {
     let mut pubsub = redis_client
         .get_async_connection()
         .await
-        .with_context(|| format!("Failed to connect to redis"))?
+        .context("Failed to connect to Redis")?
         .into_pubsub();
     pubsub.subscribe("deploy").await?;
     let mut pubsub_stream = pubsub.on_message();
@@ -42,7 +42,8 @@ pub async fn init_global_router() -> Result<()> {
     let pool = MySqlPool::connect(
         &env::var("DATABASE_URL").expect("DATABASE_URL should be configured"),
     )
-    .await?;
+    .await
+    .context("Failed to connect to MySQL")?;
     // todo: use fetch to and stream to avoid loading all records into memory.
     let records = sqlx::query!(
         r#"
@@ -64,7 +65,8 @@ WHERE Deployment.bundleUploadCnt = Deployment.bundleCnt
 "#
     )
     .fetch_all(&pool)
-    .await?;
+    .await
+    .context("Failed to execute query for deployments")?;
 
     for r in records.iter() {
         let env_id = r.environment_id.clone();
@@ -137,7 +139,9 @@ pub async fn download_bundles() -> Result<()> {
         }
     }
     while let Some(result) = join_set.join_next().await {
-        result?.with_context(|| "Failed to finish bundle download")?;
+        // todo: add more detail on which bundle failed to download.
+        // and retry the failed bundle.
+        result?.context("Failed to finish bundle download")?;
     }
     Ok(())
 }
@@ -201,11 +205,11 @@ async fn deploy_bundles(deploy: Deployment) -> Result<()> {
             })?;
     }
     add_route(deploy.clone());
-    println!(
-        "deployed environment_id: {}, deploy_seq: {}",
-        deploy.environment_id, deploy.deploy_seq
+    tracing::info!(
+        "bundle deployed environment_id: {}, deploy_seq: {}",
+        deploy.environment_id,
+        deploy.deploy_seq
     );
-    // println!("GLOBAL_ROUTER: {:?}", GLOBAL_ROUTER);
     Ok(())
 }
 
@@ -245,7 +249,6 @@ pub fn match_route(
     func_url: &str,
     method: &str,
 ) -> Option<(i64, HttpRoute)> {
-    println!("match_route: func_url: {}", func_url);
     if let Some(entry) = GLOBAL_ROUTER.get(environment_id) {
         let cur_deploy = entry[0].clone();
         for route in cur_deploy.http_routes.iter() {

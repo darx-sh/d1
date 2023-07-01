@@ -28,7 +28,6 @@ impl ModuleLoader for TenantModuleLoader {
         referrer: &str,
         _kind: ResolutionKind,
     ) -> Result<ModuleSpecifier, Error> {
-        // println!("resolve: {} {} {:?}", specifier, referrer, kind);
         let module_specifier = resolve_import(specifier, referrer)?;
         let path = module_specifier
             .to_file_path()

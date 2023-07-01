@@ -31,8 +31,9 @@ enum Commands {
         /// The port to listen on.
         #[arg(short, long, default_value_t = 4001)]
         port: u16,
+        /// The working directory that is used to store project files like JavaScript functions.
         #[arg(long, default_value_t = String::from("."))]
-        projects_dir: String,
+        working_dir: String,
     },
     /// Manage database schema
     #[command(subcommand)]
@@ -64,8 +65,8 @@ enum Api {
 async fn main() -> Result<()> {
     let cli = Cli::parse();
     match &cli.command {
-        Commands::Server { port, projects_dir } => {
-            darx_server::run_server(*port, projects_dir).await?
+        Commands::Server { port, working_dir } => {
+            darx_server::run_server(*port, working_dir).await?
         }
         Commands::Dev { dir } => dev::run_dev(dir).await?,
         _ => {
