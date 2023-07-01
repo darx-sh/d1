@@ -142,13 +142,18 @@ async fn invoke_function(
         ))
     })?;
 
-    let result = resp_rx.await.with_context(|| {
+    match resp_rx.await.with_context(|| {
         format!(
             "failed to receive response from worker pool for function '{}'",
             func_url
         )
-    })?;
-    Ok(Json(result.unwrap()))
+    }) {
+        Ok(r) => match r {
+            Ok(v) => Ok(Json(v)),
+            Err(e) => Err(ApiError::Internal(e)),
+        },
+        Err(e) => Err(ApiError::Internal(e)),
+    }
 }
 //
 // async fn deploy_schema(
