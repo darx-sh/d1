@@ -5,12 +5,17 @@ mod permissions;
 use anyhow::{Context, Result};
 use darx_db::ConnectionPool;
 use db_ops::darx_db_ops;
+use deno_core::Snapshot;
 use module_loader::TenantModuleLoader;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::sync::Arc;
+use std::time::Instant;
+use tokio::fs;
 
 deno_core::extension!(darx_bootstrap, esm = ["js/00_bootstrap.js"]);
+
+const SNAPSHOT_FILE: &str = "SNAPSHOT.bin";
 
 pub struct DarxIsolate {
     pub js_runtime: deno_core::JsRuntime,
@@ -81,6 +86,115 @@ impl DarxIsolate {
             js_runtime,
             bundle_dir: PathBuf::from(bundle_dir.as_ref()),
         }
+    }
+    pub async fn new_with_snapshot(
+        env_id: &str,
+        deploy_seq: i64,
+        bundle_dir: impl AsRef<Path>,
+    ) -> Self {
+        let snapshot_path =
+            format!("{}/{}", bundle_dir.as_ref().display(), SNAPSHOT_FILE);
+        let snapshot = fs::read(&snapshot_path).await.unwrap();
+
+        let mut js_runtime =
+            deno_core::JsRuntime::new(deno_core::RuntimeOptions {
+                module_loader: Some(Rc::new(TenantModuleLoader::new(
+                    PathBuf::from(bundle_dir.as_ref()),
+                ))),
+                startup_snapshot: Some(Snapshot::Boxed(
+                    snapshot.into_boxed_slice(),
+                )),
+                ..Default::default()
+            });
+
+        js_runtime
+            .op_state()
+            .borrow_mut()
+            .put::<EnvId>(EnvId(env_id.to_string()));
+
+        js_runtime
+            .op_state()
+            .borrow_mut()
+            .put::<DeploySeq>(DeploySeq(deploy_seq));
+
+        DarxIsolate {
+            js_runtime,
+            bundle_dir: PathBuf::from(bundle_dir.as_ref()),
+        }
+    }
+
+    pub async fn build_snapshot(bundle_dir: impl AsRef<Path>) -> Result<()> {
+        let user_agent = "darx-runtime".to_string();
+        let root_cert_store = deno_tls::create_default_root_cert_store();
+
+        let extensions = vec![
+            permissions::darx_permissions::init_ops_and_esm(
+                permissions::Options {
+                    bundle_dir: PathBuf::from(bundle_dir.as_ref()),
+                },
+            ),
+            deno_webidl::deno_webidl::init_ops_and_esm(),
+            deno_console::deno_console::init_ops_and_esm(),
+            deno_url::deno_url::init_ops_and_esm(),
+            deno_web::deno_web::init_ops_and_esm::<permissions::Permissions>(
+                deno_web::BlobStore::default(),
+                None,
+            ),
+            deno_fetch::deno_fetch::init_ops_and_esm::<permissions::Permissions>(
+                deno_fetch::Options {
+                    user_agent,
+                    root_cert_store: Some(root_cert_store),
+                    ..Default::default()
+                },
+            ),
+            darx_bootstrap::init_ops_and_esm(),
+            darx_db_ops::init_ops_and_esm(), //TODO version it?
+        ];
+
+        let mut js_runtime =
+            deno_core::JsRuntime::new(deno_core::RuntimeOptions {
+                module_loader: Some(Rc::new(TenantModuleLoader::new(
+                    PathBuf::from(bundle_dir.as_ref()),
+                ))),
+                extensions,
+                will_snapshot: true,
+                ..Default::default()
+            });
+
+        let module_id = js_runtime
+            .load_side_module(
+                &deno_core::resolve_path("bench.js", bundle_dir.as_ref())?,
+                None,
+            )
+            .await?;
+
+        let receiver = js_runtime.mod_evaluate(module_id);
+        js_runtime.run_event_loop(false).await?;
+        let _ = receiver.await?;
+
+        let mut mark = Instant::now();
+        let snapshot = js_runtime.snapshot();
+        let snapshot_slice: &[u8] = &snapshot;
+        println!(
+            "Snapshot size: {}, took {:#?}",
+            snapshot_slice.len(),
+            Instant::now().saturating_duration_since(mark)
+        );
+
+        mark = Instant::now();
+
+        let snapshot_path =
+            format!("{}/{}", bundle_dir.as_ref().display(), SNAPSHOT_FILE);
+
+        fs::write(&snapshot_path, snapshot_slice).await?;
+
+        println!(
+            "Snapshot written, took: {:#?} ({})",
+            Instant::now().saturating_duration_since(mark),
+            &snapshot_path,
+        );
+
+        Ok(())
     }
 
     /// Loads and evaluates a module from a file.

@@ -17,6 +17,7 @@ deno_crypto.workspace = true
 deno_url.workspace = true
 deno_tls.workspace = true
 
+tokio.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 sqlx.workspace = true
@@ -28,4 +29,8 @@ darx_db.workspace = true
 
 [dev-dependencies]
 darx_utils.workspace = true
-tokio.workspace = true
+criterion.workspace = true
+
+[[bench]]
+name = "create_isolate"
+harness = false
