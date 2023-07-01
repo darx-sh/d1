@@ -21,6 +21,7 @@ serde.workspace = true
 serde_json.workspace = true
 mysql_async.workspace = true
 anyhow.workspace = true
+tracing.workspace = true
 
 darx_db.workspace = true
 

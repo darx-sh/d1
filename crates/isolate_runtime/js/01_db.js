@@ -1,5 +1,3 @@
-console.log("db.js extension loaded");
-
 const core = globalThis.Deno.core;
 const ops = core.ops;
 

@@ -38,13 +38,12 @@ pub async fn op_use_db(
     let r = get_conn(env_id.0.as_str(), deploy_seq.0).await;
     match r {
         Err(e) => {
-            println!("useDB error: {}", e);
+            tracing::error!("useDB error: {}", e);
             Err(e)
         }
         Ok(conn) => {
             let rid =
                 op_state.borrow_mut().resource_table.add(ConnResource(conn));
-            println!("rust rid = {}", rid);
             Ok(rid)
         }
     }
