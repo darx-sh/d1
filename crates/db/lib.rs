@@ -46,7 +46,7 @@ pub enum DBType {
     Sqlite,
 }
 
-pub fn get_db_type(project_id: &str) -> Result<DBType> {
+pub fn get_db_type(_project_id: &str) -> Result<DBType> {
     Ok(DBType::MySQL)
 }
 

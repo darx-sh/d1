@@ -104,7 +104,7 @@ use std::path::PathBuf;
 //     Ok(deployment_id as u64)
 // }
 
-fn project_sqlite_file(project_id: &str) -> PathBuf {
+fn project_sqlite_file(_project_id: &str) -> PathBuf {
     // todo: per project sqlite file!
     PathBuf::from("darx.sqlite")
 }
