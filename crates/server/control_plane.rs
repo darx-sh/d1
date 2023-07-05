@@ -32,9 +32,7 @@ pub async fn start_cmd_handler() -> Result<()> {
             format!("Failed to deploy bundles: {:?}", deployment)
         })?;
     }
-
     panic!("no more messages");
-
     Ok(())
 }
 
