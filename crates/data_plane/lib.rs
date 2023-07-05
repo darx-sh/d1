@@ -1,0 +1,306 @@
+mod router;
+mod worker;
+
+use anyhow::{anyhow, Context, Result};
+use axum::extract::{BodyStream, Host, Path as AxumPath, State};
+use axum::http::{HeaderMap, StatusCode};
+use axum::routing::{get, post};
+use axum::{Json, Router};
+use darx_api::{ApiError, DeployBundleReq, DeployBundleRsp};
+use dotenvy::dotenv;
+use futures_util::StreamExt;
+use serde::{Deserialize, Serialize};
+use serde_json::json;
+use std::collections::HashMap;
+use std::env;
+use std::net::SocketAddr;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use tokio::fs;
+
+use crate::worker::{WorkerEvent, WorkerPool};
+
+use crate::router::match_route;
+use darx_api::CreatProjectRequest;
+use darx_db::DBType;
+use tokio::fs::File;
+use tokio::io::AsyncWriteExt;
+use tokio::sync::oneshot;
+
+const DARX_BUNDLES_DIR: &str = "./darx_bundles";
+
+pub async fn run_server(
+    socket_addr: SocketAddr,
+    working_dir: PathBuf,
+) -> Result<()> {
+    let working_dir = fs::canonicalize(working_dir)
+        .await
+        .context("Failed to canonicalize working dir")?;
+    let bundles_dir = working_dir.join(crate::DARX_BUNDLES_DIR);
+    fs::create_dir_all(bundles_dir.as_path()).await?;
+
+    #[cfg(debug_assertions)]
+    dotenv().expect("Failed to load .env file");
+
+    let worker_pool = WorkerPool::new();
+    let server_state = Arc::new(ServerState {
+        worker_pool,
+        bundles_dir,
+    });
+
+    let app = Router::new()
+        .route("/", get(|| async { "data plane healthy." }))
+        .route("/invoke/*func_url", post(invoke_function))
+        .route("/deploy_bundle/:env_id/:deploy_seq", post(deploy_bundle))
+        .with_state(server_state);
+
+    tracing::info!("listen on {}", socket_addr);
+    axum::Server::bind(&socket_addr)
+        .serve(app.into_make_service())
+        .await
+        .context("Failed to start http server")?;
+    Ok(())
+}
+
+async fn invoke_function(
+    State(server_state): State<Arc<ServerState>>,
+    host: Host,
+    AxumPath(func_url): AxumPath<String>,
+    Json(req): Json<serde_json::Value>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let domain = host.0;
+    let env_id = extract_env_id(domain.as_str())?;
+
+    let (deploy_seq, route) =
+        match_route(env_id.as_str(), func_url.as_str(), "POST").ok_or(
+            ApiError::FunctionNotFound(format!(
+                "domain: {}, env_id: {}",
+                domain, env_id
+            )),
+        )?;
+
+    let (resp_tx, resp_rx) = oneshot::channel();
+    let raw_value = serde_json::value::RawValue::from_string(req.to_string())
+        .with_context(|| {
+        format!(
+            "failed to serialize request body for function '{}'",
+            func_url
+        )
+    })?;
+
+    let bundle_dir = bundle_deployment_dir(
+        server_state.bundles_dir.as_path(),
+        env_id.as_str(),
+        deploy_seq,
+    )?;
+    let event = WorkerEvent::InvokeFunction {
+        env_id,
+        deploy_seq,
+        bundle_dir,
+        js_entry_point: route.js_entry_point,
+        js_export: route.js_export,
+        params: raw_value,
+        resp: resp_tx,
+    };
+
+    server_state.worker_pool.send(event).map_err(|e| {
+        ApiError::Internal(anyhow!(
+            "failed to send request to worker pool: {}",
+            e.to_string()
+        ))
+    })?;
+
+    match resp_rx.await.with_context(|| {
+        format!(
+            "failed to receive response from worker pool for function '{}'",
+            func_url
+        )
+    }) {
+        Ok(r) => match r {
+            Ok(v) => Ok(Json(v)),
+            Err(e) => Err(ApiError::Internal(e)),
+        },
+        Err(e) => Err(ApiError::Internal(e)),
+    }
+}
+
+async fn deploy_bundle(
+    State(server_state): State<Arc<ServerState>>,
+    AxumPath((env_id, deploy_seq)): AxumPath<(String, i64)>,
+    Json(req): Json<DeployBundleReq>,
+) -> Result<Json<DeployBundleRsp>, ApiError> {
+    let fs_path = req.fs_path;
+    let bundle_dir = bundle_deployment_dir(
+        server_state.bundles_dir.as_path(),
+        env_id.as_str(),
+        deploy_seq,
+    )?;
+
+    let bundle_path = bundle_dir.join(fs_path.as_str());
+    if let Some(parent) = bundle_path.parent() {
+        fs::create_dir_all(parent)
+            .await
+            .context("Failed to create bundle parent path")?;
+    }
+
+    let mut file = File::create(bundle_path)
+        .await
+        .context("Failed to create bundle file path")?;
+    file.write_all(req.code.as_bytes())
+        .await
+        .context("Failed to write bundle file")?;
+
+    Ok(Json(DeployBundleRsp {}))
+}
+
+fn bundle_deployment_dir(
+    bundles_dir: &Path,
+    env_id: &str,
+    deploy_seq: i64,
+) -> Result<PathBuf> {
+    let dir = bundles_dir
+        .join(env_id)
+        .canonicalize()
+        .with_context(|| {
+            format!("Failed to canonicalize env directory. env_id: {}", env_id)
+        })?
+        .join(deploy_seq.to_string().as_str());
+    Ok(dir)
+}
+
+// fn project_db_file(db_dir: &Path, project_id: &str) -> PathBuf {
+//     db_dir.join(project_id)
+// }
+//
+// fn project_db_conn(
+//     db_dir: &Path,
+//     project_id: &str,
+// ) -> Result<rusqlite::Connection, ApiError> {
+//     let db_file = project_db_file(db_dir, project_id);
+//     rusqlite::Connection::open(db_file.as_path()).map_err(|e| {
+//         ApiError::Internal(anyhow!(
+//             "failed to open sqlite file: {}, error: {}",
+//             db_file.to_str().unwrap(),
+//             e
+//         ))
+//     })
+// }
+
+// async fn load_bundles_from_db(
+//     project_id: &str,
+//     deployment_id: &str,
+// ) -> Result<(Vec<Bundle>, serde_json::Value)> {
+//     let db_type = darx_db::get_db_type(project_id)?;
+//     match db_type {
+//         DBType::MySQL => {
+//             darx_db::mysql::load_bundles_from_db(project_id, deployment_id)
+//                 .await
+//         }
+//         DBType::Sqlite => {
+//             unimplemented!()
+//         }
+//     }
+// }
+
+// async fn create_local_bundles(
+//     projects_dir: &Path,
+//     project_id: &str,
+//     deployment_id: DeploymentId,
+//     bundles: &Vec<Bundle>,
+//     bundle_meta: &serde_json::Value,
+// ) -> Result<()> {
+//     let project_dir = deployment_dir(projects_dir, project_id);
+//     fs::create_dir_all(project_dir.as_path())
+//         .await
+//         .with_context(|| {
+//             format!(
+//                 "failed to create directory: {}",
+//                 project_dir.to_str().unwrap()
+//             )
+//         })?;
+//
+//     // setup a clean temporary path.
+//
+//     let tmp_dir = project_dir.join("tmp");
+//     fs::create_dir_all(tmp_dir.as_path()).await?;
+//     fs::remove_dir_all(tmp_dir.as_path()).await?;
+//     fs::create_dir_all(tmp_dir.as_path())
+//         .await
+//         .with_context(|| {
+//             format!(
+//                 "failed to create tmp directory: {}",
+//                 tmp_dir.to_str().unwrap()
+//             )
+//         })?;
+//
+//     let bundle_meta_file = tmp_dir.join("meta.json");
+//     let mut f = File::create(bundle_meta_file.as_path())
+//         .await
+//         .with_context(|| {
+//             format!(
+//                 "failed to create file: {}",
+//                 bundle_meta_file.to_str().unwrap()
+//             )
+//         })?;
+//     f.write_all(bundle_meta.to_string().as_ref())
+//         .await
+//         .with_context(|| {
+//             format!(
+//                 "failed to write file: {}",
+//                 bundle_meta_file.to_str().unwrap()
+//             )
+//         })?;
+//
+//     for bundle in bundles {
+//         let bundle_path = tmp_dir.join(bundle.path.as_str());
+//         if let Some(parent) = bundle_path.parent() {
+//             fs::create_dir_all(parent).await?;
+//         }
+//         let mut f =
+//             File::create(bundle_path.as_path()).await.with_context(|| {
+//                 format!(
+//                     "failed to create file: {}",
+//                     bundle_path.to_str().unwrap()
+//                 )
+//             })?;
+//
+//         f.write_all(bundle.code.as_ref()).await.with_context(|| {
+//             format!("failed to write file: {}", bundle_path.to_str().unwrap())
+//         })?;
+//     }
+//
+//     let meta_path = tmp_dir.join("meta.json");
+//     let mut f = File::create(meta_path.as_path()).await.with_context(|| {
+//         format!("failed to create file: {}", meta_path.to_str().unwrap())
+//     })?;
+//
+//     f.write_all(bundle_meta.to_string().as_ref()).await?;
+//
+//     // rename the temporary directory to final directory.
+//     let deploy_path = project_dir.join(deployment_id.to_string().as_str());
+//     fs::rename(tmp_dir.as_path(), deploy_path.as_path()).await?;
+//
+//     // delete the temporary directory.
+//     fs::remove_dir_all(tmp_dir.as_path()).await?;
+//     Ok(())
+// }
+
+#[derive(Deserialize)]
+struct ConnectDBRequest {
+    project_id: String,
+    db_type: DBType,
+    db_url: String,
+}
+
+struct ServerState {
+    worker_pool: WorkerPool,
+    bundles_dir: PathBuf,
+}
+
+fn extract_env_id(domain: &str) -> Result<String> {
+    let mut parts = domain.split('.');
+    let env_id = parts.next().ok_or_else(|| {
+        ApiError::DomainNotFound(format!("invalid domain: {}", domain))
+    })?;
+    Ok(env_id.to_string())
+}

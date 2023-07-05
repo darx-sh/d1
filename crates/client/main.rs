@@ -26,48 +26,12 @@ enum Commands {
         #[arg(short, long, default_value_t = String::from("."))]
         dir: String,
     },
-    /// Starts the Darx backend server handling data plane request.
-    Server {
-        /// The port to listen on.
-        #[arg(short, long, default_value_t = 4001)]
-        port: u16,
-        /// The working directory that is used to store project files like JavaScript functions.
-        #[arg(long, default_value_t = String::from("."))]
-        working_dir: String,
-    },
-    /// Manage database schema
-    #[command(subcommand)]
-    Schema(Schema),
-    /// Manage API
-    #[command(subcommand)]
-    Api(Api),
-}
-
-#[derive(Subcommand)]
-enum Schema {
-    /// Deploy the schema migrations to a target project.
-    Deploy,
-    /// Rollback the schema migrations.
-    Rollback,
-}
-
-#[derive(Subcommand)]
-enum Api {
-    /// Preview the API for a target project.
-    Preview,
-    /// Deploy the API to a target project.
-    Deploy,
-    /// Rollback the API deployment in a target project.
-    Rollback,
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
     match &cli.command {
-        Commands::Server { port, working_dir } => {
-            darx_server::run_server(*port, working_dir).await?
-        }
         Commands::Dev { dir } => dev::run_dev(dir).await?,
         _ => {
             println!("other");

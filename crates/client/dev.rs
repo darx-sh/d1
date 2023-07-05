@@ -1,5 +1,8 @@
 use anyhow::{anyhow, bail, Context, Result};
-use darx_api::{ApiError, DBType};
+use darx_api::{
+    ApiError, BundleMeta, BundleReq, DBType, DeployBundleReq, PrepareDeployReq,
+    PrepareDeployRsp,
+};
 use notify::event::ModifyKind;
 use notify::{Config, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use notify_debouncer_mini::{new_debouncer, DebouncedEventKind};
@@ -91,10 +94,9 @@ async fn handle_file_changed(functions_path: &Path) -> Result<()> {
             .join(bundle.fs_path.as_str());
         let code = fs::read_to_string(path)?;
         join_set.spawn(upload_bundle(
-            deploy_rsp.deployment_id.clone(),
-            bundle.id.clone(),
             bundle.upload_url.clone(),
             bundle.fs_path.clone(),
+            bundle.upload_method.clone(),
             code.clone(),
         ));
     }
@@ -228,39 +230,57 @@ fn new_deploy_func_request(
 }
 
 async fn upload_bundle(
-    deployment_id: String,
-    bundle_id: String,
     url: String,
-    path: String,
+    fs_path: String,
+    method: String,
     code: String,
 ) -> Result<()> {
-    let rsp = reqwest::Client::new()
-        .put(url)
-        .body(code)
-        .send()
-        .await
-        .with_context(|| format!("failed to upload code, url"))?;
+    let req = DeployBundleReq {
+        fs_path: fs_path.clone(),
+        code,
+    };
+    let rsp = match method.as_str() {
+        "POST" => reqwest::Client::new()
+            .post(url.clone())
+            .json(&req)
+            .send()
+            .await
+            .with_context(|| format!("failed to upload code, url"))?,
+        "PUT" => reqwest::Client::new()
+            .put(url.clone())
+            .json(&req)
+            .send()
+            .await
+            .with_context(|| format!("failed to upload code, url"))?,
+        _ => unimplemented!(),
+    };
 
     if !rsp.status().is_success() {
-        bail!("failed to upload code, rsp {:?}", rsp);
+        bail!(
+            "failed to upload code, url: {:?}, method: {:?}, rsp {:?}, ",
+            url,
+            method,
+            rsp.text().await?,
+        );
     }
 
+    // todo: query bundle upload status from control plane.
     // update bundle upload status
-    let req = json!({
-        "status": "success"
-    });
-    let rsp = reqwest::Client::builder()
-        .timeout(Duration::from_secs(5))
-        .build()?
-        .post(format!(
-            "http://localhost:3000/api/deployments/{}/bundles/{}",
-            deployment_id, bundle_id
-        ))
-        .json(&req)
-        .send()
-        .await
-        .with_context(|| format!("failed to update bundle status"))?;
-    println!("Uploaded file: {}", path);
+    // let req = json!({
+    //     "status": "success"
+    // });
+    // let rsp = reqwest::Client::builder()
+    //     .timeout(Duration::from_secs(5))
+    //     .build()?
+    //     .post(format!(
+    //         "http://localhost:3000/api/deployments/{}/bundles/{}",
+    //         deployment_id, bundle_id
+    //     ))
+    //     .json(&req)
+    //     .send()
+    //     .await
+    //     .with_context(|| format!("failed to update bundle status"))?;
+    println!("Uploaded file: {}", fs_path);
     Ok(())
 }
 
@@ -324,7 +344,7 @@ async fn prepare_deploy(
     bundles: Vec<BundleReq>,
 ) -> Result<PrepareDeployRsp> {
     let req = PrepareDeployReq {
-        environment_id: environment_id.to_string(),
+        env_id: environment_id.to_string(),
         tag,
         description,
         metas,
@@ -332,7 +352,7 @@ async fn prepare_deploy(
     };
 
     let rsp = reqwest::Client::new()
-        .post(format!("http://localhost:3000/api/deployments"))
+        .post(format!("http://127.0.0.1:3457/prepare_deploy"))
         .json(&req)
         .send()
         .await
@@ -362,40 +382,4 @@ async fn prepare_deploy(
 struct ProjectConfig {
     project_id: String,
     url: String,
-}
-
-#[derive(Serialize)]
-struct PrepareDeployReq {
-    environment_id: String,
-    tag: Option<String>,
-    description: Option<String>,
-    bundles: Vec<BundleReq>,
-    metas: Vec<BundleMeta>,
-}
-
-#[derive(Deserialize)]
-struct PrepareDeployRsp {
-    deployment_id: String,
-    bundles: Vec<BundleRsp>,
-}
-
-#[derive(Serialize)]
-struct BundleReq {
-    fs_path: String,
-    bytes: i64,
-    checksum: String,
-    checksum_type: String,
-}
-
-#[derive(Deserialize)]
-struct BundleRsp {
-    id: String,
-    fs_path: String,
-    upload_url: String,
-}
-
-#[derive(Serialize)]
-struct BundleMeta {
-    entry_point: String,
-    exports: Vec<String>,
 }

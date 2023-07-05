@@ -9,6 +9,52 @@ pub use darx_db::DBType;
 use serde_json::json;
 use thiserror::Error;
 
+#[derive(Serialize, Deserialize)]
+pub struct PrepareDeployReq {
+    pub env_id: String,
+    pub tag: Option<String>,
+    pub description: Option<String>,
+    pub bundles: Vec<BundleReq>,
+    pub metas: Vec<BundleMeta>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct PrepareDeployRsp {
+    pub deploy_id: String,
+    pub bundles: Vec<BundleRsp>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct BundleReq {
+    pub fs_path: String,
+    pub bytes: i64,
+    pub checksum: String,
+    pub checksum_type: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct BundleRsp {
+    pub id: String,
+    pub fs_path: String,
+    pub upload_url: String,
+    pub upload_method: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct BundleMeta {
+    pub entry_point: String,
+    pub exports: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct DeployBundleReq {
+    pub fs_path: String,
+    pub code: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct DeployBundleRsp {}
+
 #[derive(Deserialize)]
 pub struct CreatProjectRequest {
     // project_id should unique in the system.
@@ -73,6 +119,8 @@ pub enum ApiError {
     TableNotFound(String),
     #[error("Internal error")]
     Internal(anyhow::Error),
+    #[error("Environment {0} not found")]
+    EnvNotFound(String),
 }
 
 impl From<anyhow::Error> for ApiError {
@@ -110,6 +158,11 @@ impl IntoResponse for ApiError {
             }
             ApiError::Internal(e) => (
                 http::StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": format!("{:#}", e) })),
+            )
+                .into_response(),
+            ApiError::EnvNotFound(e) => (
+                http::StatusCode::NOT_FOUND,
                 Json(json!({ "error": format!("{:#}", e) })),
             )
                 .into_response(),

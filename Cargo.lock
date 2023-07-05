@@ -785,7 +785,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "darx"
+name = "darx_api"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum",
+ "darx_db",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
+name = "darx_client"
 version = "0.0.1"
 dependencies = [
  "anyhow",
@@ -802,15 +814,41 @@ dependencies = [
 ]
 
 [[package]]
-name = "darx_api"
+name = "darx_control_plane"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "axum",
+ "darx_api",
+ "dotenvy",
+ "nanoid",
+ "sqlx",
+ "tracing",
+]
+
+[[package]]
+name = "darx_data_plane"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum",
+ "darx_api",
  "darx_db",
+ "darx_isolate_runtime",
+ "darx_utils",
+ "dashmap",
+ "deno_core",
+ "dotenvy",
+ "futures-util",
+ "once_cell",
+ "redis",
+ "rust-s3",
  "serde",
  "serde_json",
+ "sqlx",
  "thiserror",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -856,24 +894,10 @@ name = "darx_server"
 version = "0.0.1"
 dependencies = [
  "anyhow",
- "axum",
- "darx_api",
- "darx_db",
- "darx_isolate_runtime",
- "darx_utils",
- "dashmap",
- "deno_core",
- "dotenvy",
- "futures-util",
- "once_cell",
- "redis",
- "rust-s3",
- "serde",
- "serde_json",
- "sqlx",
- "thiserror",
+ "clap 4.2.4",
+ "darx_control_plane",
+ "darx_data_plane",
  "tokio",
- "tracing",
  "tracing-subscriber",
 ]
 
@@ -1942,6 +1966,15 @@ dependencies = [
  "log",
  "wasi 0.11.0+wasi-snapshot-preview1",
  "windows-sys 0.45.0",
+]
+
+[[package]]
+name = "nanoid"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3ffa00dec017b5b1a8b7cf5e2c008bfda1aa7e0697ac1508b491fdf2622fb4d8"
+dependencies = [
+ "rand",
 ]
 
 [[package]]
