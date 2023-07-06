@@ -94,6 +94,7 @@ async fn handle_file_changed(functions_path: &Path) -> Result<()> {
             .join(bundle.fs_path.as_str());
         let code = fs::read_to_string(path)?;
         join_set.spawn(upload_bundle(
+            bundle.id.clone(),
             bundle.upload_url.clone(),
             bundle.fs_path.clone(),
             bundle.upload_method.clone(),
@@ -230,12 +231,14 @@ fn new_deploy_func_request(
 }
 
 async fn upload_bundle(
+    id: String,
     url: String,
     fs_path: String,
     method: String,
     code: String,
 ) -> Result<()> {
     let req = DeployBundleReq {
+        id,
         fs_path: fs_path.clone(),
         code,
     };

@@ -822,6 +822,7 @@ dependencies = [
  "darx_api",
  "dotenvy",
  "nanoid",
+ "reqwest",
  "sqlx",
  "tracing",
 ]

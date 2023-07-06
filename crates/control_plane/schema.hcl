@@ -100,6 +100,10 @@ table "deploys" {
     null = false
     type = varchar(191)
   }
+  column "bundle_repo" {
+    null = false
+    type = varchar(191)
+  }
   column "bundle_upload_cnt" {
     null    = false
     type    = int
@@ -155,6 +159,11 @@ table "bundles" {
   column "fs_path" {
     null = false
     type = text
+  }
+  column "code" {
+    null = true
+    # 16 MB
+    type = mediumblob
   }
   primary_key {
     columns = [column.id]

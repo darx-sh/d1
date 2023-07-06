@@ -1,13 +1,42 @@
+use anyhow::Result;
 use axum::http;
 use axum::response::{IntoResponse, Response};
 use axum::Json;
 use serde::{Deserialize, Serialize};
+use std::env;
 
 /// Re-export darx_db types.
 pub use darx_db::DBType;
 
 use serde_json::json;
 use thiserror::Error;
+
+pub fn deploy_bundle_url(env_id: &str, deploy_seq: i32) -> String {
+    format!(
+        "{}/deploy_bundle/{}/{}",
+        env::var("CONTROL_PLANE_URL")
+            .expect("CONTROL_PLANE_URL should be configured"),
+        env_id,
+        deploy_seq,
+    )
+}
+
+pub fn update_bundle_status_url(bundle_id: &str) -> String {
+    format!(
+        "{}/update_bundle_status/{}",
+        env::var("CONTROL_PLANE_URL")
+            .expect("CONTROL_PLANE_URL should be configured"),
+        bundle_id,
+    )
+}
+
+pub fn add_deployment_url() -> String {
+    format!(
+        "{}/add_deployment",
+        env::var("DATA_PLANE_URL")
+            .expect("DATA_PLANE_URL should be configured to add route"),
+    )
+}
 
 #[derive(Serialize, Deserialize)]
 pub struct PrepareDeployReq {
@@ -48,12 +77,43 @@ pub struct BundleMeta {
 
 #[derive(Serialize, Deserialize)]
 pub struct DeployBundleReq {
+    pub id: String,
     pub fs_path: String,
     pub code: String,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct DeployBundleRsp {}
+
+#[derive(Serialize, Deserialize)]
+pub struct UpdateBundleStatus {
+    pub status: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct AddDeploymentReq {
+    pub env_id: String,
+    pub deploy_seq: i32,
+    pub bundle_repo: String,
+    pub bundles: Vec<Bundle>,
+    pub http_routes: Vec<HttpRoute>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Bundle {
+    pub id: String,
+    pub fs_path: String,
+    pub code: Option<Vec<u8>>,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct HttpRoute {
+    pub http_path: String,
+    pub method: String,
+    /// `js_entry_point` is used to find the js file.
+    pub js_entry_point: String,
+    pub js_export: String,
+}
 
 #[derive(Deserialize)]
 pub struct CreatProjectRequest {
@@ -111,6 +171,8 @@ pub enum ApiError {
     IoError(#[from] std::io::Error),
     #[error("Domain {0} not found")]
     DomainNotFound(String),
+    #[error("Bundle {0} not found")]
+    BundleNotFound(String),
     #[error("Function {0} not found")]
     FunctionNotFound(String),
     #[error("Function parameter error: {0}")]
@@ -141,6 +203,9 @@ impl IntoResponse for ApiError {
                     .into_response()
             }
             ApiError::DomainNotFound(e) => {
+                (http::StatusCode::NOT_FOUND, format!("{}", e)).into_response()
+            }
+            ApiError::BundleNotFound(e) => {
                 (http::StatusCode::NOT_FOUND, format!("{}", e)).into_response()
             }
             ApiError::FunctionNotFound(e) => (
@@ -176,3 +241,62 @@ pub struct ApiResponse<T> {
 }
 
 pub type JsonApiResponse<T> = Json<ApiResponse<T>>;
+
+// pub async fn build_routes(meta_file: &str) -> Result<Vec<Route>> {
+//     let mut file = File::open(meta_file).await?;
+//     let mut buf = String::new();
+//     file.read_to_string(&mut buf).await?;
+//     let meta: serde_json::Value = serde_json::from_str(&buf)?;
+//     let outputs = meta
+//         .get("outputs")
+//         .ok_or_else(|| anyhow!("No outputs found"))?
+//         .as_object()
+//         .ok_or_else(|| anyhow!("Outputs is not an object"))?;
+//
+//     let mut routes = vec![];
+//     for (_, output) in outputs.iter() {
+//         let output = output
+//             .as_object()
+//             .ok_or_else(|| anyhow!("Output is not an object"))?;
+//         let nbytes = output
+//             .get("bytes")
+//             .ok_or_else(|| anyhow!("bytes not found"))?
+//             .as_i64()
+//             .ok_or_else(|| anyhow!("bytes is not a i64"))?;
+//
+//         if nbytes == 0 {
+//             continue;
+//         }
+//
+//         let entry_point = output
+//             .get("entryPoint")
+//             .ok_or_else(|| anyhow!("entryPoint not found"))?
+//             .as_str()
+//             .ok_or_else(|| anyhow!("entryPoint is not a string"))?
+//             .to_string();
+//
+//         let exports = output
+//             .get("exports")
+//             .ok_or_else(|| anyhow!("exports not found"))?
+//             .as_array()
+//             .ok_or_else(|| anyhow!("exports is not an array"))?
+//             .iter()
+//             .map(|export| {
+//                 export
+//                     .as_str()
+//                     .ok_or_else(|| anyhow!("export is not a string"))
+//                     .map(|s| s.to_string())
+//             })
+//             .collect::<Result<Vec<_>>>()?;
+//         for export in exports.iter() {
+//             let http_path = build_path(&entry_point, &export)?;
+//             routes.push(Route {
+//                 http_path,
+//                 js_entry_point: entry_point.clone(),
+//                 js_export: export.clone(),
+//             })
+//         }
+//     }
+//     routes.sort_by(|a, b| a.http_path.cmp(&b.http_path));
+//     Ok(routes)
+// }

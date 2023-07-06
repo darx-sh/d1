@@ -1,11 +1,16 @@
 mod route_builder;
 
 use crate::route_builder::build_route;
-use anyhow::{Context, Result};
-use axum::extract::State;
+use anyhow::{anyhow, Context, Result};
+use axum::extract::{Path as AxumPath, State};
+use axum::http::StatusCode;
 use axum::routing::{get, post};
 use axum::{Json, Router};
-use darx_api::{ApiError, BundleRsp, PrepareDeployReq, PrepareDeployRsp};
+use darx_api::{
+    add_deployment_url, deploy_bundle_url, AddDeploymentReq, ApiError, Bundle,
+    BundleRsp, DeployBundleReq, DeployBundleRsp, HttpRoute, PrepareDeployReq,
+    PrepareDeployRsp, UpdateBundleStatus,
+};
 use dotenvy::dotenv;
 use nanoid::nanoid;
 use std::env;
@@ -28,7 +33,7 @@ pub async fn run_server(socket_addr: SocketAddr) -> Result<()> {
     let app = Router::new()
         .route("/", get(|| async { "control plane healthy." }))
         .route("/prepare_deploy", post(prepare_deploy))
-        .route("/deploy_bundle_status", post(update_bundle_status))
+        .route("/deploy_bundle/:env_id/:deploy_seq", post(deploy_bundle))
         .with_state(server_state);
 
     tracing::info!("listen on {}", socket_addr);
@@ -52,7 +57,7 @@ async fn prepare_deploy(
             routes.push(route);
         }
     }
-    let tx = db_pool
+    let txn = db_pool
         .begin()
         .await
         .context("Failed to start database transaction")?;
@@ -80,12 +85,13 @@ async fn prepare_deploy(
     // todo: retry to avoid id collision
     let deploy_id = new_nano_id();
     sqlx::query!(
-        "INSERT INTO deploys (id, updated_at, tag, description, env_id, deploy_seq, bundle_cnt) VALUES (?, CURRENT_TIMESTAMP(3), ?, ?, ?, ?, ?)",
+        "INSERT INTO deploys (id, updated_at, tag, description, env_id, deploy_seq, bundle_repo, bundle_cnt) VALUES (?, CURRENT_TIMESTAMP(3), ?, ?, ?, ?, ?, ?)",
         deploy_id,
         req.tag,
         req.description,
         req.env_id,
         deploy_seq,
+        "db",
         req.bundles.len() as i64,
     )
     .execute(db_pool)
@@ -122,19 +128,13 @@ async fn prepare_deploy(
             route.http_path
         ).execute(db_pool).await.context("Failed to insert into http_routes table")?;
     }
-    tx.commit()
+    txn.commit()
         .await
         .context("Failed to commit database transaction")?;
     // return data plan url to client
     let mut bundles = vec![];
     for (bundle, id) in req.bundles.iter().zip(bundle_ids.iter()) {
-        let url = format!(
-            "{}/deploy_bundle/{}/{}",
-            env::var("DATA_PLANE_URL")
-                .expect("DATA_PLANE_URL should be configured"),
-            req.env_id,
-            deploy_seq,
-        );
+        let url = deploy_bundle_url(req.env_id.as_str(), deploy_seq);
         bundles.push(BundleRsp {
             id: id.to_string(),
             fs_path: bundle.fs_path.clone(),
@@ -145,8 +145,103 @@ async fn prepare_deploy(
     Ok(Json(PrepareDeployRsp { deploy_id, bundles }))
 }
 
-async fn update_bundle_status() {
-    todo!()
+async fn deploy_bundle(
+    State(server_state): State<Arc<ServerState>>,
+    AxumPath((env_id, deploy_seq)): AxumPath<(String, i32)>,
+    Json(req): Json<DeployBundleReq>,
+) -> Result<Json<DeployBundleRsp>, ApiError> {
+    let pool = &server_state.db_pool;
+    let txn = pool
+        .begin()
+        .await
+        .context("Failed to start database transaction")?;
+    let res = sqlx::query!(
+        "UPDATE bundles SET code = ?, upload_status = ? WHERE id = ?",
+        req.code,
+        "success",
+        req.id
+    )
+    .execute(pool)
+    .await
+    .context("Failed to update bundles table")?;
+
+    if res.rows_affected() == 0 {
+        return Err(ApiError::BundleNotFound(req.id));
+    }
+
+    sqlx::query!("UPDATE deploys SET bundle_upload_cnt = bundle_upload_cnt + 1 WHERE env_id = ? AND deploy_seq = ?", env_id, deploy_seq)
+        .execute(pool)
+        .await
+        .context("Failed to update deploys table")?;
+
+    let finished_deploy = sqlx::query!(
+        "SELECT id, env_id, deploy_seq, bundle_repo FROM deploys WHERE env_id = ? AND deploy_seq = ? AND bundle_upload_cnt = bundle_cnt",
+        env_id, deploy_seq
+    )
+        .fetch_optional(pool)
+        .await
+        .context("Failed to fetch deploy")?;
+    txn.commit().await.context("Failed to commit transaction")?;
+
+    if let Some(deploy) = finished_deploy {
+        // load bundles
+        let bundles = sqlx::query_as!(Bundle, "SELECT bundles.id as id, bundles.fs_path as fs_path, bundles.code as code FROM bundles INNER JOIN deploys ON bundles.deploy_id = deploys.id WHERE deploys.id = ? AND deploys.deploy_seq = ?", deploy.id, deploy.deploy_seq)
+            .fetch_all(pool)
+            .await
+            .context("Failed to fetch bundles")?;
+
+        // load http routes
+        let http_routes = sqlx::query_as!(HttpRoute, "SELECT http_routes.method as method, http_routes.js_entry_point as js_entry_point, http_routes.js_export as js_export, http_routes.http_path as http_path FROM http_routes INNER JOIN deploys ON http_routes.deploy_id = deploys.id WHERE deploys.id = ? AND deploys.deploy_seq = ?", deploy.id, deploy.deploy_seq)
+            .fetch_all(pool)
+            .await
+            .context("Failed to fetch http_routes")?;
+
+        let req = AddDeploymentReq {
+            env_id: deploy.env_id,
+            deploy_seq: deploy.deploy_seq,
+            bundle_repo: deploy.bundle_repo,
+            bundles,
+            http_routes,
+        };
+        let url = add_deployment_url();
+        let rsp = reqwest::Client::new()
+            .post(url)
+            .json(&req)
+            .send()
+            .await
+            .context("Failed to send add deployment request")?;
+        if !rsp.status().is_success() {
+            return Err(ApiError::Internal(anyhow!(
+                "Failed to add deployment: {}",
+                rsp.text().await.unwrap()
+            )));
+        }
+    }
+
+    // load http routes
+
+    // let fs_path = req.fs_path;
+    // let bundle_dir = bundle_deployment_dir(
+    //     server_state.bundles_dir.as_path(),
+    //     env_id.as_str(),
+    //     deploy_seq,
+    // )?;
+    //
+    // let bundle_path = bundle_dir.join(fs_path.as_str());
+    // if let Some(parent) = bundle_path.parent() {
+    //     fs::create_dir_all(parent)
+    //         .await
+    //         .context("Failed to create bundle parent path")?;
+    // }
+    //
+    // let mut file = File::create(bundle_path)
+    //     .await
+    //     .context("Failed to create bundle file path")?;
+    // file.write_all(req.code.as_bytes())
+    //     .await
+    //     .context("Failed to write bundle file")?;
+
+    Ok(Json(DeployBundleRsp {}))
 }
 
 struct ServerState {

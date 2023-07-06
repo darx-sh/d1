@@ -1,74 +1,5 @@
 use anyhow::{anyhow, Result};
-
-/// Build routes from meta file.
-/// The result is sorted by [`http_path`] of the [`Route`].
-// pub async fn build_routes(meta_file: &str) -> Result<Vec<Route>> {
-//     let mut file = File::open(meta_file).await?;
-//     let mut buf = String::new();
-//     file.read_to_string(&mut buf).await?;
-//     let meta: serde_json::Value = serde_json::from_str(&buf)?;
-//     let outputs = meta
-//         .get("outputs")
-//         .ok_or_else(|| anyhow!("No outputs found"))?
-//         .as_object()
-//         .ok_or_else(|| anyhow!("Outputs is not an object"))?;
-//
-//     let mut routes = vec![];
-//     for (_, output) in outputs.iter() {
-//         let output = output
-//             .as_object()
-//             .ok_or_else(|| anyhow!("Output is not an object"))?;
-//         let nbytes = output
-//             .get("bytes")
-//             .ok_or_else(|| anyhow!("bytes not found"))?
-//             .as_i64()
-//             .ok_or_else(|| anyhow!("bytes is not a i64"))?;
-//
-//         if nbytes == 0 {
-//             continue;
-//         }
-//
-//         let entry_point = output
-//             .get("entryPoint")
-//             .ok_or_else(|| anyhow!("entryPoint not found"))?
-//             .as_str()
-//             .ok_or_else(|| anyhow!("entryPoint is not a string"))?
-//             .to_string();
-//
-//         let exports = output
-//             .get("exports")
-//             .ok_or_else(|| anyhow!("exports not found"))?
-//             .as_array()
-//             .ok_or_else(|| anyhow!("exports is not an array"))?
-//             .iter()
-//             .map(|export| {
-//                 export
-//                     .as_str()
-//                     .ok_or_else(|| anyhow!("export is not a string"))
-//                     .map(|s| s.to_string())
-//             })
-//             .collect::<Result<Vec<_>>>()?;
-//         for export in exports.iter() {
-//             let http_path = build_path(&entry_point, &export)?;
-//             routes.push(Route {
-//                 http_path,
-//                 js_entry_point: entry_point.clone(),
-//                 js_export: export.clone(),
-//             })
-//         }
-//     }
-//     routes.sort_by(|a, b| a.http_path.cmp(&b.http_path));
-//     Ok(routes)
-// }
-
-#[derive(Debug, PartialEq)]
-pub struct Route {
-    pub http_path: String,
-    pub method: String,
-    /// `js_entry_point` is used to find the js file.
-    pub js_entry_point: String,
-    pub js_export: String,
-}
+use darx_api::HttpRoute;
 
 /// Build http path from entry point and export.
 /// For a pair of (entry_point, export), here are some examples:
@@ -76,7 +7,7 @@ pub struct Route {
 /// - (foo.js, bar)           -> foo.bar
 /// - (foo/foo.js, default)   -> foo/foo
 /// - (foo/foo.js, bar)       -> foo/foo.bar
-pub fn build_route(entry_point: &str, export: &str) -> Result<Route> {
+pub fn build_route(entry_point: &str, export: &str) -> Result<HttpRoute> {
     let path = if entry_point.ends_with(".js") {
         entry_point.strip_suffix(".js").unwrap()
     } else if entry_point.ends_with(".ts") {
@@ -91,7 +22,7 @@ pub fn build_route(entry_point: &str, export: &str) -> Result<Route> {
     } else {
         format!("{}.{}", path, export)
     };
-    Ok(Route {
+    Ok(HttpRoute {
         http_path: path,
         method: "POST".to_string(),
         js_entry_point: entry_point.to_string(),

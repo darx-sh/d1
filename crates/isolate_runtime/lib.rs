@@ -23,12 +23,12 @@ struct ProjectId(String);
 struct EnvId(String);
 
 #[derive(Clone)]
-struct DeploySeq(i64);
+struct DeploySeq(i32);
 
 impl DarxIsolate {
     pub fn new(
         env_id: &str,
-        deploy_seq: i64,
+        deploy_seq: i32,
         bundle_dir: impl AsRef<Path>,
     ) -> Self {
         let mut js_runtime =
@@ -54,10 +54,10 @@ impl DarxIsolate {
             bundle_dir: PathBuf::from(bundle_dir.as_ref()),
         }
     }
-    
+
     pub async fn new_with_snapshot(
         env_id: &str,
-        deploy_seq: i64,
+        deploy_seq: i32,
         bundle_dir: impl AsRef<Path>,
         snapshot: Box<[u8]>,
     ) -> Self {
@@ -86,16 +86,17 @@ impl DarxIsolate {
         }
     }
 
-    pub async fn prepare_snapshot(bundle_dir: impl AsRef<Path>) -> Result<deno_core::JsRuntime> {
-        let js_runtime =
-            deno_core::JsRuntime::new(deno_core::RuntimeOptions {
-                module_loader: Some(Rc::new(TenantModuleLoader::new(
-                    PathBuf::from(bundle_dir.as_ref()),
-                ))),
-                extensions: DarxIsolate::extensions(bundle_dir.as_ref()),
-                will_snapshot: true,
-                ..Default::default()
-            });
+    pub async fn prepare_snapshot(
+        bundle_dir: impl AsRef<Path>,
+    ) -> Result<deno_core::JsRuntime> {
+        let js_runtime = deno_core::JsRuntime::new(deno_core::RuntimeOptions {
+            module_loader: Some(Rc::new(TenantModuleLoader::new(
+                PathBuf::from(bundle_dir.as_ref()),
+            ))),
+            extensions: DarxIsolate::extensions(bundle_dir.as_ref()),
+            will_snapshot: true,
+            ..Default::default()
+        });
         Ok(js_runtime)
     }
 
@@ -147,8 +148,8 @@ impl DarxIsolate {
             .await?
             .with_context(|| format!("Couldn't execute '{}'", file_path))
     }
-    
-    fn extensions(bundle_dir: impl AsRef<Path>) -> Vec<Extension>{
+
+    fn extensions(bundle_dir: impl AsRef<Path>) -> Vec<Extension> {
         let user_agent = "darx-runtime".to_string();
         let root_cert_store = deno_tls::create_default_root_cert_store();
 

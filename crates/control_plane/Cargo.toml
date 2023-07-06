@@ -15,5 +15,5 @@ sqlx.workspace = true
 dotenvy.workspace = true
 tracing.workspace = true
 nanoid.workspace = true
-
+reqwest.workspace = true
 darx_api.workspace = true

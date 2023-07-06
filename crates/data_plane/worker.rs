@@ -44,7 +44,7 @@ impl WorkerPool {
 pub enum WorkerEvent {
     InvokeFunction {
         env_id: String,
-        deploy_seq: i64,
+        deploy_seq: i32,
         bundle_dir: PathBuf,
         js_entry_point: String,
         js_export: String,

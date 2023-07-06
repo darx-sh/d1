@@ -1,4 +1,4 @@
-mod router;
+mod deployment;
 mod worker;
 
 use anyhow::{anyhow, Context, Result};
@@ -6,7 +6,9 @@ use axum::extract::{BodyStream, Host, Path as AxumPath, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::routing::{get, post};
 use axum::{Json, Router};
-use darx_api::{ApiError, DeployBundleReq, DeployBundleRsp};
+use darx_api::{
+    AddDeploymentReq, ApiError, Bundle, DeployBundleReq, DeployBundleRsp,
+};
 use dotenvy::dotenv;
 use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
@@ -20,7 +22,10 @@ use tokio::fs;
 
 use crate::worker::{WorkerEvent, WorkerPool};
 
-use crate::router::match_route;
+use crate::deployment::{
+    add_bundle_files, add_route, find_bundle_dir, init_deployments,
+    match_route, DeploymentRoute,
+};
 use darx_api::CreatProjectRequest;
 use darx_db::DBType;
 use tokio::fs::File;
@@ -43,7 +48,20 @@ pub async fn run_server(
     dotenv().expect("Failed to load .env file");
 
     let worker_pool = WorkerPool::new();
+    let db_pool = sqlx::MySqlPool::connect(
+        env::var("DATABASE_URL")
+            .expect("DATABASE_URL should be configured")
+            .as_str(),
+    )
+    .await
+    .context("Failed to connect database")?;
+
+    init_deployments(bundles_dir.as_path(), &db_pool)
+        .await
+        .context("Failed to init deployments on startup")?;
+
     let server_state = Arc::new(ServerState {
+        db_pool,
         worker_pool,
         bundles_dir,
     });
@@ -51,7 +69,7 @@ pub async fn run_server(
     let app = Router::new()
         .route("/", get(|| async { "data plane healthy." }))
         .route("/invoke/*func_url", post(invoke_function))
-        .route("/deploy_bundle/:env_id/:deploy_seq", post(deploy_bundle))
+        .route("/add_deployment", post(add_deployment))
         .with_state(server_state);
 
     tracing::info!("listen on {}", socket_addr);
@@ -88,11 +106,12 @@ async fn invoke_function(
         )
     })?;
 
-    let bundle_dir = bundle_deployment_dir(
+    let bundle_dir = find_bundle_dir(
         server_state.bundles_dir.as_path(),
         env_id.as_str(),
         deploy_seq,
-    )?;
+    )
+    .await?;
     let event = WorkerEvent::InvokeFunction {
         env_id,
         deploy_seq,
@@ -124,48 +143,24 @@ async fn invoke_function(
     }
 }
 
-async fn deploy_bundle(
+async fn add_deployment(
     State(server_state): State<Arc<ServerState>>,
-    AxumPath((env_id, deploy_seq)): AxumPath<(String, i64)>,
-    Json(req): Json<DeployBundleReq>,
-) -> Result<Json<DeployBundleRsp>, ApiError> {
-    let fs_path = req.fs_path;
-    let bundle_dir = bundle_deployment_dir(
+    Json(req): Json<AddDeploymentReq>,
+) -> Result<StatusCode, ApiError> {
+    let deployment_route = DeploymentRoute {
+        env_id: req.env_id.clone(),
+        deploy_seq: req.deploy_seq,
+        http_routes: req.http_routes,
+    };
+    add_bundle_files(
+        req.env_id.as_str(),
+        req.deploy_seq,
         server_state.bundles_dir.as_path(),
-        env_id.as_str(),
-        deploy_seq,
-    )?;
-
-    let bundle_path = bundle_dir.join(fs_path.as_str());
-    if let Some(parent) = bundle_path.parent() {
-        fs::create_dir_all(parent)
-            .await
-            .context("Failed to create bundle parent path")?;
-    }
-
-    let mut file = File::create(bundle_path)
-        .await
-        .context("Failed to create bundle file path")?;
-    file.write_all(req.code.as_bytes())
-        .await
-        .context("Failed to write bundle file")?;
-
-    Ok(Json(DeployBundleRsp {}))
-}
-
-fn bundle_deployment_dir(
-    bundles_dir: &Path,
-    env_id: &str,
-    deploy_seq: i64,
-) -> Result<PathBuf> {
-    let dir = bundles_dir
-        .join(env_id)
-        .canonicalize()
-        .with_context(|| {
-            format!("Failed to canonicalize env directory. env_id: {}", env_id)
-        })?
-        .join(deploy_seq.to_string().as_str());
-    Ok(dir)
+        req.bundles,
+    )
+    .await?;
+    add_route(deployment_route);
+    Ok(StatusCode::OK)
 }
 
 // fn project_db_file(db_dir: &Path, project_id: &str) -> PathBuf {
@@ -293,6 +288,7 @@ struct ConnectDBRequest {
 }
 
 struct ServerState {
+    db_pool: sqlx::MySqlPool,
     worker_pool: WorkerPool,
     bundles_dir: PathBuf,
 }
