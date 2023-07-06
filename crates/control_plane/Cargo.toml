@@ -16,4 +16,7 @@ dotenvy.workspace = true
 tracing.workspace = true
 nanoid.workspace = true
 reqwest.workspace = true
+handlebars.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 darx_api.workspace = true

@@ -115,6 +115,18 @@ pub struct HttpRoute {
     pub js_export: String,
 }
 
+pub fn unique_js_export(js_entry_point: &str, js_export: &str) -> String {
+    let js_entry_point =
+        js_entry_point.strip_suffix(".js").unwrap_or(js_entry_point);
+    let js_entry_point =
+        js_entry_point.strip_suffix(".ts").unwrap_or(js_entry_point);
+    let js_entry_point = js_entry_point
+        .strip_suffix(".mjs")
+        .unwrap_or(js_entry_point);
+    let new_entry = js_entry_point.split("/").collect::<Vec<_>>().join("_");
+    format!("{}_{}", new_entry, js_export)
+}
+
 #[derive(Deserialize)]
 pub struct CreatProjectRequest {
     // project_id should unique in the system.
@@ -300,3 +312,13 @@ pub type JsonApiResponse<T> = Json<ApiResponse<T>>;
 //     routes.sort_by(|a, b| a.http_path.cmp(&b.http_path));
 //     Ok(routes)
 // }
+
+mod tests {
+    use crate::unique_js_export;
+
+    #[test]
+    fn test_unique_js_export() {
+        assert_eq!(unique_js_export("foo.js", "bar"), "foo_bar");
+        assert_eq!(unique_js_export("foo/foo.js", "bar"), "foo_foo_bar");
+    }
+}

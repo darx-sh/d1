@@ -7,12 +7,15 @@ use axum::http::StatusCode;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use darx_api::{
-    add_deployment_url, deploy_bundle_url, AddDeploymentReq, ApiError, Bundle,
-    BundleRsp, DeployBundleReq, DeployBundleRsp, HttpRoute, PrepareDeployReq,
-    PrepareDeployRsp, UpdateBundleStatus,
+    add_deployment_url, deploy_bundle_url, unique_js_export, AddDeploymentReq,
+    ApiError, Bundle, BundleRsp, DeployBundleReq, DeployBundleRsp, HttpRoute,
+    PrepareDeployReq, PrepareDeployRsp, UpdateBundleStatus,
 };
 use dotenvy::dotenv;
+use handlebars::Handlebars;
 use nanoid::nanoid;
+use serde::Serialize;
+use serde_json::json;
 use std::env;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -114,6 +117,16 @@ async fn prepare_deploy(
         .context("Failed to insert into bundles table")?;
         bundle_ids.push(bundle_id);
     }
+    let registry_bundle = registry_code(&routes)?;
+    sqlx::query!(
+        "INSERT INTO bundles (id, updated_at, bytes, deploy_id, fs_path, upload_status, code) VALUES (?, CURRENT_TIMESTAMP(3), ?, ?, ?, ?, ?)",
+        new_nano_id(),
+        registry_bundle.len() as i64,
+        deploy_id,
+        "__registry.js",
+        "success",
+        registry_bundle,
+    ).execute(db_pool).await.context("Failed to insert registry bundle")?;
 
     // create new route
     for route in routes.iter() {
@@ -220,6 +233,39 @@ async fn deploy_bundle(
     Ok(Json(DeployBundleRsp {}))
 }
 
+const REGISTRY_TEMPLATE: &str = r#"
+{{#each routes}}
+import { {{js_export}} as {{ unique_export }} } from "./{{js_entry_point}}";
+globalThis.{{unique_export}} = {{unique_export}};
+{{/each}}
+"#;
+
+fn registry_code(routes: &Vec<HttpRoute>) -> Result<Vec<u8>> {
+    #[derive(Serialize)]
+    struct UniqueJsExport {
+        js_entry_point: String,
+        js_export: String,
+        unique_export: String,
+    }
+
+    let mut unique_imports = vec![];
+    for r in routes.iter() {
+        let unique_export =
+            unique_js_export(r.js_entry_point.as_str(), r.js_export.as_str());
+        unique_imports.push(UniqueJsExport {
+            js_entry_point: r.js_entry_point.clone(),
+            js_export: r.js_export.clone(),
+            unique_export,
+        })
+    }
+    let mut reg = Handlebars::new();
+    let code = reg.render_template(
+        REGISTRY_TEMPLATE,
+        &json!({ "routes": unique_imports }),
+    )?;
+    Ok(code.into_bytes())
+}
+
 struct ServerState {
     db_pool: sqlx::MySqlPool,
 }
@@ -228,4 +274,37 @@ fn new_nano_id() -> String {
     let alphabet = "0123456789abcdefghijklmnopqrstuvwxyz";
     let chars = alphabet.chars().collect::<Vec<_>>();
     nanoid!(12, &chars)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_registry_code() -> Result<()> {
+        let routes = vec![
+            HttpRoute {
+                http_path: "foo".to_string(),
+                method: "POST".to_string(),
+                js_entry_point: "foo.js".to_string(),
+                js_export: "default".to_string(),
+            },
+            HttpRoute {
+                http_path: "foo.foo".to_string(),
+                method: "POST".to_string(),
+                js_entry_point: "foo.js".to_string(),
+                js_export: "foo".to_string(),
+            },
+        ];
+        let code = registry_code(&routes)?;
+        assert_eq!(
+            r#"
+import { default as foo_default } from "./foo.js";
+globalThis.foo_default = foo_default;
+import { foo as foo_foo } from "./foo.js";
+globalThis.foo_foo = foo_foo;
+"#,
+            String::from_utf8(code)?
+        );
+        Ok(())
+    }
 }
