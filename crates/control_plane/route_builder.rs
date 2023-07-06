@@ -35,38 +35,47 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_build_path_default_export() {
+    fn test_build_route_default_export() {
         let entry_point = "foo.js";
         let export = "default";
-        assert_eq!(build_path(entry_point, export).unwrap(), "foo");
+        assert_eq!(build_route(entry_point, export).unwrap().http_path, "foo");
     }
 
     #[test]
-    fn test_build_path_custom_export() {
+    fn test_build_route_custom_export() {
         let entry_point = "foo.js";
         let export = "bar";
-        assert_eq!(build_path(entry_point, export).unwrap(), "foo.bar");
+        assert_eq!(
+            build_route(entry_point, export).unwrap().http_path,
+            "foo.bar"
+        );
     }
 
     #[test]
-    fn test_build_path_nested_default_export() {
+    fn test_build_route_nested_default_export() {
         let entry_point = "foo/bar.js";
         let export = "default";
-        assert_eq!(build_path(entry_point, export).unwrap(), "foo/bar");
+        assert_eq!(
+            build_route(entry_point, export).unwrap().http_path,
+            "foo/bar"
+        );
     }
 
     #[test]
-    fn test_build_path_nested_custom_export() {
+    fn test_build_route_nested_custom_export() {
         let entry_point = "foo/bar.js";
         let export = "baz";
-        assert_eq!(build_path(entry_point, export).unwrap(), "foo/bar.baz");
+        assert_eq!(
+            build_route(entry_point, export).unwrap().http_path,
+            "foo/bar.baz"
+        );
     }
 
     #[test]
-    fn test_build_path_invalid_entry_point() {
+    fn test_build_route_invalid_entry_point() {
         let entry_point = "foo.html";
         let export = "default";
-        assert!(build_path(entry_point, export).is_err());
+        assert!(build_route(entry_point, export).is_err());
     }
 
     // #[tokio::test]
