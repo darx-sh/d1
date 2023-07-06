@@ -1,4 +1,5 @@
 use anyhow::Context;
+use darx_api::unique_js_export;
 use darx_db::ConnectionPool;
 use darx_isolate_runtime::DarxIsolate;
 use deno_core::{serde_v8, v8};
@@ -78,31 +79,23 @@ async fn handle_event(event: WorkerEvent) {
                 });
             match r {
                 Ok(()) => {
-                    // register the function
-                    tracing::debug!(
-                        "{}",
-                        registry_code(
-                            js_entry_point.as_str(),
-                            js_export.as_str()
-                        )
-                    );
                     isolate
-                        .load_and_evaluate_module_code(
-                            "./registry.js",
-                            registry_code(
-                                js_entry_point.as_str(),
-                                js_export.as_str(),
-                            )
-                            .as_str(),
-                        )
+                        .load_and_eval_module_file("./__registry.js")
                         .await
                         .unwrap();
 
                     let script_result = isolate
                         .js_runtime
                         .execute_script(
-                            "myfoo",
-                            format!("handler({});", params.get()),
+                            "invoke_function",
+                            format!(
+                                "{}({});",
+                                unique_js_export(
+                                    js_entry_point.as_str(),
+                                    js_export.as_str()
+                                ),
+                                params.get()
+                            ),
                         )
                         .unwrap();
 
@@ -123,15 +116,4 @@ async fn handle_event(event: WorkerEvent) {
             }
         }
     }
-}
-
-fn registry_code(js_entry_point: &str, js_export: &str) -> String {
-    // https://doc.rust-lang.org/std/fmt/index.html#escaping
-    format!(
-        "
-    import {{{}}} from \"./{}\";
-    globalThis.handler = {};
-    ",
-        js_export, js_entry_point, js_export
-    )
 }
