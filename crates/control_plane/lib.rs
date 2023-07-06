@@ -217,30 +217,6 @@ async fn deploy_bundle(
             )));
         }
     }
-
-    // load http routes
-
-    // let fs_path = req.fs_path;
-    // let bundle_dir = bundle_deployment_dir(
-    //     server_state.bundles_dir.as_path(),
-    //     env_id.as_str(),
-    //     deploy_seq,
-    // )?;
-    //
-    // let bundle_path = bundle_dir.join(fs_path.as_str());
-    // if let Some(parent) = bundle_path.parent() {
-    //     fs::create_dir_all(parent)
-    //         .await
-    //         .context("Failed to create bundle parent path")?;
-    // }
-    //
-    // let mut file = File::create(bundle_path)
-    //     .await
-    //     .context("Failed to create bundle file path")?;
-    // file.write_all(req.code.as_bytes())
-    //     .await
-    //     .context("Failed to write bundle file")?;
-
     Ok(Json(DeployBundleRsp {}))
 }
 
