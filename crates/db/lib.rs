@@ -26,7 +26,7 @@ pub trait Connection {
 
 pub async fn get_conn(
     env_id: &str,
-    deploy_seq: i64,
+    deploy_seq: i32,
 ) -> Result<Rc<RefCell<dyn Connection>>> {
     // todo: use per project_id cache for connection pool.
     // let pool = mysql_simple::MySqlPool::new(

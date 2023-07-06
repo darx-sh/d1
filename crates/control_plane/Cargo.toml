@@ -1,0 +1,19 @@
+[package]
+name = "darx_control_plane"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "darx_control_plane"
+path = "lib.rs"
+
+[dependencies]
+anyhow.workspace = true
+axum.workspace = true
+sqlx.workspace = true
+dotenvy.workspace = true
+tracing.workspace = true
+nanoid.workspace = true
+reqwest.workspace = true
+darx_api.workspace = true

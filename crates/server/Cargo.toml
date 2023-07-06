@@ -3,30 +3,15 @@ name = "darx_server"
 version = "0.0.1"
 edition = "2021"
 
-[lib]
-name = "darx_server"
-path = "lib.rs"
+[[bin]]
+name = "darx-server"
+path = "main.rs"
 
 [dependencies]
-darx_utils.workspace = true
-darx_isolate_runtime.workspace = true
-darx_db.workspace = true
-darx_api.workspace = true
-
-deno_core.workspace = true
-
-axum.workspace = true
-serde.workspace = true
-serde_json.workspace = true
-thiserror.workspace = true
 anyhow.workspace = true
+clap.workspace = true
 tokio.workspace = true
-dotenvy.workspace = true
-sqlx.workspace = true
-redis.workspace = true
-futures-util.workspace = true
-dashmap.workspace = true
-rust-s3.workspace = true
-once_cell.workspace = true
-tracing.workspace = true
 tracing-subscriber.workspace = true
+
+darx_data_plane.workspace = true
+darx_control_plane.workspace = true

@@ -1,0 +1,11 @@
+{
+  "query": "INSERT INTO deploys (id, updated_at, tag, description, env_id, deploy_seq, bundle_repo, bundle_cnt) VALUES (?, CURRENT_TIMESTAMP(3), ?, ?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 7
+    },
+    "nullable": []
+  },
+  "hash": "ccb7c8d429d6c6b37349d63eb4b906429877009734fb202102d7e12ff686d06b"
+}
