@@ -63,6 +63,7 @@ tracing = "0.1.37"
 tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
 nanoid = { version = "0.4" }
 handlebars = { version = "4.3" }
+swc_ecma_parser = { version = "0.137.2" }
 
 [profile.dev.package.sqlx-macros]
 opt-level = 3

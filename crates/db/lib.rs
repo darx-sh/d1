@@ -2,11 +2,10 @@
 // mod types;
 
 mod mysql_sqlx;
-mod sqlite;
 
 use anyhow::Result;
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -25,8 +24,8 @@ pub trait Connection {
 }
 
 pub async fn get_conn(
-    env_id: &str,
-    deploy_seq: i32,
+    _env_id: &str,
+    _deploy_seq: i32,
 ) -> Result<Rc<RefCell<dyn Connection>>> {
     // todo: use per project_id cache for connection pool.
     // let pool = mysql_simple::MySqlPool::new(

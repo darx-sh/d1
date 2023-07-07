@@ -1,13 +1,12 @@
 use crate::{Connection, ConnectionPool};
 use anyhow::{Context, Result};
 use async_trait::async_trait;
-use futures::StreamExt;
 use futures_util::TryStreamExt;
 use serde::ser::SerializeMap;
-use serde::{Deserialize, Serialize, Serializer};
+use serde::{Serialize, Serializer};
 use serde_json::Value;
-use sqlx::mysql::{MySqlRow, MySqlValue};
-use sqlx::{Column, Either, Encode, MySql, Row, Type, TypeInfo};
+use sqlx::mysql::MySqlRow;
+use sqlx::{Column, Either, MySql, Row, TypeInfo};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -128,6 +127,7 @@ impl Serialize for XRow {
     }
 }
 
+#[allow(non_snake_case)]
 #[derive(Serialize, Default)]
 struct ResultSet {
     rows: Vec<XRow>,

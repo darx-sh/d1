@@ -3,13 +3,13 @@ use deno_core::url::Url;
 use std::path::{Path, PathBuf};
 
 pub struct Permissions {
-    project_dir: PathBuf,
+    _project_dir: PathBuf,
 }
 
 impl Permissions {
     pub fn new(options: Options) -> Self {
         Self {
-            project_dir: options.bundle_dir,
+            _project_dir: options.bundle_dir,
         }
     }
 }

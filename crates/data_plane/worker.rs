@@ -1,10 +1,10 @@
 use anyhow::Context;
 use darx_api::unique_js_export;
-use darx_db::ConnectionPool;
+
 use darx_isolate_runtime::DarxIsolate;
 use deno_core::{serde_v8, v8};
 use std::path::PathBuf;
-use std::sync::Arc;
+
 use tokio::runtime::Builder;
 use tokio::sync::mpsc::error::SendError;
 use tokio::sync::{mpsc, oneshot};

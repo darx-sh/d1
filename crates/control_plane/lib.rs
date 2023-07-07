@@ -3,13 +3,12 @@ mod route_builder;
 use crate::route_builder::build_route;
 use anyhow::{anyhow, Context, Result};
 use axum::extract::{Path as AxumPath, State};
-use axum::http::StatusCode;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use darx_api::{
     add_deployment_url, deploy_bundle_url, unique_js_export, AddDeploymentReq,
     ApiError, Bundle, BundleRsp, DeployBundleReq, DeployBundleRsp, HttpRoute,
-    PrepareDeployReq, PrepareDeployRsp, UpdateBundleStatus,
+    PrepareDeployReq, PrepareDeployRsp,
 };
 use dotenvy::dotenv;
 use handlebars::Handlebars;
@@ -258,7 +257,7 @@ fn registry_code(routes: &Vec<HttpRoute>) -> Result<Vec<u8>> {
             unique_export,
         })
     }
-    let mut reg = Handlebars::new();
+    let reg = Handlebars::new();
     let code = reg.render_template(
         REGISTRY_TEMPLATE,
         &json!({ "routes": unique_imports }),

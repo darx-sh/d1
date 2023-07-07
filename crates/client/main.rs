@@ -33,9 +33,6 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
     match &cli.command {
         Commands::Dev { dir } => dev::run_dev(dir).await?,
-        _ => {
-            println!("other");
-        }
     }
     Ok(())
 }
