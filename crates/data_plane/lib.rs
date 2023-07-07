@@ -2,21 +2,16 @@ mod deployment;
 mod worker;
 
 use anyhow::{anyhow, Context, Result};
-use axum::extract::{BodyStream, Host, Path as AxumPath, State};
-use axum::http::{HeaderMap, StatusCode};
+use axum::extract::{Host, Path as AxumPath, State};
+use axum::http::StatusCode;
 use axum::routing::{get, post};
 use axum::{Json, Router};
-use darx_api::{
-    AddDeploymentReq, ApiError, Bundle, DeployBundleReq, DeployBundleRsp,
-};
+use darx_api::{AddDeploymentReq, ApiError};
 use dotenvy::dotenv;
-use futures_util::StreamExt;
-use serde::{Deserialize, Serialize};
-use serde_json::json;
-use std::collections::HashMap;
+
 use std::env;
 use std::net::SocketAddr;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::fs;
 
@@ -26,9 +21,7 @@ use crate::deployment::{
     add_bundle_files, add_route, find_bundle_dir, init_deployments,
     match_route, DeploymentRoute,
 };
-use darx_db::DBType;
-use tokio::fs::File;
-use tokio::io::AsyncWriteExt;
+
 use tokio::sync::oneshot;
 
 const DARX_BUNDLES_DIR: &str = "./darx_bundles";
@@ -60,7 +53,6 @@ pub async fn run_server(
         .context("Failed to init deployments on startup")?;
 
     let server_state = Arc::new(ServerState {
-        db_pool,
         worker_pool,
         bundles_dir,
     });
@@ -279,15 +271,14 @@ async fn add_deployment(
 //     Ok(())
 // }
 
-#[derive(Deserialize)]
-struct ConnectDBRequest {
-    project_id: String,
-    db_type: DBType,
-    db_url: String,
-}
+// #[derive(Deserialize)]
+// struct ConnectDBRequest {
+//     project_id: String,
+//     db_type: DBType,
+//     db_url: String,
+// }
 
 struct ServerState {
-    db_pool: sqlx::MySqlPool,
     worker_pool: WorkerPool,
     bundles_dir: PathBuf,
 }

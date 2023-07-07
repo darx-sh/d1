@@ -1,16 +1,12 @@
-use crate::{DeploySeq, EnvId, ProjectId};
+use crate::{DeploySeq, EnvId};
 use darx_db::get_conn;
-use darx_db::{Connection, ConnectionPool};
+use darx_db::Connection;
 use deno_core::error::AnyError;
 use deno_core::{op, ResourceId};
 use deno_core::{OpState, Resource};
 use std::borrow::Cow;
 use std::cell::RefCell;
-use std::future::Future;
-use std::mem;
-use std::pin::Pin;
 use std::rc::Rc;
-use std::sync::Arc;
 
 deno_core::extension!(
     darx_db_ops,

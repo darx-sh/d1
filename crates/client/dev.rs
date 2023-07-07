@@ -1,15 +1,10 @@
 use anyhow::{anyhow, bail, Context, Result};
 use darx_api::{
-    ApiError, BundleMeta, BundleReq, DBType, DeployBundleReq, PrepareDeployReq,
-    PrepareDeployRsp,
+    BundleMeta, BundleReq, DeployBundleReq, PrepareDeployReq, PrepareDeployRsp,
 };
 use notify::event::ModifyKind;
 use notify::{Config, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
-use notify_debouncer_mini::{new_debouncer, DebouncedEventKind};
-use reqwest::Url;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
-use std::env;
 use std::fs;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
@@ -136,7 +131,6 @@ fn bundle_file_list(
     output_dir: &str,
     file_list: Vec<&str>,
 ) -> Result<()> {
-    let parent = working_dir.parent().unwrap();
     let mut command = Command::new(ESBUILD);
     command.current_dir(working_dir);
     command
@@ -285,58 +279,6 @@ async fn upload_bundle(
     //     .with_context(|| format!("failed to update bundle status"))?;
     println!("Uploaded file: {}", fs_path);
     Ok(())
-}
-
-async fn configure_project(dir: &Path) -> Result<ProjectConfig> {
-    let config_file = dir.join("darx.json");
-    let config = if !config_file.exists() {
-        // if user login as localhost, we can create a project for them.
-        // if user login as a normal user, we talk to the cloud to create a "project_id".
-        // todo! cloud and localhost
-        ProjectConfig {
-            project_id: "123456".to_string(),
-            url: "http://localhost:4001".to_string(),
-        }
-    } else {
-        let config =
-            fs::read_to_string(config_file.as_path()).with_context(|| {
-                format!("Failed to read config file: {}", config_file.display())
-            })?;
-        let config: ProjectConfig = serde_json::from_str(&config)?;
-        config
-    };
-
-    // let req = CreateProjectRequest {
-    //     project_id: config.project_id.clone(),
-    //     db_type: DBType::MySQL,
-    //     db_url: None,
-    // };
-    //
-    // match reqwest::Client::new()
-    //     .post(format!("{}/create_project", config.url))
-    //     .json(&req)
-    //     .send()
-    //     .await
-    // {
-    //     Err(e) => println!("failed to create project: {:?}", e),
-    //     Ok(rsp) => {
-    //         let status = rsp.status();
-    //         if status.is_success() {
-    //             println!("project created successfully");
-    //         } else {
-    //             let error = rsp
-    //                 .json::<serde_json::Value>()
-    //                 .await
-    //                 .with_context("failed to parse error response")?;
-    //             println!(
-    //                 "failed to create project. status code = {}, body = {}",
-    //                 status, error
-    //             );
-    //         }
-    //     }
-    // }
-
-    todo!()
 }
 
 async fn prepare_deploy(

@@ -1,4 +1,3 @@
-use anyhow::Result;
 use axum::http;
 use axum::response::{IntoResponse, Response};
 use axum::Json;
@@ -215,9 +214,9 @@ pub struct ApiResponse<T> {
 
 pub type JsonApiResponse<T> = Json<ApiResponse<T>>;
 
+#[cfg(test)]
 mod tests {
-    use crate::unique_js_export;
-
+    use super::*;
     #[test]
     fn test_unique_js_export() {
         assert_eq!(unique_js_export("foo.js", "bar"), "foo_bar");

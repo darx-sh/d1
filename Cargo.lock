@@ -836,7 +836,6 @@ dependencies = [
  "anyhow",
  "clap 4.2.4",
  "darx_api",
- "darx_server",
  "futures",
  "notify",
  "notify-debouncer-mini",
