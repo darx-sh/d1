@@ -38,6 +38,9 @@ pub fn add_deployment_url() -> String {
     )
 }
 
+///
+/// prepare_deploy
+///
 #[derive(Serialize, Deserialize)]
 pub struct PrepareDeployReq {
     pub env_id: String,
@@ -75,6 +78,9 @@ pub struct BundleMeta {
     pub exports: Vec<String>,
 }
 
+///
+/// deploy_bundle
+///
 #[derive(Serialize, Deserialize)]
 pub struct DeployBundleReq {
     pub id: String,
@@ -90,6 +96,9 @@ pub struct UpdateBundleStatus {
     pub status: String,
 }
 
+///
+/// add_deployment
+///
 #[derive(Serialize, Deserialize)]
 pub struct AddDeploymentReq {
     pub env_id: String,
@@ -126,54 +135,6 @@ pub fn unique_js_export(js_entry_point: &str, js_export: &str) -> String {
     let new_entry = js_entry_point.split("/").collect::<Vec<_>>().join("_");
     format!("{}_{}", new_entry, js_export)
 }
-
-#[derive(Deserialize)]
-pub struct CreatProjectRequest {
-    // project_id should unique in the system.
-    pub project_id: String,
-    pub db_type: DBType,
-    pub db_url: Option<String>,
-}
-
-// #[derive(Deserialize)]
-// pub struct DeploySchemaRequest {
-//     pub migrations: Vec<Migration>,
-// }
-//
-// #[derive(Serialize)]
-// pub struct DeploySchemaResponse {
-//     pub deployment_id: DeploymentId,
-// }
-
-//
-// #[derive(Serialize, Deserialize)]
-// pub struct DeployFunctionsRequest {
-//     pub bundles: Vec<Bundle>,
-//     pub bundle_meta: serde_json::Value,
-//     pub description: Option<String>,
-// }
-//
-// #[derive(Serialize)]
-// pub struct DeployFunctionsResponse {
-//     pub deployment_id: DeploymentId,
-// }
-//
-// #[derive(Serialize)]
-// pub struct GetDeploymentResponse {
-//     pub deploy_type: DeploymentType,
-//     pub status: DeploymentStatus,
-// }
-//
-// #[derive(Deserialize)]
-// pub struct RollbackFunctionsRequest {
-//     pub target_deployment_id: i64,
-// }
-//
-// /// Rollback will create another deployment [`new_deployment_id`].
-// #[derive(Serialize)]
-// pub struct RollbackFunctionsResponse {
-//     pub new_deployment_id: i64,
-// }
 
 #[derive(Error, Debug)]
 pub enum ApiError {
@@ -253,65 +214,6 @@ pub struct ApiResponse<T> {
 }
 
 pub type JsonApiResponse<T> = Json<ApiResponse<T>>;
-
-// pub async fn build_routes(meta_file: &str) -> Result<Vec<Route>> {
-//     let mut file = File::open(meta_file).await?;
-//     let mut buf = String::new();
-//     file.read_to_string(&mut buf).await?;
-//     let meta: serde_json::Value = serde_json::from_str(&buf)?;
-//     let outputs = meta
-//         .get("outputs")
-//         .ok_or_else(|| anyhow!("No outputs found"))?
-//         .as_object()
-//         .ok_or_else(|| anyhow!("Outputs is not an object"))?;
-//
-//     let mut routes = vec![];
-//     for (_, output) in outputs.iter() {
-//         let output = output
-//             .as_object()
-//             .ok_or_else(|| anyhow!("Output is not an object"))?;
-//         let nbytes = output
-//             .get("bytes")
-//             .ok_or_else(|| anyhow!("bytes not found"))?
-//             .as_i64()
-//             .ok_or_else(|| anyhow!("bytes is not a i64"))?;
-//
-//         if nbytes == 0 {
-//             continue;
-//         }
-//
-//         let entry_point = output
-//             .get("entryPoint")
-//             .ok_or_else(|| anyhow!("entryPoint not found"))?
-//             .as_str()
-//             .ok_or_else(|| anyhow!("entryPoint is not a string"))?
-//             .to_string();
-//
-//         let exports = output
-//             .get("exports")
-//             .ok_or_else(|| anyhow!("exports not found"))?
-//             .as_array()
-//             .ok_or_else(|| anyhow!("exports is not an array"))?
-//             .iter()
-//             .map(|export| {
-//                 export
-//                     .as_str()
-//                     .ok_or_else(|| anyhow!("export is not a string"))
-//                     .map(|s| s.to_string())
-//             })
-//             .collect::<Result<Vec<_>>>()?;
-//         for export in exports.iter() {
-//             let http_path = build_path(&entry_point, &export)?;
-//             routes.push(Route {
-//                 http_path,
-//                 js_entry_point: entry_point.clone(),
-//                 js_export: export.clone(),
-//             })
-//         }
-//     }
-//     routes.sort_by(|a, b| a.http_path.cmp(&b.http_path));
-//     Ok(routes)
-// }
 
 mod tests {
     use crate::unique_js_export;
