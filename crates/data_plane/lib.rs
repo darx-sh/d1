@@ -26,7 +26,6 @@ use crate::deployment::{
     add_bundle_files, add_route, find_bundle_dir, init_deployments,
     match_route, DeploymentRoute,
 };
-use darx_api::CreatProjectRequest;
 use darx_db::DBType;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
