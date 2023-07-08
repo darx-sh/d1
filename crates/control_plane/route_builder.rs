@@ -7,7 +7,11 @@ use darx_api::HttpRoute;
 /// - (foo.js, bar)           -> foo.bar
 /// - (foo/foo.js, default)   -> foo/foo
 /// - (foo/foo.js, bar)       -> foo/foo.bar
-pub fn build_route(entry_point: &str, export: &str) -> Result<HttpRoute> {
+pub fn build_route(
+    prefix: Option<&str>,
+    entry_point: &str,
+    export: &str,
+) -> Result<HttpRoute> {
     let path = if entry_point.ends_with(".js") {
         entry_point.strip_suffix(".js").unwrap()
     } else if entry_point.ends_with(".ts") {
@@ -16,6 +20,11 @@ pub fn build_route(entry_point: &str, export: &str) -> Result<HttpRoute> {
         entry_point.strip_suffix(".mjs").unwrap()
     } else {
         return Err(anyhow!("Invalid entry point: {}", entry_point));
+    };
+    let path = if let Some(prefix) = prefix {
+        path.strip_prefix(prefix).unwrap_or(path)
+    } else {
+        path
     };
     let path = if export == "default" {
         path.to_string()
@@ -38,7 +47,17 @@ mod tests {
     fn test_build_route_default_export() {
         let entry_point = "foo.js";
         let export = "default";
-        assert_eq!(build_route(entry_point, export).unwrap().http_path, "foo");
+        assert_eq!(
+            build_route(None, entry_point, export).unwrap().http_path,
+            "foo"
+        );
+
+        assert_eq!(
+            build_route(Some("functions/"), entry_point, export)
+                .unwrap()
+                .http_path,
+            "foo"
+        );
     }
 
     #[test]
@@ -46,7 +65,14 @@ mod tests {
         let entry_point = "foo.js";
         let export = "bar";
         assert_eq!(
-            build_route(entry_point, export).unwrap().http_path,
+            build_route(None, entry_point, export).unwrap().http_path,
+            "foo.bar"
+        );
+
+        assert_eq!(
+            build_route(Some("functions/"), entry_point, export)
+                .unwrap()
+                .http_path,
             "foo.bar"
         );
     }
@@ -56,7 +82,14 @@ mod tests {
         let entry_point = "foo/bar.js";
         let export = "default";
         assert_eq!(
-            build_route(entry_point, export).unwrap().http_path,
+            build_route(None, entry_point, export).unwrap().http_path,
+            "foo/bar"
+        );
+
+        assert_eq!(
+            build_route(Some("functions/"), entry_point, export)
+                .unwrap()
+                .http_path,
             "foo/bar"
         );
     }
@@ -66,7 +99,13 @@ mod tests {
         let entry_point = "foo/bar.js";
         let export = "baz";
         assert_eq!(
-            build_route(entry_point, export).unwrap().http_path,
+            build_route(None, entry_point, export).unwrap().http_path,
+            "foo/bar.baz"
+        );
+        assert_eq!(
+            build_route(Some("functions/"), entry_point, export)
+                .unwrap()
+                .http_path,
             "foo/bar.baz"
         );
     }
@@ -75,7 +114,8 @@ mod tests {
     fn test_build_route_invalid_entry_point() {
         let entry_point = "foo.html";
         let export = "default";
-        assert!(build_route(entry_point, export).is_err());
+        assert!(build_route(None, entry_point, export).is_err());
+        assert!(build_route(Some("functions/"), entry_point, export).is_err());
     }
 
     // #[tokio::test]

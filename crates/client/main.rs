@@ -1,7 +1,7 @@
-mod dev;
-
 use anyhow::Result;
 use clap::{Parser, Subcommand};
+
+mod dev;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
