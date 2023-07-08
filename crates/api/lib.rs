@@ -10,25 +10,6 @@ pub use darx_db::DBType;
 use serde_json::json;
 use thiserror::Error;
 
-pub fn deploy_bundle_url(env_id: &str, deploy_seq: i32) -> String {
-    format!(
-        "{}/deploy_bundle/{}/{}",
-        env::var("CONTROL_PLANE_URL")
-            .expect("CONTROL_PLANE_URL should be configured"),
-        env_id,
-        deploy_seq,
-    )
-}
-
-pub fn update_bundle_status_url(bundle_id: &str) -> String {
-    format!(
-        "{}/update_bundle_status/{}",
-        env::var("CONTROL_PLANE_URL")
-            .expect("CONTROL_PLANE_URL should be configured"),
-        bundle_id,
-    )
-}
-
 pub fn add_deployment_url() -> String {
     format!(
         "{}/add_deployment",
@@ -38,62 +19,23 @@ pub fn add_deployment_url() -> String {
 }
 
 ///
-/// prepare_deploy
+/// deploy_code
 ///
 #[derive(Serialize, Deserialize)]
-pub struct PrepareDeployReq {
-    pub env_id: String,
+pub struct DeployCodeReq {
     pub tag: Option<String>,
-    pub description: Option<String>,
-    pub bundles: Vec<BundleReq>,
-    pub metas: Vec<BundleMeta>,
+    pub desc: Option<String>,
+    pub codes: Vec<Code>,
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct PrepareDeployRsp {
-    pub deploy_id: String,
-    pub bundles: Vec<BundleRsp>,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct BundleReq {
+pub struct Code {
     pub fs_path: String,
-    pub bytes: i64,
-    pub checksum: String,
-    pub checksum_type: String,
+    pub content: String,
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct BundleRsp {
-    pub id: String,
-    pub fs_path: String,
-    pub upload_url: String,
-    pub upload_method: String,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct BundleMeta {
-    pub entry_point: String,
-    pub exports: Vec<String>,
-}
-
-///
-/// deploy_bundle
-///
-#[derive(Serialize, Deserialize)]
-pub struct DeployBundleReq {
-    pub id: String,
-    pub fs_path: String,
-    pub code: String,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct DeployBundleRsp {}
-
-#[derive(Serialize, Deserialize)]
-pub struct UpdateBundleStatus {
-    pub status: String,
-}
+pub struct DeployCodeRsp {}
 
 ///
 /// add_deployment
