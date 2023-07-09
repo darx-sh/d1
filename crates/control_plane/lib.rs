@@ -1,26 +1,30 @@
-mod esm_parser;
-mod route_builder;
+use std::env;
+use std::net::SocketAddr;
+use std::sync::Arc;
 
-use crate::esm_parser::parse_module_export;
-use crate::route_builder::build_route;
+use actix_web::dev::Server;
+use actix_web::web::{get, post, Data, Json, Path};
+use actix_web::{App, HttpServer};
 use anyhow::{anyhow, Context, Result};
-use axum::extract::{Path as AxumPath, State};
-use axum::routing::{get, post};
-use axum::{Json, Router};
-use darx_api::{
-    add_deployment_url, unique_js_export, AddDeploymentReq, ApiError, Bundle,
-    Code, DeployCodeReq, DeployCodeRsp, HttpRoute, ListCodeRsp,
-};
 use dotenvy::dotenv;
 use handlebars::Handlebars;
 use nanoid::nanoid;
 use serde::Serialize;
 use serde_json::json;
-use std::env;
-use std::net::SocketAddr;
-use std::sync::Arc;
+use tracing_actix_web::TracingLogger;
 
-pub async fn run_server(socket_addr: SocketAddr) -> Result<()> {
+use darx_api::{
+    add_deployment_url, unique_js_export, AddDeploymentReq, ApiError, Bundle,
+    Code, DeployCodeReq, DeployCodeRsp, HttpRoute, ListCodeRsp,
+};
+
+use crate::esm_parser::parse_module_export;
+use crate::route_builder::build_route;
+
+mod esm_parser;
+mod route_builder;
+
+pub async fn run_server(socket_addr: SocketAddr) -> Result<Server> {
     #[cfg(debug_assertions)]
     dotenv().expect("Failed to load .env file");
 
@@ -31,32 +35,39 @@ pub async fn run_server(socket_addr: SocketAddr) -> Result<()> {
     )
     .await
     .context("Failed to connect database")?;
+
     let server_state = Arc::new(ServerState { db_pool });
 
-    let app = Router::new()
-        .route("/", get(|| async { "control plane healthy." }))
-        .route("/deploy_code/:env_id", post(deploy_code))
-        .route("/list_code/:env_id", get(list_code))
-        .with_state(server_state);
-
     tracing::info!("listen on {}", socket_addr);
-    axum::Server::bind(&socket_addr)
-        .serve(app.into_make_service())
-        .await
-        .context("Failed to start control plane server")?;
-    Ok(())
+
+    Ok(HttpServer::new(move || {
+        App::new()
+            .wrap(TracingLogger::default())
+            .app_data(Data::new(server_state.clone()))
+            .route("/", get().to(|| async { "control plane healthy." }))
+            .route("/deploy_code/{env_id}", post().to(deploy_code))
+            .route("/list_code/{env_id}", get().to(list_code))
+    })
+    .bind(&socket_addr)?
+    .run())
 }
 
 async fn deploy_code(
-    State(server_state): State<Arc<ServerState>>,
-    AxumPath(env_id): AxumPath<String>,
-    Json(req): Json<DeployCodeReq>,
+    server_state: Data<Arc<ServerState>>,
+    env_id: Path<String>,
+    req: Json<DeployCodeReq>,
 ) -> Result<Json<DeployCodeRsp>, ApiError> {
+    let env_id = env_id.into_inner();
     let mut http_routes = vec![];
     // extract js_exports
     for code in req.codes.iter() {
         let functions_dir = "functions/";
         if !code.fs_path.starts_with(functions_dir) {
+            tracing::warn!(
+                env = env_id,
+                "code should starts with 'functions' {}",
+                code.fs_path.as_str(),
+            );
             continue;
         }
         let js_exports =
@@ -133,6 +144,13 @@ async fn deploy_code(
             fs_path: bundle.fs_path.clone(),
             code: Some(bundle.content.clone().into_bytes()),
         });
+
+        tracing::debug!(
+            env = env_id,
+            seq = deploy_seq,
+            "add bundle {}",
+            bundle.fs_path.as_str(),
+        );
     }
 
     let registry_bundle = registry_code(&http_routes)?;
@@ -146,6 +164,7 @@ async fn deploy_code(
         "success",
         registry_bundle,
     ).execute(db_pool).await.context("Failed to insert registry bundle")?;
+
     bundles.push(Bundle {
         id: registry_bundle_id,
         fs_path: "__registry.js".to_string(),
@@ -163,10 +182,25 @@ async fn deploy_code(
             deploy_id,
             route.http_path
         ).execute(db_pool).await.context("Failed to insert into http_routes table")?;
+
+        tracing::debug!(
+            env = env_id,
+            seq = deploy_seq,
+            "add route {}",
+            &route.http_path
+        );
     }
     txn.commit()
         .await
         .context("Failed to commit database transaction")?;
+
+    tracing::info!(
+        env = env_id,
+        seq = deploy_seq,
+        "added deployment, {} bundles, {} routes",
+        bundles.len(),
+        http_routes.len()
+    );
 
     let req = AddDeploymentReq {
         env_id,
@@ -192,10 +226,11 @@ async fn deploy_code(
 }
 
 async fn list_code(
-    State(server_state): State<Arc<ServerState>>,
-    AxumPath(env_id): AxumPath<String>,
+    server_state: Data<Arc<ServerState>>,
+    env_id: Path<String>,
 ) -> Result<Json<ListCodeRsp>, ApiError> {
     let db_pool = &server_state.db_pool;
+    let env_id = env_id.into_inner();
     let bundle = sqlx::query!(
         "
     SELECT bundles.fs_path AS fs_path, bundles.code AS code
@@ -248,6 +283,9 @@ fn registry_code(routes: &Vec<HttpRoute>) -> Result<Vec<u8>> {
         REGISTRY_TEMPLATE,
         &json!({ "routes": unique_imports }),
     )?;
+
+    tracing::debug!("registry {}", &code);
+
     Ok(code.into_bytes())
 }
 
@@ -264,6 +302,7 @@ fn new_nano_id() -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
     #[test]
     fn test_registry_code() -> Result<()> {
         let routes = vec![

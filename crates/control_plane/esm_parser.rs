@@ -1,8 +1,9 @@
-use anyhow::{anyhow, Result};
 use std::io::stderr;
+
+use anyhow::{anyhow, Result};
+use swc_common::{FileName, SourceMap};
 use swc_common::errors::Handler;
 use swc_common::sync::Lrc;
-use swc_common::{FileName, SourceMap};
 use swc_ecma_ast::{Decl, DefaultDecl, ModuleDecl, ModuleItem};
 use swc_ecma_parser::parse_file_as_module;
 
@@ -63,6 +64,7 @@ pub fn parse_module_export(
 #[cfg(test)]
 mod tests {
     use super::*;
+
     #[test]
     fn test_parse_func_export() {
         let source = r#"

@@ -1,2 +1,3 @@
-import { myFunc } from "./foo.js";
+import {myFunc} from "./foo.js";
+
 await myFunc();

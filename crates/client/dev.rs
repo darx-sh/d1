@@ -3,10 +3,8 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use anyhow::{Context, Result};
-use notify::event::ModifyKind;
 use notify::{Config, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
-
-use darx_api::{Code, DeployCodeReq};
+use notify::event::ModifyKind;
 
 const DARX_SERVER_DIR: &str = "darx_server";
 const DARX_FUNCTIONS_SUBDIR: &str = "functions";
@@ -63,71 +61,20 @@ pub async fn run_dev(root_dir: &str) -> Result<()> {
 }
 
 async fn handle_file_changed(server_path: &Path) -> Result<()> {
-    let mut file_list_path_vec = vec![];
-    collect_js_file_list(&mut file_list_path_vec, server_path)?;
-    let fs_path_str_vec = file_list_path_vec
-        .iter()
-        .map(|path| {
-            path.strip_prefix(server_path)
-                .unwrap()
-                .to_str()
-                .unwrap()
-                .to_string()
-        })
-        .collect::<Vec<_>>();
     let start_time = std::time::Instant::now();
-    let mut codes = vec![];
-
-    for (path, fs_path_str) in
-        file_list_path_vec.iter().zip(fs_path_str_vec.iter())
-    {
-        let content = fs::read_to_string(path)?;
-        codes.push(Code {
-            fs_path: fs_path_str.clone(),
-            content,
-        });
-    }
-    let req = DeployCodeReq {
-        tag: None,
-        desc: None,
-        codes,
-    };
+    let req = darx_api::deploy::dir_to_deploy_req(server_path)?;
     let url = format!("http://127.0.0.1:3457/deploy_code/{}", MVP_TEST_ENV_ID);
-    match reqwest::Client::new()
+    if let Err(e) = reqwest::Client::new()
         .post(url)
         .json(&req)
         .send()
         .await?
         .error_for_status()
     {
-        Err(e) => {
-            eprintln!("Failed to deploy code: {:?}", e);
-            return Ok(());
-        }
-        Ok(_) => {}
+        eprintln!("Failed to deploy code: {:?}", e);
+        return Ok(());
     }
     let duration = start_time.elapsed();
     println!("Deployed code, duration: {:?}", duration.as_secs_f32());
-    Ok(())
-}
-
-fn collect_js_file_list(
-    file_list: &mut Vec<PathBuf>,
-    cur_dir: &Path,
-) -> Result<()> {
-    let mut entries = fs::read_dir(cur_dir)?;
-    while let Some(entry) = entries.next() {
-        let entry_path = entry?.path();
-
-        if entry_path.is_dir() {
-            collect_js_file_list(file_list, entry_path.as_path())?;
-        } else {
-            if let Some(ext) = entry_path.extension() {
-                if ext == "ts" || ext == "js" {
-                    file_list.push(entry_path);
-                }
-            }
-        }
-    }
     Ok(())
 }

@@ -1,11 +1,13 @@
+use std::path::PathBuf;
+
 use criterion::{
     black_box, criterion_group, criterion_main, BenchmarkId, Criterion,
 };
-use darx_isolate_runtime::DarxIsolate;
 use deno_core::{serde_v8, v8};
-use std::path::PathBuf;
 use tokio::fs;
 use tokio::time::Instant;
+
+use darx_isolate_runtime::DarxIsolate;
 
 const ENV_ID: &str = "cljb3ovlt0002e38vwo0xi5ge";
 const DEPLOY_SEQ: i64 = 99;

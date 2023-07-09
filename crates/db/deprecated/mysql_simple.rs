@@ -1,13 +1,14 @@
-use crate::{Connection, ConnectionPool};
 use anyhow::{anyhow, Error, Result};
 use async_trait::async_trait;
 use darx_utils::test_mysql_db_url;
 use mysql_async;
+use mysql_async::{Conn, params};
 use mysql_async::prelude::{Query, Queryable, WithParams};
-use mysql_async::{params, Conn};
 use serde::ser::{Serialize, SerializeMap, Serializer};
 use std::cell::RefCell;
 use std::rc::Rc;
+
+use crate::{Connection, ConnectionPool};
 
 // impl From<DeploymentType> for mysql_async::Value {
 //     fn from(t: DeploymentType) -> Self {

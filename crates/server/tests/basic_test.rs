@@ -1,0 +1,131 @@
+use anyhow::Result;
+use serde_json::json;
+use std::env;
+use std::path::PathBuf;
+use tokio::task::JoinHandle;
+use tokio::time;
+use tokio::time::sleep;
+use tracing::info;
+use tracing_subscriber::filter::LevelFilter;
+use tracing_subscriber::prelude::__tracing_subscriber_SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::Layer;
+
+const ENV_ID: &str = "cljb3ovlt0002e38vwo0xi5ge";
+const DATA: &str = "127.0.0.1:3456";
+const CONTROL: &str = "127.0.0.1:3457";
+
+#[actix_web::test]
+async fn test_main_process() {
+    env::set_var("DATA_PLANE_URL", format!("http://{}", DATA));
+
+    let registry = tracing_subscriber::registry();
+    registry
+        .with(
+            tracing_subscriber::fmt::layer()
+                .with_file(true)
+                .with_line_number(true)
+                .with_filter(
+                    tracing_subscriber::EnvFilter::builder()
+                        .with_default_directive(LevelFilter::INFO.into())
+                        .from_env_lossy(),
+                ),
+        )
+        .init();
+
+    let project_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let code_path = project_dir.join("tests/basic_test");
+    let server_data_path = project_dir.join("tests/basic_test/server");
+
+    tokio::fs::remove_dir_all(&server_data_path).await.unwrap();
+    tokio::fs::create_dir(&server_data_path).await.unwrap();
+
+    let handle = run_server(server_data_path).await;
+
+    let req = darx_api::deploy::dir_to_deploy_req(code_path.as_path()).unwrap();
+    info!("req: {:#?}", req);
+    let client = reqwest::Client::new();
+
+    client
+        .post(format!("http://{}/deploy_code/{}", CONTROL, ENV_ID))
+        .json(&req)
+        .send()
+        .await
+        .unwrap()
+        .error_for_status()
+        .unwrap();
+
+    let req = json!({"msg": "123"});
+
+    let resp = client
+        .post(format!("http://{}/invoke/foo.Hi", DATA))
+        .header("HOST", format!("{}.darx.sh", ENV_ID))
+        .json(&req)
+        .send()
+        .await
+        .unwrap()
+        .error_for_status()
+        .unwrap()
+        .text()
+        .await
+        .unwrap();
+    assert_eq!(resp, "\"Hi 123 from foo\"");
+
+    let resp = client
+        .post(format!("http://{}/invoke/bar.Hi", DATA))
+        .header("HOST", format!("{}.darx.sh", ENV_ID))
+        .json(&req)
+        .send()
+        .await
+        .unwrap()
+        .error_for_status()
+        .unwrap()
+        .text()
+        .await
+        .unwrap();
+    assert_eq!(resp, "\"Hi 123 from bar\"");
+
+    handle.abort();
+    let _ = handle.await;
+}
+
+async fn run_server(server_data_path: PathBuf) -> JoinHandle<Result<()>> {
+    let h = actix_web::rt::spawn(async {
+        let data = darx_data_plane::run_server(
+            DATA.parse().unwrap(),
+            server_data_path,
+        )
+        .await?;
+        let control =
+            darx_control_plane::run_server(CONTROL.parse().unwrap()).await?;
+        let (_, _) = futures::future::try_join(data, control).await?;
+        Ok(())
+    });
+
+    let client = reqwest::Client::new();
+
+    loop {
+        if client
+            .get(format!("http://{}/", CONTROL))
+            .send()
+            .await
+            .is_ok()
+        {
+            info!("connected {}", CONTROL);
+            break;
+        } else {
+            sleep(time::Duration::from_secs(1)).await;
+        }
+    }
+
+    loop {
+        if client.get(format!("http://{}/", DATA)).send().await.is_ok() {
+            info!("connected {}", DATA);
+            break;
+        } else {
+            sleep(time::Duration::from_secs(1)).await;
+        }
+    }
+
+    h
+}
