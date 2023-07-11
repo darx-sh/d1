@@ -1,7 +1,8 @@
+import Directory from "./directory";
 export default function Functions() {
   return (
     <div>
-      <div>API List and metrics</div>
+      <Directory />
     </div>
   );
 }

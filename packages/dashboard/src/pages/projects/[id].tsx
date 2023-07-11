@@ -27,14 +27,6 @@ const navigation = [
     id: "Functions",
     icon: CodeBracketSquareIcon,
   },
-  // {
-  //   id: "Users",
-  //   icon: UserGroupIcon,
-  // },
-  // {
-  //   id: "Plugins",
-  //   icon: RectangleGroupIcon,
-  // },
   {
     id: "Logs",
     icon: Bars4Icon,
