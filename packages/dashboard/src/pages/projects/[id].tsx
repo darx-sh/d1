@@ -120,7 +120,7 @@ export default function ProjectDetail() {
           </nav>
         </div>
       </div>
-      <main className="fixed inset-y-0 ml-52">
+      <main className="ml-52">
         <QuickNav nav={quickNav} />
         {curIndex === 0 && <Database />}
         {curIndex === 1 && <Functions />}
