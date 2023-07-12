@@ -40,12 +40,7 @@ function DirectoryTreeView() {
             level,
           }) => (
             <div {...getNodeProps()} style={{ paddingLeft: 20 * (level - 1) }}>
-              {isBranch ? (
-                <FolderIcon isOpen={isExpanded} />
-              ) : (
-                <FileIcon filename={element.name} />
-              )}
-
+              {isBranch ? <FolderIcon isOpen={isExpanded} /> : null}
               {element.name}
             </div>
           )}
@@ -57,21 +52,9 @@ function DirectoryTreeView() {
 
 const FolderIcon = ({ isOpen }: { isOpen: boolean }) =>
   isOpen ? (
-    <FaRegFolderOpen color="e8a87c" className="icon" />
+    <FaRegFolderOpen color="e8a87c" className="inline-block" />
   ) : (
-    <FaRegFolder color="e8a87c" className="icon" />
+    <FaRegFolder color="e8a87c" className="inline-block" />
   );
-
-const FileIcon = ({ filename }: { filename: string }) => {
-  const extension = filename.slice(filename.lastIndexOf(".") + 1);
-  switch (extension) {
-    case "js":
-      return <SiJavascript className="icon" />;
-    case "ts":
-      return <SiTypescript className="icon" />;
-    default:
-      return null;
-  }
-};
 
 export default DirectoryTreeView;
