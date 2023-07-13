@@ -13,7 +13,7 @@ import Logs from "~/components/project/logs";
 import Settings from "~/components/project/settings";
 import Users from "~/components/project/users";
 import Plugins from "~/components/project/plugins";
-import QuickNav from "~/components/quick_nav";
+import QuickNav from "~/components/QuickNav";
 
 const navigation = [
   {

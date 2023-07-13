@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { FaRegFolder, FaRegFolderOpen } from "react-icons/fa";
 import TreeView, { flattenTree } from "react-accessible-treeview";
-import FileMenu from "~/components/project/file_menu";
+import FileMenu from "~/components/project/FileMenu";
 
 // const folder = {
 //   name: "",
