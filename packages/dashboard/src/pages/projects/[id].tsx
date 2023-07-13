@@ -2,12 +2,9 @@ import { useState } from "react";
 import { useRouter } from "next/router";
 import {
   CircleStackIcon,
-  CloudIcon,
   CodeBracketSquareIcon,
   Bars4Icon,
   WrenchIcon,
-  UserGroupIcon,
-  RectangleGroupIcon,
 } from "@heroicons/react/24/solid";
 
 import Database from "~/components/project/database";
