@@ -1,31 +1,52 @@
-import React from "react";
-import { FaList, FaRegFolder, FaRegFolderOpen } from "react-icons/fa";
+import React, { useState } from "react";
+import { FaRegFolder, FaRegFolderOpen } from "react-icons/fa";
 import TreeView, { flattenTree } from "react-accessible-treeview";
-import { SiJavascript } from "react-icons/si";
-import { SiTypescript } from "react-icons/si";
+import FileMenu from "~/components/project/file_menu";
 
-const folder = {
-  name: "",
-  children: [
-    {
-      name: "functions",
-      children: [{ name: "foo.js" }, { name: "bar.ts" }],
-    },
-    {
-      name: "lib",
-      children: [
-        {
-          name: "a.js",
-        },
-        { name: "b.js" },
-      ],
-    },
-  ],
-};
+// const folder = {
+//   name: "",
+//   children: [
+//     {
+//       name: "functions",
+//       children: [{ name: "foo.js" }, { name: "bar.ts" }, { name: "foo_dir" }],
+//     },
+//     {
+//       name: "lib",
+//       children: [
+//         {
+//           name: "a.js",
+//         },
+//         { name: "b.js" },
+//       ],
+//     },
+//     { name: "foo_dir", children: [{ name: "aa.js" }] },
+//   ],
+// };
 
-const data = flattenTree(folder);
+// const data = flattenTree(folder);
+
+const data = [
+  { id: "root", name: "", children: ["functions", "lib"], parent: null },
+  {
+    id: "functions",
+    name: "functions",
+    children: [],
+    parent: "root",
+    isBranch: true,
+  },
+  {
+    id: "lib",
+    name: "lib",
+    children: [],
+    parent: "root",
+    isBranch: true,
+  },
+];
 
 function DirectoryTreeView() {
+  const [isMenuOpen, setMenuOpen] = useState(false);
+  const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
+
   return (
     <div>
       <div className="bg-slate-200 p-2">
@@ -38,12 +59,36 @@ function DirectoryTreeView() {
             isExpanded,
             getNodeProps,
             level,
-          }) => (
-            <div {...getNodeProps()} style={{ paddingLeft: 20 * (level - 1) }}>
-              {isBranch ? <FolderIcon isOpen={isExpanded} /> : null}
-              {element.name}
-            </div>
-          )}
+          }) => {
+            const handleContextMenu = (
+              event: React.MouseEvent<Element, MouseEvent>
+            ) => {
+              event.preventDefault();
+              setMenuOpen(true);
+              setMenuPosition({ x: event.clientX, y: event.clientY });
+              console.log("context menu ", event.clientX, event.clientY);
+            };
+
+            const hideMenu = () => {
+              setMenuOpen(false);
+            };
+            return (
+              <div
+                {...getNodeProps()}
+                style={{ paddingLeft: 20 * (level - 1) }}
+                onContextMenu={handleContextMenu}
+              >
+                {isMenuOpen && (
+                  <FileMenu
+                    menuPosition={menuPosition}
+                    hideMenu={hideMenu}
+                  ></FileMenu>
+                )}
+                {isBranch ? <FolderIcon isOpen={isExpanded} /> : null}
+                {element.name}
+              </div>
+            );
+          }}
         />
       </div>
     </div>
