@@ -10,7 +10,7 @@ use darx_api::{Code, DeployCodeReq};
 
 const DARX_SERVER_DIR: &str = "darx_server";
 const DARX_FUNCTIONS_SUBDIR: &str = "functions";
-const DARX_LIBS_SUBDIR: &str = "libs";
+const DARX_LIB_SUBDIR: &str = "lib";
 
 // todo: used for mvp test only. will be removed in the future
 const MVP_TEST_ENV_ID: &str = "cljb3ovlt0002e38vwo0xi5ge";
@@ -19,7 +19,7 @@ pub async fn run_dev(root_dir: &str) -> Result<()> {
     let root_path = PathBuf::from(root_dir);
     let server_path = root_path.join(DARX_SERVER_DIR);
     let functions_path = server_path.join(DARX_FUNCTIONS_SUBDIR);
-    let libs_path = server_path.join(DARX_LIBS_SUBDIR);
+    let libs_path = server_path.join(DARX_LIB_SUBDIR);
     fs::create_dir_all(functions_path.as_path()).with_context(|| {
         format!(
             "Failed to create `functions` directory: {:?}",

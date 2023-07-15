@@ -1,4 +1,4 @@
-import JsEditor from "~/components/project/editor";
+import JsEditor from "~/components/project/JsEditor";
 import { PlayIcon } from "@heroicons/react/24/solid";
 
 export default function Data() {

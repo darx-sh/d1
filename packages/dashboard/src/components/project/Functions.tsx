@@ -1,4 +1,4 @@
-import Directory from "./directory";
+import Directory from "./Directory";
 export default function Functions() {
   return (
     <div>
