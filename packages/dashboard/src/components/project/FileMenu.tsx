@@ -15,6 +15,7 @@ function classNames(...classes: any[]) {
 type FileMenuProps = {
   menuPosition: { x: number; y: number };
   hideMenu: () => void;
+  handleNewFile: () => void;
 };
 export default function FileMenu(props: FileMenuProps) {
   useEffect(() => {
@@ -30,7 +31,7 @@ export default function FileMenu(props: FileMenuProps) {
   }, []);
 
   const handleNewFileClick = () => {
-    console.log("new file clicked");
+    props.handleNewFile();
   };
 
   const handleNewFolderClick = () => {

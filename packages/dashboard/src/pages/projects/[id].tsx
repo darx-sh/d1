@@ -8,12 +8,12 @@ import {
 } from "@heroicons/react/24/solid";
 
 import Database from "~/components/project/database";
-import Functions from "~/components/project/functions";
+import Functions from "~/components/project/Functions";
 import Logs from "~/components/project/logs";
 import Settings from "~/components/project/settings";
 import Users from "~/components/project/users";
 import Plugins from "~/components/project/plugins";
-import QuickNav from "~/components/quick_nav";
+import QuickNav from "~/components/QuickNav";
 
 const navigation = [
   {
@@ -21,7 +21,7 @@ const navigation = [
     icon: CircleStackIcon,
   },
   {
-    id: "Functions",
+    id: "Code",
     icon: CodeBracketSquareIcon,
   },
   {
@@ -54,10 +54,8 @@ export default function ProjectDetail() {
 
   return (
     <div>
-      {/* Static sidebar for desktop */}
-      <div className="lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-52 lg:flex-col">
-        {/* Sidebar component, swap this element with another sidebar if you like */}
-        <div className="flex grow flex-col gap-y-5 overflow-y-auto border-r border-gray-200 bg-white px-6">
+      <div className="fixed inset-y-0 z-50 flex w-48">
+        <div className="flex grow flex-col gap-y-5 overflow-y-auto border-r border-gray-200 bg-white px-3">
           <div className="flex h-16 shrink-0 items-center">
             <img
               className="h-8 w-auto"

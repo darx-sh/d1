@@ -1,4 +1,4 @@
-import JsEditor from "~/components/project/editor";
+import JsEditor from "~/components/project/JsEditor";
 
 export default function Schema() {
   const code = `table "orders" {
