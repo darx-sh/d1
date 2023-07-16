@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { FaRegFolder, FaRegFolderOpen } from "react-icons/fa";
 import TreeView, { flattenTree } from "react-accessible-treeview";
-import FileMenu from "~/components/project/FileMenu";
-import FileContent from "~/components/project/FileContent";
-import NewFileDialog from "~/components/project/NewFileDialog";
+import FileMenu from "./FileMenu";
+import FileContent from "./FileContent";
+import NewFileDialog from "./NewFileDialog";
 
 const data = [
   { id: "root", name: "", children: ["functions", "lib"], parent: null },
@@ -52,21 +52,12 @@ function DirectoryTreeView() {
     setMenuOnDir(isDir);
   };
 
-  const hideMenu = () => {
-    setMenuOpen(false);
-  };
-
   const handleNewFileMenu = () => {
     setIsNewFileDialogOpen(true);
   };
 
   const handleNewFileName = (name: string) => {
-    console.log("new file name: ", name, "fsPath: ", menuFsPath);
     setCurFileName(name);
-  };
-
-  const closeDialog = () => {
-    setIsNewFileDialogOpen(false);
   };
 
   return (
@@ -75,7 +66,7 @@ function DirectoryTreeView() {
         {isMenuOpen && (
           <FileMenu
             menuPosition={menuPosition}
-            hideMenu={hideMenu}
+            hideMenu={() => setMenuOpen(false)}
             handleNewFile={handleNewFileMenu}
           ></FileMenu>
         )}
@@ -83,7 +74,7 @@ function DirectoryTreeView() {
       <div>
         {isNewFileDialogOpen && (
           <NewFileDialog
-            closeDialog={closeDialog}
+            closeDialog={() => setIsNewFileDialogOpen(false)}
             handleNewFileName={handleNewFileName}
           ></NewFileDialog>
         )}

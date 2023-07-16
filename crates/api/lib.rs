@@ -38,6 +38,14 @@ pub struct Code {
 pub struct DeployCodeRsp {}
 
 ///
+/// list code
+///
+#[derive(Serialize, Deserialize)]
+pub struct ListCodeRsp {
+    pub codes: Vec<Code>,
+}
+
+///
 /// add_deployment
 ///
 #[derive(Serialize, Deserialize)]

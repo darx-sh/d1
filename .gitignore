@@ -7,5 +7,5 @@ node_modules
 .env
 *.db
 .DS_Store
-crates/*/target
+**/target/
 SNAPSHOT.bin

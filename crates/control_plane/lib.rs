@@ -9,7 +9,7 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use darx_api::{
     add_deployment_url, unique_js_export, AddDeploymentReq, ApiError, Bundle,
-    DeployCodeReq, DeployCodeRsp, HttpRoute,
+    Code, DeployCodeReq, DeployCodeRsp, HttpRoute, ListCodeRsp,
 };
 use dotenvy::dotenv;
 use handlebars::Handlebars;
@@ -36,6 +36,7 @@ pub async fn run_server(socket_addr: SocketAddr) -> Result<()> {
     let app = Router::new()
         .route("/", get(|| async { "control plane healthy." }))
         .route("/deploy_code/:env_id", post(deploy_code))
+        .route("/list_code/:env_id", get(list_code))
         .with_state(server_state);
 
     tracing::info!("listen on {}", socket_addr);
@@ -188,6 +189,33 @@ async fn deploy_code(
         )));
     }
     Ok(Json(DeployCodeRsp {}))
+}
+
+async fn list_code(
+    State(server_state): State<Arc<ServerState>>,
+    AxumPath(env_id): AxumPath<String>,
+) -> Result<Json<ListCodeRsp>, ApiError> {
+    let db_pool = &server_state.db_pool;
+    let bundle = sqlx::query!(
+        "
+    SELECT bundles.fs_path AS fs_path, bundles.code AS code
+    FROM bundles INNER JOIN deploys ON bundles.deploy_id = deploys.id
+    WHERE deploys.env_id = ? ORDER BY deploys.deploy_seq DESC LIMIT 1",
+        env_id
+    )
+    .fetch_all(db_pool)
+    .await
+    .context("Failed to query bundles table")?;
+    let mut codes = vec![];
+    for b in bundle.iter() {
+        let content = b.code.as_ref().unwrap();
+        codes.push(Code {
+            fs_path: b.fs_path.clone(),
+            content: String::from_utf8(content.clone()).unwrap(),
+        });
+    }
+    let rsp = ListCodeRsp { codes };
+    Ok(Json(rsp))
 }
 
 const REGISTRY_TEMPLATE: &str = r#"
