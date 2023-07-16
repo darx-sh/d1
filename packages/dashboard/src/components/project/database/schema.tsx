@@ -28,7 +28,13 @@ export default function Schema() {
         Apply Migration
       </button>
       <div className="mt-2">
-        <JsEditor initialCode={code} readOnly={true} />
+        <JsEditor
+          initialCode={code}
+          readOnly={true}
+          handleCodeChange={(code: string) => {
+            console.log(code);
+          }}
+        />
       </div>
     </div>
   );

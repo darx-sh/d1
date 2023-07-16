@@ -236,7 +236,7 @@ async fn list_code(
         "
     SELECT bundles.fs_path AS fs_path, bundles.code AS code
     FROM bundles INNER JOIN deploys ON bundles.deploy_id = deploys.id
-    WHERE deploys.env_id = ? ORDER BY deploys.deploy_seq DESC LIMIT 1",
+    WHERE deploys.env_id = ? AND bundles.fs_path != '__registry.js' ORDER BY deploys.deploy_seq DESC LIMIT 1",
         env_id
     )
     .fetch_all(db_pool)

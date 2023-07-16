@@ -5,13 +5,14 @@ import { ViewUpdate } from "@codemirror/view";
 
 type JsEditorProps = {
   initialCode: string;
+  handleCodeChange: (code: string) => void;
   readOnly: boolean;
 };
 
 function JsEditor(props: JsEditorProps) {
   const onChange = React.useCallback(
     (value: string, viewUpdate: ViewUpdate) => {
-      console.log("value:", value);
+      props.handleCodeChange(value);
     },
     []
   );

@@ -20,7 +20,13 @@ export default function Data() {
         </button>
       </div>
       <div className="mt-2">
-        <JsEditor initialCode={code} readOnly={false} />
+        <JsEditor
+          initialCode={code}
+          readOnly={false}
+          handleCodeChange={(code: string) => {
+            console.log(code);
+          }}
+        />
       </div>
       <TableData></TableData>
     </div>
