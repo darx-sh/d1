@@ -1,13 +1,15 @@
+use std::path::{Path, PathBuf};
+use std::rc::Rc;
+
+use anyhow::{Context, Result};
+use deno_core::{Extension, Snapshot};
+
+use db_ops::darx_db_ops;
+use module_loader::TenantModuleLoader;
+
 mod db_ops;
 mod module_loader;
 mod permissions;
-
-use anyhow::{Context, Result};
-use db_ops::darx_db_ops;
-use deno_core::{Extension, Snapshot};
-use module_loader::TenantModuleLoader;
-use std::path::{Path, PathBuf};
-use std::rc::Rc;
 
 deno_core::extension!(darx_bootstrap, esm = ["js/00_bootstrap.js"]);
 

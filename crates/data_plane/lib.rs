@@ -1,45 +1,42 @@
-mod deployment;
-mod worker;
-
-use anyhow::{anyhow, Context, Result};
-use axum::extract::{Host, Path as AxumPath, State};
-use axum::http::StatusCode;
-use axum::routing::{get, post};
-use axum::{Json, Router};
-use darx_api::{AddDeploymentReq, ApiError};
-use dotenvy::dotenv;
-
 use std::env;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
-use tokio::fs;
 
-use crate::worker::{WorkerEvent, WorkerPool};
+use actix_web::dev::{ConnectionInfo, Server};
+use actix_web::web::{get, post, Data, Json, Path};
+use actix_web::{App, HttpResponse, HttpResponseBuilder, HttpServer};
+use anyhow::{Context, Result};
+use deno_core::{serde_v8, v8};
+use dotenvy::dotenv;
+use tokio::fs;
+use tracing_actix_web::TracingLogger;
+
+use darx_api::{unique_js_export, AddDeploymentReq, ApiError};
+use darx_isolate_runtime::DarxIsolate;
 
 use crate::deployment::{
     add_bundle_files, add_route, find_bundle_dir, init_deployments,
-    match_route, DeploymentRoute,
+    match_route, DeploymentRoute, SNAPSHOT_FILE,
 };
 
-use tokio::sync::oneshot;
+mod deployment;
 
 const DARX_BUNDLES_DIR: &str = "./darx_bundles";
 
 pub async fn run_server(
     socket_addr: SocketAddr,
     working_dir: PathBuf,
-) -> Result<()> {
+) -> Result<Server> {
     let working_dir = fs::canonicalize(working_dir)
         .await
         .context("Failed to canonicalize working dir")?;
-    let bundles_dir = working_dir.join(crate::DARX_BUNDLES_DIR);
+    let bundles_dir = working_dir.join(DARX_BUNDLES_DIR);
     fs::create_dir_all(bundles_dir.as_path()).await?;
 
     #[cfg(debug_assertions)]
     dotenv().expect("Failed to load .env file");
 
-    let worker_pool = WorkerPool::new();
     let db_pool = sqlx::MySqlPool::connect(
         env::var("DATABASE_URL")
             .expect("DATABASE_URL should be configured")
@@ -52,92 +49,106 @@ pub async fn run_server(
         .await
         .context("Failed to init deployments on startup")?;
 
-    let server_state = Arc::new(ServerState {
-        worker_pool,
-        bundles_dir,
-    });
-
-    let app = Router::new()
-        .route("/", get(|| async { "data plane healthy." }))
-        .route("/invoke/*func_url", post(invoke_function))
-        .route("/add_deployment", post(add_deployment))
-        .with_state(server_state);
+    let server_state = Arc::new(ServerState { bundles_dir });
 
     tracing::info!("listen on {}", socket_addr);
-    axum::Server::bind(&socket_addr)
-        .serve(app.into_make_service())
+
+    Ok(HttpServer::new(move || {
+        App::new()
+            .wrap(TracingLogger::default())
+            .app_data(Data::new(server_state.clone()))
+            .route("/", get().to(|| async { "data plane healthy." }))
+            .route("/invoke/{func_url}", post().to(invoke_function))
+            .route("/add_deployment", post().to(add_deployment))
+    })
+    .bind(&socket_addr)?
+    .run())
+}
+
+async fn invoke_function0(
+    bundles_dir: impl AsRef<std::path::Path>,
+    env_id: &str,
+    deploy_seq: i32,
+    req: serde_json::Value,
+    js_entry_point: &str,
+    js_export: &str,
+) -> Result<serde_json::Value, ApiError> {
+    let bundle_dir = find_bundle_dir(bundles_dir, env_id, deploy_seq)
         .await
-        .context("Failed to start http server")?;
-    Ok(())
+        .map_err(|e| ApiError::BundleNotFound(e.to_string()))?;
+
+    //TODO an isolates' cache?
+    let snapshot_path = bundle_dir.join(SNAPSHOT_FILE);
+    let snapshot = fs::read(&snapshot_path).await.map_err(ApiError::IoError)?;
+    let mut isolate = DarxIsolate::new_with_snapshot(
+        env_id,
+        deploy_seq,
+        bundle_dir,
+        snapshot.into_boxed_slice(),
+    )
+    .await;
+
+    let script_result = isolate
+        .js_runtime
+        .execute_script(
+            "invoke_function",
+            format!(
+                "{}({});",
+                unique_js_export(js_entry_point, js_export),
+                req
+            ),
+        )
+        .map_err(ApiError::Internal)?;
+
+    let script_result = isolate
+        .js_runtime
+        .resolve_value(script_result)
+        .await
+        .map_err(ApiError::Internal)?;
+    let mut handle_scope = isolate.js_runtime.handle_scope();
+    let script_result = v8::Local::new(&mut handle_scope, script_result);
+    let script_result = serde_v8::from_v8(&mut handle_scope, script_result)
+        .map_err(|e| ApiError::Internal(anyhow::Error::new(e)))?;
+    Ok(script_result)
 }
 
 async fn invoke_function(
-    State(server_state): State<Arc<ServerState>>,
-    host: Host,
-    AxumPath(func_url): AxumPath<String>,
+    server_state: Data<Arc<ServerState>>,
+    conn: ConnectionInfo,
+    func_url: Path<String>,
     Json(req): Json<serde_json::Value>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
-    let domain = host.0;
-    let env_id = extract_env_id(domain.as_str())?;
+    let domain = conn.host();
+    let env_id = extract_env_id(domain)?;
+    let func_url = func_url.into_inner();
 
     let (deploy_seq, route) =
         match_route(env_id.as_str(), func_url.as_str(), "POST").ok_or(
             ApiError::FunctionNotFound(format!(
                 "domain: {}, env_id: {}",
-                domain, env_id
+                domain, &env_id
             )),
         )?;
 
-    let (resp_tx, resp_rx) = oneshot::channel();
-    let raw_value = serde_json::value::RawValue::from_string(req.to_string())
-        .with_context(|| {
-        format!(
-            "failed to serialize request body for function '{}'",
-            func_url
-        )
-    })?;
-
-    let bundle_dir = find_bundle_dir(
-        server_state.bundles_dir.as_path(),
-        env_id.as_str(),
+    let ret = invoke_function0(
+        &server_state.bundles_dir,
+        &env_id,
         deploy_seq,
+        req,
+        &route.js_entry_point,
+        &route.js_export,
     )
     .await?;
-    let event = WorkerEvent::InvokeFunction {
-        env_id,
-        deploy_seq,
-        bundle_dir,
-        js_entry_point: route.js_entry_point,
-        js_export: route.js_export,
-        params: raw_value,
-        resp: resp_tx,
-    };
-
-    server_state.worker_pool.send(event).map_err(|e| {
-        ApiError::Internal(anyhow!(
-            "failed to send request to worker pool: {}",
-            e.to_string()
-        ))
-    })?;
-
-    match resp_rx.await.with_context(|| {
-        format!(
-            "failed to receive response from worker pool for function '{}'",
-            func_url
-        )
-    }) {
-        Ok(r) => match r {
-            Ok(v) => Ok(Json(v)),
-            Err(e) => Err(ApiError::Internal(e)),
-        },
-        Err(e) => Err(ApiError::Internal(e)),
-    }
+    Ok(Json(ret))
 }
 
 async fn add_deployment(
-    State(server_state): State<Arc<ServerState>>,
+    server_state: Data<Arc<ServerState>>,
     Json(req): Json<AddDeploymentReq>,
-) -> Result<StatusCode, ApiError> {
+) -> Result<HttpResponseBuilder, ApiError> {
+    let bundles_len = req.bundles.len();
+    let routes_len = req.http_routes.len();
+
     let deployment_route = DeploymentRoute {
         env_id: req.env_id.clone(),
         deploy_seq: req.deploy_seq,
@@ -147,11 +158,19 @@ async fn add_deployment(
         req.env_id.as_str(),
         req.deploy_seq,
         server_state.bundles_dir.as_path(),
-        req.bundles,
+        &req.bundles,
     )
     .await?;
     add_route(deployment_route);
-    Ok(StatusCode::OK)
+
+    tracing::info!(
+        env = req.env_id.as_str(),
+        seq = req.deploy_seq,
+        "cached deployment, {} bundles, {} routes",
+        bundles_len,
+        routes_len
+    );
+    Ok(HttpResponse::Ok())
 }
 
 // fn project_db_file(db_dir: &Path, project_id: &str) -> PathBuf {
@@ -279,7 +298,6 @@ async fn add_deployment(
 // }
 
 struct ServerState {
-    worker_pool: WorkerPool,
     bundles_dir: PathBuf,
 }
 
@@ -289,4 +307,14 @@ fn extract_env_id(domain: &str) -> Result<String> {
         ApiError::DomainNotFound(format!("invalid domain: {}", domain))
     })?;
     Ok(env_id.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_sqrt() -> Result<()> {
+        Ok(())
+    }
 }

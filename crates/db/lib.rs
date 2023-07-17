@@ -1,13 +1,14 @@
 // mod mysql_simple;
 // mod types;
 
-mod mysql_sqlx;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 use anyhow::Result;
 use async_trait::async_trait;
 use serde::Deserialize;
-use std::cell::RefCell;
-use std::rc::Rc;
+
+mod mysql_sqlx;
 
 #[async_trait]
 pub trait ConnectionPool: Send + Sync {

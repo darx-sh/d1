@@ -1,12 +1,17 @@
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
+
 use anyhow::{Context, Result};
-use darx_api::{Bundle, HttpRoute};
 use dashmap::DashMap;
 use once_cell::sync::Lazy;
 use serde::Deserialize;
-use std::path::{Path, PathBuf};
 use tokio::fs;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
+use tokio::time::Instant;
+
+use darx_api::{Bundle, HttpRoute};
+use darx_isolate_runtime::DarxIsolate;
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct DeploymentRoute {
@@ -16,7 +21,9 @@ pub struct DeploymentRoute {
 }
 
 static GLOBAL_ROUTER: Lazy<DashMap<String, Vec<DeploymentRoute>>> =
-    Lazy::new(|| DashMap::new());
+    Lazy::new(DashMap::new);
+
+pub(crate) const SNAPSHOT_FILE: &str = "SNAPSHOT.bin";
 
 pub async fn init_deployments(
     bundles_dir: &Path,
@@ -69,27 +76,37 @@ pub async fn init_deployments(
     .await
     .context("Failed to load bundles from db")?;
 
-    for bundle in bundles.iter() {
-        let b = Bundle {
-            id: bundle.id.clone(),
-            fs_path: bundle.fs_path.clone(),
-            code: bundle.code.clone(),
-        };
+    let mut map: HashMap<(&str, i32), Vec<Bundle>> =
+        HashMap::with_capacity(bundles.len());
 
-        add_single_bundle_file(
-            bundles_dir,
-            bundle.env_id.as_str(),
-            bundle.deploy_seq,
-            &b,
-        )
-        .await
-        .with_context( || {
-            format!(
-                "Failed to add bundle file on startup. env_id: {}, deploy_seq: {}",
-                bundle.env_id.clone(),
-                bundle.deploy_seq,
+    for bundle in bundles.iter() {
+        map.entry((bundle.env_id.as_str(), bundle.deploy_seq))
+            .or_default()
+            .push(Bundle {
+                id: bundle.id.clone(),
+                fs_path: bundle.fs_path.clone(),
+                code: bundle.code.clone(),
+            });
+    }
+
+    for ((env_id, deploy_seq), v) in &map {
+        for b in v {
+            add_single_bundle_file(
+                bundles_dir,
+                env_id,
+                *deploy_seq,
+                b,
             )
-        })?;
+                .await
+                .with_context( || {
+                    format!(
+                        "Failed to add bundle file on startup. env_id: {}, deploy_seq: {}",
+                        env_id, deploy_seq,
+                    )
+                })?;
+        }
+
+        add_snapshot(bundles_dir, env_id, *deploy_seq).await?;
     }
     Ok(())
 }
@@ -126,7 +143,7 @@ pub async fn add_bundle_files(
     env_id: &str,
     deploy_seq: i32,
     bundles_dir: impl AsRef<Path>,
-    bundles: Vec<Bundle>,
+    bundles: &Vec<Bundle>,
 ) -> Result<()> {
     // setup bundle files
     for bundle in bundles.iter() {
@@ -138,6 +155,7 @@ pub async fn add_bundle_files(
         )
         .await?;
     }
+    add_snapshot(bundles_dir.as_ref(), env_id, deploy_seq).await?;
     Ok(())
 }
 
@@ -175,6 +193,74 @@ async fn add_single_bundle_file(
     let mut file = File::create(bundle_file.as_path()).await?;
     file.write_all(bundle.code.as_ref().unwrap().as_slice())
         .await?;
+    Ok(())
+}
+
+async fn add_snapshot(
+    bundles_dir: &Path,
+    env_id: &str,
+    deploy_seq: i32,
+) -> Result<()> {
+    let bundle_dir =
+        setup_bundle_deployment_dir(bundles_dir.as_ref(), env_id, deploy_seq)
+            .await?;
+    let mut js_runtime = DarxIsolate::prepare_snapshot(&bundle_dir).await?;
+    let mut entries = fs::read_dir(&bundle_dir).await?;
+
+    while let Some(entry) = entries.next_entry().await? {
+        if let Ok(file_type) = entry.file_type().await {
+            if file_type.is_file() {
+                tracing::info!(
+                    env = env_id,
+                    seq = deploy_seq,
+                    "add snapshot {} to {}",
+                    entry.file_name().to_str().unwrap(),
+                    bundle_dir.display(),
+                );
+
+                let module_id = js_runtime
+                    .load_side_module(
+                        &deno_core::resolve_path(
+                            entry.file_name().to_str().unwrap(),
+                            &bundle_dir,
+                        )?,
+                        None,
+                    )
+                    .await?;
+
+                let receiver = js_runtime.mod_evaluate(module_id);
+                js_runtime.run_event_loop(false).await?;
+                let _ = receiver.await?;
+            }
+        }
+    }
+
+    let mut mark = Instant::now();
+    let snapshot = js_runtime.snapshot();
+    let snapshot_slice: &[u8] = &snapshot;
+
+    tracing::info!(
+        env = env_id,
+        seq = deploy_seq,
+        "Snapshot size: {}, took {:#?}",
+        snapshot_slice.len(),
+        Instant::now().saturating_duration_since(mark)
+    );
+
+    mark = Instant::now();
+
+    let snapshot_path = bundle_dir.join(SNAPSHOT_FILE);
+
+    fs::write(&snapshot_path, snapshot_slice).await.unwrap();
+
+    tracing::info!(
+        env = env_id,
+        seq = deploy_seq,
+        "Snapshot written, took: {:#?} ({})",
+        Instant::now().saturating_duration_since(mark),
+        snapshot_path.display(),
+    );
+
     Ok(())
 }
 

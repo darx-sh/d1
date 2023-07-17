@@ -1,7 +1,9 @@
+use std::path::PathBuf;
+
 use anyhow::Result;
+
 use darx_isolate_runtime::DarxIsolate;
 use darx_utils::test_mysql_db_url;
-use std::path::PathBuf;
 
 pub fn isolate_inputs() -> (String, i32, PathBuf) {
     let env_id = "cljb3ovlt0002e38vwo0xi5ge";

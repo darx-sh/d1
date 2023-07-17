@@ -1,14 +1,17 @@
-use axum::http;
-use axum::response::{IntoResponse, Response};
-use axum::Json;
-use serde::{Deserialize, Serialize};
 use std::env;
+
+use actix_web::http::header::ContentType;
+use actix_web::http::StatusCode;
+use actix_web::web::Json;
+use actix_web::{HttpResponse, ResponseError};
+use serde::{Deserialize, Serialize};
+use serde_json::json;
+use thiserror::Error;
 
 /// Re-export darx_db types.
 pub use darx_db::DBType;
 
-use serde_json::json;
-use thiserror::Error;
+pub mod deploy;
 
 pub fn add_deployment_url() -> String {
     format!(
@@ -21,20 +24,20 @@ pub fn add_deployment_url() -> String {
 ///
 /// deploy_code
 ///
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct DeployCodeReq {
     pub tag: Option<String>,
     pub desc: Option<String>,
     pub codes: Vec<Code>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Code {
     pub fs_path: String,
     pub content: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct DeployCodeRsp {}
 
 ///
@@ -48,7 +51,7 @@ pub struct ListCodeRsp {
 ///
 /// add_deployment
 ///
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct AddDeploymentReq {
     pub env_id: String,
     pub deploy_seq: i32,
@@ -101,7 +104,7 @@ pub enum ApiError {
     FunctionParameterError(String),
     #[error("Table {0} not found")]
     TableNotFound(String),
-    #[error("Internal error")]
+    #[error("Internal error: {0:?}")]
     Internal(anyhow::Error),
     #[error("Environment {0} not found")]
     EnvNotFound(String),
@@ -113,46 +116,58 @@ impl From<anyhow::Error> for ApiError {
     }
 }
 
-impl IntoResponse for ApiError {
-    fn into_response(self) -> Response {
+impl ResponseError for ApiError {
+    fn error_response(&self) -> HttpResponse {
         match self {
-            ApiError::Auth => {
-                (http::StatusCode::UNAUTHORIZED, format!("{}", self))
-                    .into_response()
+            ApiError::Auth => HttpResponse::build(StatusCode::UNAUTHORIZED)
+                .insert_header(ContentType::plaintext())
+                .body(self.to_string()),
+
+            ApiError::IoError(_) => {
+                HttpResponse::build(StatusCode::INTERNAL_SERVER_ERROR)
+                    .insert_header(ContentType::plaintext())
+                    .body(self.to_string())
             }
-            ApiError::IoError(e) => {
-                (http::StatusCode::INTERNAL_SERVER_ERROR, format!("{:#}", e))
-                    .into_response()
+
+            ApiError::DomainNotFound(_) => {
+                HttpResponse::build(StatusCode::NOT_FOUND)
+                    .insert_header(ContentType::plaintext())
+                    .body(self.to_string())
             }
-            ApiError::DomainNotFound(e) => {
-                (http::StatusCode::NOT_FOUND, format!("{}", e)).into_response()
+
+            ApiError::BundleNotFound(_) => {
+                HttpResponse::build(StatusCode::NOT_FOUND)
+                    .insert_header(ContentType::plaintext())
+                    .body(self.to_string())
             }
-            ApiError::BundleNotFound(e) => {
-                (http::StatusCode::NOT_FOUND, format!("{}", e)).into_response()
+
+            ApiError::FunctionNotFound(_) => {
+                HttpResponse::build(StatusCode::NOT_FOUND)
+                    .insert_header(ContentType::plaintext())
+                    .body(self.to_string())
             }
-            ApiError::FunctionNotFound(e) => (
-                http::StatusCode::NOT_FOUND,
-                format!("function not found: {}", e),
-            )
-                .into_response(),
+
             ApiError::FunctionParameterError(_) => {
-                (http::StatusCode::BAD_REQUEST, format!("{}", self))
-                    .into_response()
+                HttpResponse::build(StatusCode::BAD_REQUEST)
+                    .insert_header(ContentType::plaintext())
+                    .body(self.to_string())
             }
+
             ApiError::TableNotFound(_) => {
-                (http::StatusCode::NOT_FOUND, format!("{}", self))
-                    .into_response()
+                HttpResponse::build(StatusCode::NOT_FOUND)
+                    .insert_header(ContentType::plaintext())
+                    .body(self.to_string())
             }
-            ApiError::Internal(e) => (
-                http::StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": format!("{:#}", e) })),
-            )
-                .into_response(),
-            ApiError::EnvNotFound(e) => (
-                http::StatusCode::NOT_FOUND,
-                Json(json!({ "error": format!("{:#}", e) })),
-            )
-                .into_response(),
+
+            ApiError::Internal(_) => {
+                HttpResponse::build(StatusCode::INTERNAL_SERVER_ERROR)
+                    .json(json!({"error": self.to_string()}))
+            }
+
+            ApiError::EnvNotFound(_) => {
+                HttpResponse::build(StatusCode::NOT_FOUND)
+                    .json(json!({"error": self.to_string()}))
+            }
         }
     }
 }
@@ -167,6 +182,7 @@ pub type JsonApiResponse<T> = Json<ApiResponse<T>>;
 #[cfg(test)]
 mod tests {
     use super::*;
+
     #[test]
     fn test_unique_js_export() {
         assert_eq!(unique_js_export("foo.js", "bar"), "foo_bar");

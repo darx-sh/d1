@@ -16,7 +16,8 @@ darx_api.workspace = true
 
 deno_core.workspace = true
 
-axum.workspace = true
+actix-web.workspace = true
+tracing-actix-web.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
