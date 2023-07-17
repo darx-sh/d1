@@ -155,8 +155,8 @@ function DirectoryTreeView() {
               ></NewFileDialog>
             )}
           </div>
-          <div className="grid grid-cols-12 gap-2 ">
-            <div className="col-span-2 bg-slate-50 p-2">
+          <div className="grid grid-cols-12 gap-2">
+            <div className="col-span-2 rounded border-gray-300 bg-white p-2 shadow-sm ring-4 ring-sky-500/0 transition-colors">
               <TreeView
                 data={data}
                 aria-label="directory tree"
@@ -185,7 +185,7 @@ function DirectoryTreeView() {
                 }}
               />
             </div>
-            <div className="col-span-10">
+            <div className="col-span-10 cursor-default rounded p-2 shadow-sm ring-4 ring-sky-500/0 transition-colors">
               {curFileName != "" && (
                 <FileContent
                   name={curFileName}
