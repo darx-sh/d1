@@ -179,6 +179,8 @@ pub struct ApiResponse<T> {
 
 pub type JsonApiResponse<T> = Json<ApiResponse<T>>;
 
+pub const REGISTRY_FILE_NAME: &str = "__registry.js";
+
 #[cfg(test)]
 mod tests {
     use super::*;

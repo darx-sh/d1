@@ -16,6 +16,7 @@ use tracing_actix_web::TracingLogger;
 use darx_api::{
     add_deployment_url, unique_js_export, AddDeploymentReq, ApiError, Bundle,
     Code, DeployCodeReq, DeployCodeRsp, HttpRoute, ListCodeRsp,
+    REGISTRY_FILE_NAME,
 };
 
 use crate::esm_parser::parse_module_export;
@@ -160,14 +161,14 @@ async fn deploy_code(
         registry_bundle_id,
         registry_bundle.len() as i64,
         deploy_id,
-        "__registry.js",
+        REGISTRY_FILE_NAME,
         "success",
         registry_bundle,
     ).execute(db_pool).await.context("Failed to insert registry bundle")?;
 
     bundles.push(Bundle {
         id: registry_bundle_id,
-        fs_path: "__registry.js".to_string(),
+        fs_path: REGISTRY_FILE_NAME.to_string(),
         code: Some(registry_bundle),
     });
     // create new http_routes
