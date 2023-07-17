@@ -2,6 +2,7 @@ use std::env;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
+use actix_cors::Cors;
 use actix_web::dev::Server;
 use actix_web::web::{get, post, Data, Json, Path};
 use actix_web::{App, HttpServer};
@@ -42,8 +43,14 @@ pub async fn run_server(socket_addr: SocketAddr) -> Result<Server> {
     tracing::info!("listen on {}", socket_addr);
 
     Ok(HttpServer::new(move || {
+        let cors = Cors::default()
+            .allow_any_method()
+            .allow_any_header()
+            .allow_any_origin();
+
         App::new()
             .wrap(TracingLogger::default())
+            .wrap(cors)
             .app_data(Data::new(server_state.clone()))
             .route("/", get().to(|| async { "control plane healthy." }))
             .route("/deploy_code/{env_id}", post().to(deploy_code))
@@ -236,7 +243,7 @@ async fn list_code(
         "
     SELECT bundles.fs_path AS fs_path, bundles.code AS code
     FROM bundles INNER JOIN deploys ON bundles.deploy_id = deploys.id
-    WHERE deploys.env_id = ? ORDER BY deploys.deploy_seq DESC LIMIT 1",
+    WHERE deploys.env_id = ? AND bundles.fs_path != '__registry.js' ORDER BY deploys.deploy_seq DESC LIMIT 1",
         env_id
     )
     .fetch_all(db_pool)
