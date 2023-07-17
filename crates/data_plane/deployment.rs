@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use dashmap::DashMap;
 use once_cell::sync::Lazy;
 use serde::Deserialize;
@@ -10,7 +10,7 @@ use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 use tokio::time::Instant;
 
-use darx_api::{Bundle, HttpRoute};
+use darx_api::{Bundle, HttpRoute, REGISTRY_FILE_NAME};
 use darx_isolate_runtime::DarxIsolate;
 
 #[derive(Clone, Debug, Deserialize)]
@@ -205,35 +205,27 @@ async fn add_snapshot(
         setup_bundle_deployment_dir(bundles_dir.as_ref(), env_id, deploy_seq)
             .await?;
     let mut js_runtime = DarxIsolate::prepare_snapshot(&bundle_dir).await?;
-    let mut entries = fs::read_dir(&bundle_dir).await?;
-
-    while let Some(entry) = entries.next_entry().await? {
-        if let Ok(file_type) = entry.file_type().await {
-            if file_type.is_file() {
-                tracing::info!(
-                    env = env_id,
-                    seq = deploy_seq,
-                    "add snapshot {} to {}",
-                    entry.file_name().to_str().unwrap(),
-                    bundle_dir.display(),
-                );
-
-                let module_id = js_runtime
-                    .load_side_module(
-                        &deno_core::resolve_path(
-                            entry.file_name().to_str().unwrap(),
-                            &bundle_dir,
-                        )?,
-                        None,
-                    )
-                    .await?;
-
-                let receiver = js_runtime.mod_evaluate(module_id);
-                js_runtime.run_event_loop(false).await?;
-                let _ = receiver.await?;
-            }
-        }
+    let registry_file = bundle_dir.join(REGISTRY_FILE_NAME);
+    if !registry_file.exists() {
+        tracing::error!(
+            env = env_id,
+            seq = deploy_seq,
+            "file {} does not exist",
+            REGISTRY_FILE_NAME,
+        );
+        bail!("file {} does not exist", REGISTRY_FILE_NAME);
     }
+
+    let module_id = js_runtime
+        .load_side_module(
+            &deno_core::resolve_path(REGISTRY_FILE_NAME, &bundle_dir)?,
+            None,
+        )
+        .await?;
+
+    let receiver = js_runtime.mod_evaluate(module_id);
+    js_runtime.run_event_loop(false).await?;
+    let _ = receiver.await?;
 
     let mut mark = Instant::now();
     let snapshot = js_runtime.snapshot();
