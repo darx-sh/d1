@@ -6,7 +6,7 @@ type QuickNavProps = {
 
 export default function QuickNav(props: QuickNavProps) {
   return (
-    <nav className="ml-2 flex bg-white" aria-label="Breadcrumb">
+    <nav className="ml-2 flex h-16 rounded bg-white" aria-label="Breadcrumb">
       <ol role="list" className="flex items-center space-x-4">
         {props.nav.map((page, index) => (
           <li key={page.name}>

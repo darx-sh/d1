@@ -7,7 +7,7 @@ type FileContentProps = {
 };
 export default function FileContent(props: FileContentProps) {
   return (
-    <div className="divide-gray-300">
+    <div className="divide-y divide-gray-300">
       <div>tab: {props.name}</div>
       <JsEditor
         initialCode={props.content}
