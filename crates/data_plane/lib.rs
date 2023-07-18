@@ -1,28 +1,42 @@
+use std::cell::RefCell;
 use std::env;
 use std::net::SocketAddr;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::rc::Rc;
+use std::sync::OnceLock;
 
 use actix_web::dev::{ConnectionInfo, Server};
-use actix_web::web::{get, post, Data, Json, Path};
+use actix_web::web::{get, post, Json, Path};
 use actix_web::{App, HttpResponse, HttpResponseBuilder, HttpServer};
 use anyhow::{Context, Result};
 use deno_core::{serde_v8, v8};
 use dotenvy::dotenv;
 use tokio::fs;
+use tracing::{debug, info};
 use tracing_actix_web::TracingLogger;
 
 use darx_api::{unique_js_export, AddDeploymentReq, ApiError};
 use darx_isolate_runtime::DarxIsolate;
 
+use crate::cache::LruCache;
 use crate::deployment::{
     add_bundle_files, add_route, find_bundle_dir, init_deployments,
     match_route, DeploymentRoute, SNAPSHOT_FILE,
 };
 
+mod cache;
 mod deployment;
 
 const DARX_BUNDLES_DIR: &str = "./darx_bundles";
+
+static BUNDLES_DIR: OnceLock<PathBuf> = OnceLock::new();
+
+//TODO lru size should be configured
+type IsolateCache = LruCache<PathBuf, DarxIsolate, 100>;
+
+thread_local! {
+    static CACHE : Rc<RefCell<IsolateCache>> = Rc::new(RefCell::new(IsolateCache::new()));
+}
 
 pub async fn run_server(
     socket_addr: SocketAddr,
@@ -31,7 +45,8 @@ pub async fn run_server(
     let working_dir = fs::canonicalize(working_dir)
         .await
         .context("Failed to canonicalize working dir")?;
-    let bundles_dir = working_dir.join(DARX_BUNDLES_DIR);
+    let bundles_dir =
+        BUNDLES_DIR.get_or_init(|| working_dir.join(DARX_BUNDLES_DIR));
     fs::create_dir_all(bundles_dir.as_path()).await?;
 
     #[cfg(debug_assertions)]
@@ -49,14 +64,11 @@ pub async fn run_server(
         .await
         .context("Failed to init deployments on startup")?;
 
-    let server_state = Arc::new(ServerState { bundles_dir });
-
-    tracing::info!("listen on {}", socket_addr);
+    info!("listen on {}", socket_addr);
 
     Ok(HttpServer::new(move || {
         App::new()
             .wrap(TracingLogger::default())
-            .app_data(Data::new(server_state.clone()))
             .route("/", get().to(|| async { "data plane healthy." }))
             .route("/invoke/{func_url}", post().to(invoke_function))
             .route("/add_deployment", post().to(add_deployment))
@@ -66,27 +78,39 @@ pub async fn run_server(
 }
 
 async fn invoke_function0(
-    bundles_dir: impl AsRef<std::path::Path>,
     env_id: &str,
     deploy_seq: i32,
     req: serde_json::Value,
     js_entry_point: &str,
     js_export: &str,
 ) -> Result<serde_json::Value, ApiError> {
-    let bundle_dir = find_bundle_dir(bundles_dir, env_id, deploy_seq)
-        .await
-        .map_err(|e| ApiError::BundleNotFound(e.to_string()))?;
+    let bundle_dir =
+        find_bundle_dir(BUNDLES_DIR.get().unwrap(), env_id, deploy_seq)
+            .await
+            .map_err(|e| ApiError::BundleNotFound(e.to_string()))?;
 
-    //TODO an isolates' cache?
     let snapshot_path = bundle_dir.join(SNAPSHOT_FILE);
-    let snapshot = fs::read(&snapshot_path).await.map_err(ApiError::IoError)?;
-    let mut isolate = DarxIsolate::new_with_snapshot(
-        env_id,
-        deploy_seq,
-        bundle_dir,
-        snapshot.into_boxed_slice(),
-    )
-    .await;
+    let cache = CACHE.with(Rc::clone);
+    let mut cache = cache.borrow_mut();
+    let cached = cache.get_mut(&snapshot_path);
+    let isolate = if cached.is_none() {
+        debug!("cache miss, cur size {}", cache.len());
+
+        let snapshot =
+            fs::read(&snapshot_path).await.map_err(ApiError::IoError)?;
+
+        let isolate = DarxIsolate::new_with_snapshot(
+            env_id,
+            deploy_seq,
+            bundle_dir,
+            snapshot.into_boxed_slice(),
+        )
+        .await;
+        cache.put(snapshot_path.clone(), isolate);
+        cache.get_mut(&snapshot_path).unwrap()
+    } else {
+        cached.unwrap()
+    };
 
     let script_result = isolate
         .js_runtime
@@ -113,7 +137,6 @@ async fn invoke_function0(
 }
 
 async fn invoke_function(
-    server_state: Data<Arc<ServerState>>,
     conn: ConnectionInfo,
     func_url: Path<String>,
     Json(req): Json<serde_json::Value>,
@@ -131,7 +154,6 @@ async fn invoke_function(
         )?;
 
     let ret = invoke_function0(
-        &server_state.bundles_dir,
         &env_id,
         deploy_seq,
         req,
@@ -143,7 +165,6 @@ async fn invoke_function(
 }
 
 async fn add_deployment(
-    server_state: Data<Arc<ServerState>>,
     Json(req): Json<AddDeploymentReq>,
 ) -> Result<HttpResponseBuilder, ApiError> {
     let bundles_len = req.bundles.len();
@@ -157,13 +178,13 @@ async fn add_deployment(
     add_bundle_files(
         req.env_id.as_str(),
         req.deploy_seq,
-        server_state.bundles_dir.as_path(),
+        BUNDLES_DIR.get().unwrap(),
         &req.bundles,
     )
     .await?;
     add_route(deployment_route);
 
-    tracing::info!(
+    info!(
         env = req.env_id.as_str(),
         seq = req.deploy_seq,
         "cached deployment, {} bundles, {} routes",
@@ -297,9 +318,9 @@ async fn add_deployment(
 //     db_url: String,
 // }
 
-struct ServerState {
-    bundles_dir: PathBuf,
-}
+// struct ServerState {
+//     bundles_dir: PathBuf,
+// }
 
 fn extract_env_id(domain: &str) -> Result<String> {
     let mut parts = domain.split('.');

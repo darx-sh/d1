@@ -68,6 +68,7 @@ handlebars = { version = "4.3" }
 swc_common = { version = "0.31.17" }
 swc_ecma_ast = { version = "0.107.1" }
 swc_ecma_parser = { version = "0.137.2" }
+arrayvec = "0.7.4"
 
 [profile.dev.package.sqlx-macros]
 opt-level = 3
