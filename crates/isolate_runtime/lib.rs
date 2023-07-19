@@ -68,6 +68,12 @@ impl DarxIsolate {
                 module_loader: Some(Rc::new(TenantModuleLoader::new(
                     PathBuf::from(bundle_dir.as_ref()),
                 ))),
+                is_main: true,
+                //TODO memory limit from env vars or env config
+                create_params: Some(
+                    deno_core::v8::CreateParams::default()
+                        .heap_limits(0, 512 * 1024 * 1024),
+                ),
                 startup_snapshot: Some(Snapshot::Boxed(snapshot)),
                 ..Default::default()
             });

@@ -2,6 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use anyhow::Result;
+use tracing::info;
 
 use crate::{Code, DeployCodeReq};
 
@@ -23,11 +24,19 @@ pub fn dir_to_deploy_req(dir: &Path) -> Result<DeployCodeReq> {
     for (path, fs_path_str) in
         file_list_path_vec.iter().zip(fs_path_str_vec.iter())
     {
-        let content = fs::read_to_string(path)?; //TODO should not blocking
-        codes.push(Code {
-            fs_path: fs_path_str.clone(),
-            content,
-        });
+        if fs_path_str.starts_with("functions/") {
+            let content = fs::read_to_string(path)?; //TODO should not blocking
+            codes.push(Code {
+                fs_path: fs_path_str.clone(),
+                content,
+            });
+            info!("upload: {}", fs_path_str);
+        } else {
+            info!(
+                "ignore code outside of functions directory: {}",
+                fs_path_str
+            );
+        }
     }
     let req = DeployCodeReq {
         tag: None,

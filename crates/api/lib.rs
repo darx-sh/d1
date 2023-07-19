@@ -108,6 +108,8 @@ pub enum ApiError {
     Internal(anyhow::Error),
     #[error("Environment {0} not found")]
     EnvNotFound(String),
+    #[error("function execution timeout")]
+    Timeout,
 }
 
 impl From<anyhow::Error> for ApiError {
@@ -166,6 +168,11 @@ impl ResponseError for ApiError {
 
             ApiError::EnvNotFound(_) => {
                 HttpResponse::build(StatusCode::NOT_FOUND)
+                    .json(json!({"error": self.to_string()}))
+            }
+
+            ApiError::Timeout => {
+                HttpResponse::build(StatusCode::REQUEST_TIMEOUT)
                     .json(json!({"error": self.to_string()}))
             }
         }

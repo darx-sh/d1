@@ -4,6 +4,7 @@ use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::OnceLock;
+use std::time::Duration;
 
 use actix_web::dev::{ConnectionInfo, Server};
 use actix_web::web::{get, post, Json, Path};
@@ -124,11 +125,17 @@ async fn invoke_function0(
         )
         .map_err(ApiError::Internal)?;
 
-    let script_result = isolate
-        .js_runtime
-        .resolve_value(script_result)
-        .await
-        .map_err(ApiError::Internal)?;
+    let script_result = isolate.js_runtime.resolve_value(script_result);
+
+    //TODO timeout from env vars/config
+    let duration = Duration::from_secs(5);
+
+    let script_result =
+        match tokio::time::timeout(duration, script_result).await {
+            Err(_) => Err(ApiError::Timeout),
+            Ok(res) => res.map_err(ApiError::Internal),
+        }?;
+
     let mut handle_scope = isolate.js_runtime.handle_scope();
     let script_result = v8::Local::new(&mut handle_scope, script_result);
     let script_result = serde_v8::from_v8(&mut handle_scope, script_result)
