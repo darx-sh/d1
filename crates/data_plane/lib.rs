@@ -170,11 +170,16 @@ async fn add_deployment(
     let bundles_len = req.bundles.len();
     let routes_len = req.http_routes.len();
 
-    let deployment_route = DeploymentRoute {
+    let mut deployment_route = DeploymentRoute {
         env_id: req.env_id.clone(),
         deploy_seq: req.deploy_seq,
-        http_routes: req.http_routes,
+        http_routes: Default::default(),
     };
+
+    for r in req.http_routes {
+        deployment_route.http_routes.insert(r.http_path.clone(), r);
+    }
+
     add_bundle_files(
         req.env_id.as_str(),
         req.deploy_seq,

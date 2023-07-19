@@ -71,6 +71,7 @@ where
         ret
     }
 
+    #[allow(dead_code)]
     pub fn get(&mut self, key: &K) -> Option<&V> {
         if let Some(index) = self.locations.get(key) {
             let index = *index;
