@@ -4,7 +4,6 @@ use std::path::{Path, PathBuf};
 use anyhow::{bail, Context, Result};
 use dashmap::DashMap;
 use once_cell::sync::Lazy;
-use serde::Deserialize;
 use tokio::fs;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
@@ -12,12 +11,13 @@ use tokio::time::Instant;
 
 use darx_api::{Bundle, HttpRoute, REGISTRY_FILE_NAME};
 use darx_isolate_runtime::DarxIsolate;
+use patricia_tree::StringPatriciaMap;
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug)]
 pub struct DeploymentRoute {
     pub env_id: String,
     pub deploy_seq: i32,
-    pub http_routes: Vec<HttpRoute>,
+    pub http_routes: StringPatriciaMap<HttpRoute>,
 }
 
 static GLOBAL_ROUTER: Lazy<DashMap<String, Vec<DeploymentRoute>>> =
@@ -117,23 +117,23 @@ pub fn match_route(
     method: &str,
 ) -> Option<(i32, HttpRoute)> {
     if let Some(entry) = GLOBAL_ROUTER.get(environment_id) {
-        let cur_deploy = entry[0].clone();
-        for route in cur_deploy.http_routes.iter() {
-            if route.http_path == func_url && route.method == method {
-                return Some((cur_deploy.deploy_seq, route.clone()));
-            }
+        //TODO multi-version support
+        let cur_deploy = &entry[0];
+
+        if let Some(r) = cur_deploy.http_routes.get(func_url) {
+            debug_assert!(r.http_path == func_url);
+            debug_assert!(r.method == method);
+            Some((cur_deploy.deploy_seq, r.clone()))
+        } else {
+            None
         }
-        None
     } else {
         None
     }
 }
 
-pub fn add_route(mut route: DeploymentRoute) {
+pub fn add_route(route: DeploymentRoute) {
     let env_id = route.env_id.clone();
-    route
-        .http_routes
-        .sort_by(|a, b| a.http_path.cmp(&b.http_path));
     let mut entry = GLOBAL_ROUTER.entry(env_id).or_insert_with(|| Vec::new());
     entry.insert(0, route.clone());
     entry.sort_by(|a, b| b.deploy_seq.cmp(&a.deploy_seq));
@@ -261,24 +261,21 @@ fn add_single_http_route(env_id: &str, deploy_seq: i32, route: HttpRoute) {
         .entry(env_id.to_string())
         .or_insert_with(|| Vec::new());
 
-    let mut find_deploy = false;
-    entry.iter_mut().for_each(|deploy| {
-        if deploy.deploy_seq == deploy_seq {
-            deploy.http_routes.push(route.clone());
-            deploy
-                .http_routes
-                .sort_by(|a, b| a.http_path.cmp(&b.http_path));
-            find_deploy = true;
-        }
-    });
-
-    if !find_deploy {
-        entry.push(DeploymentRoute {
+    if let Some(deploy) = entry
+        .iter_mut()
+        .find(|deploy| deploy.deploy_seq == deploy_seq)
+    {
+        deploy.http_routes.insert(route.http_path.clone(), route);
+    } else {
+        let mut d = DeploymentRoute {
             env_id: env_id.to_string(),
             deploy_seq,
-            http_routes: vec![route],
-        });
+            http_routes: StringPatriciaMap::new(),
+        };
+        d.http_routes.insert(route.http_path.clone(), route);
+        entry.push(d);
     }
+
     entry.sort_by(|a, b| b.deploy_seq.cmp(&a.deploy_seq));
 }
 
