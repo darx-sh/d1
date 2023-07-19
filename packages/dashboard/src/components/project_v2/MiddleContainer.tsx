@@ -1,7 +1,7 @@
 import MiddleToolTabs from "~/components/project_v2/MiddleToolTabs";
 import MiddleToolContent from "~/components/project_v2/MiddleToolContent";
 
-export default () => {
+export default function MiddleContainer() {
   return (
     <>
       <div className="h-11 border">
@@ -12,4 +12,4 @@ export default () => {
       </div>
     </>
   );
-};
+}

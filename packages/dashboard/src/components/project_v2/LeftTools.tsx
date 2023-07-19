@@ -7,7 +7,7 @@ import {
   CloudIcon,
 } from "@heroicons/react/24/outline";
 
-export default () => {
+export default function LeftTools() {
   return (
     <div className="ml-2 flex flex-wrap">
       <div className="flex h-20 w-20 flex-col items-center p-4">
@@ -32,4 +32,4 @@ export default () => {
       </div>
     </div>
   );
-};
+}

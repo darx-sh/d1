@@ -7,8 +7,8 @@ export default function foo() {
   return "hello";
 }`;
 
-export default () => {
+export default function MiddleToolContent() {
   return (
     <CodeMirror value={defaultCode} extensions={[javascript()]}></CodeMirror>
   );
-};
+}

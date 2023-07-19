@@ -1,6 +1,6 @@
 import Directory from "~/components/project_v2/LeftDirectory";
 import Tools from "~/components/project_v2/LeftTools";
-export default () => {
+export default function LeftContainer() {
   return (
     <div className="flex h-full flex-col">
       <div className="h-1/3 border">
@@ -11,4 +11,4 @@ export default () => {
       </div>
     </div>
   );
-};
+}

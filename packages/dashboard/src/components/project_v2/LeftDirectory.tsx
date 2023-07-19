@@ -16,7 +16,7 @@ const folder = {
 
 const data = flattenTree(folder);
 
-export default () => {
+export default function LeftDirectory() {
   const [isMenuOpen, setMenuOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
   const [menuFsPath, setMenuFsPath] = useState("");
@@ -76,4 +76,4 @@ export default () => {
       />
     </div>
   );
-};
+}
