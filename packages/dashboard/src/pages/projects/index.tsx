@@ -79,7 +79,7 @@ export default function Example() {
                 className="rounded-lg border border-gray-300 transition-colors duration-200 hover:border-gray-700"
               >
                 <Link
-                  href={`/projects/${project.id}`}
+                  href={`/projects/v2/${project.id}`}
                   className="flex place-content-center py-5"
                 >
                   <h2>
