@@ -50,6 +50,9 @@ importers:
       axios:
         specifier: ^1.4.0
         version: 1.4.0
+      immer:
+        specifier: ^10.0.2
+        version: 10.0.2
       ioredis:
         specifier: ^5.3.2
         version: 5.3.2
@@ -63,8 +66,8 @@ importers:
         specifier: 18.2.0
         version: 18.2.0
       react-accessible-treeview:
-        specifier: ^2.6.1
-        version: 2.6.1(classnames@2.3.2)(prop-types@15.8.1)(react-dom@18.2.0)(react@18.2.0)
+        specifier: https://github.com/darx-sh/react-accessible-treeview.git#7f72edff5de7b7258806569da874a9c84acfc327
+        version: github.com/darx-sh/react-accessible-treeview/7f72edff5de7b7258806569da874a9c84acfc327(classnames@2.3.2)(prop-types@15.8.1)(react-dom@18.2.0)(react@18.2.0)
       react-dom:
         specifier: 18.2.0
         version: 18.2.0(react@18.2.0)
@@ -74,6 +77,9 @@ importers:
       superjson:
         specifier: 1.12.2
         version: 1.12.2
+      use-immer:
+        specifier: ^0.9.0
+        version: 0.9.0(immer@10.0.2)(react@18.2.0)
       zod:
         specifier: ^3.21.4
         version: 3.21.4
@@ -3055,6 +3061,10 @@ packages:
     engines: {node: '>= 4'}
     dev: true
 
+  /immer@10.0.2:
+    resolution: {integrity: sha512-Rx3CqeqQ19sxUtYV9CU911Vhy8/721wRFnJv3REVGWUmoAcIwzifTsdmJte/MV+0/XpM35LZdQMBGkRIoLPwQA==}
+    dev: false
+
   /import-fresh@3.3.0:
     resolution: {integrity: sha512-veYYhQa+D1QBKznvhUHxb8faxlrwUnxseDAbAp457E0wLNio2bOSKnjYDhMj+YiAq61xrMGhQk9iXVk5FzgQMw==}
     engines: {node: '>=6'}
@@ -3949,20 +3959,6 @@ packages:
     engines: {node: '>=10'}
     dev: true
 
-  /react-accessible-treeview@2.6.1(classnames@2.3.2)(prop-types@15.8.1)(react-dom@18.2.0)(react@18.2.0):
-    resolution: {integrity: sha512-VspZS7OEDlMWMvuJ450CMEjo9n6r7gNJ2eZYqCi6MTFKQGyJR7unqKITFmw7bbtvspbANdoqoC8+AsI7H3PaGA==}
-    peerDependencies:
-      classnames: ^2.2.6
-      prop-types: ^15.7.2
-      react: ^16.8.0 || ^17.0.0 || ^18.0.0
-      react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0
-    dependencies:
-      classnames: 2.3.2
-      prop-types: 15.8.1
-      react: 18.2.0
-      react-dom: 18.2.0(react@18.2.0)
-    dev: false
-
   /react-dom@18.2.0(react@18.2.0):
     resolution: {integrity: sha512-6IMTriUmvsjHUjNtEDudZfuDQUoWXVxKHhlEGSk81n4YFS+r/Kl99wXiwlVXtPBtJenozv2P+hxDsw9eA7Xo6g==}
     peerDependencies:
@@ -4532,6 +4528,16 @@ packages:
       punycode: 2.3.0
     dev: true
 
+  /use-immer@0.9.0(immer@10.0.2)(react@18.2.0):
+    resolution: {integrity: sha512-/L+enLi0nvuZ6j4WlyK0US9/ECUtV5v9RUbtxnn5+WbtaXYUaOBoKHDNL9I5AETdurQ4rIFIj/s+Z5X80ATyKw==}
+    peerDependencies:
+      immer: '>=2.0.0'
+      react: ^16.8.0 || ^17.0.1 || ^18.0.0
+    dependencies:
+      immer: 10.0.2
+      react: 18.2.0
+    dev: false
+
   /use-sync-external-store@1.2.0(react@18.2.0):
     resolution: {integrity: sha512-eEgnFxGQ1Ife9bzYs6VLi8/4X6CObHMw9Qr9tPY43iKwsPw8xE8+EFsf/2cFZ5S3esXgpWgtSCtLNS41F+sKPA==}
     peerDependencies:
@@ -4624,4 +4630,23 @@ packages:
 
   /zod@3.21.4:
     resolution: {integrity: sha512-m46AKbrzKVzOzs/DZgVnG5H55N1sv1M8qZU3A8RIKbs3mrACDNeIOeilDymVb2HdmP8uwshOCF4uJ8uM9rCqJw==}
+    dev: false
+
+  github.com/darx-sh/react-accessible-treeview/7f72edff5de7b7258806569da874a9c84acfc327(classnames@2.3.2)(prop-types@15.8.1)(react-dom@18.2.0)(react@18.2.0):
+    resolution: {commit: 7f72edff5de7b7258806569da874a9c84acfc327, repo: git+ssh://git@github.com/darx-sh/react-accessible-treeview.git, type: git}
+    id: github.com/darx-sh/react-accessible-treeview/7f72edff5de7b7258806569da874a9c84acfc327
+    name: react-accessible-treeview
+    version: 2.6.2
+    prepare: true
+    requiresBuild: true
+    peerDependencies:
+      classnames: ^2.2.6
+      prop-types: ^15.7.2
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0
+      react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0
+    dependencies:
+      classnames: 2.3.2
+      prop-types: 15.8.1
+      react: 18.2.0
+      react-dom: 18.2.0(react@18.2.0)
     dev: false
