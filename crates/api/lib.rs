@@ -38,7 +38,9 @@ pub struct Code {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct DeployCodeRsp {}
+pub struct DeployCodeRsp {
+    pub http_routes: Vec<HttpRoute>,
+}
 
 ///
 /// list code
@@ -46,6 +48,7 @@ pub struct DeployCodeRsp {}
 #[derive(Serialize, Deserialize)]
 pub struct ListCodeRsp {
     pub codes: Vec<Code>,
+    pub http_routes: Vec<HttpRoute>,
 }
 
 ///

@@ -1,24 +1,37 @@
 import { createContext, useContext, ReactNode, Dispatch } from "react";
 import { useImmerReducer } from "use-immer";
-import { INode } from "react-accessible-treeview";
+import { INode, NodeId } from "react-accessible-treeview";
+import md5 from "crypto-js/md5";
 
 type ProjectState = {
   directory: {
-    codes: { fsPath: string; content: string }[];
-    httpRoutes: { jsEntryPoint: string; jsExport: string; httpPath: string }[];
-    curOpenCodeIdx: number | null;
+    codes: {
+      fsPath: string;
+      content: string;
+      prevChecksum?: string;
+      curChecksum?: string;
+    }[];
+    httpRoutes: HttpRoute[];
     treeViewData: INode[];
   };
 
-  tabs: { tabType: TabType; meta: any }[];
+  tabs: Tab[];
   curOpenTabIdx: number | null;
 };
+
+type HttpRoute = {
+  jsEntryPoint: string;
+  jsExport: string;
+  httpPath: string;
+  method: string;
+};
+
+type Tab = { type: "JsEditor"; codeIdx: number } | { type: "Database" };
 
 const initialProject: ProjectState = {
   directory: {
     codes: [],
     httpRoutes: [],
-    curOpenCodeIdx: null,
     treeViewData: [],
   },
   tabs: [],
@@ -34,14 +47,12 @@ type ProjectAction =
   | {
       type: "LoadCodes";
       codes: { fsPath: string; content: string }[];
-      httpRoutes: {
-        jsEntryPoint: string;
-        jsExport: string;
-        httpPath: string;
-      }[];
+      httpRoutes: HttpRoute[];
     }
-  | { type: "NewJsFile"; fsPath: string }
-  | { type: "UpdateJsFile"; fsPath: string; content: string }
+  | { type: "PersistedCode"; checksums: CodeChecksums; httpRoutes: HttpRoute[] }
+  | { type: "NewJsFile"; parentNodeId: NodeId; fileName: string }
+  | { type: "OpenJsFile"; nodeId: NodeId }
+  | { type: "UpdateJsFile"; codeIdx: number; content: string }
   | { type: "RenameJsFile"; oldFsPath: string; newFsPath: string }
   | { type: "RenameDirectory"; oldFsPath: string; newFsPath: string }
   | { type: "DeleteJsFile"; fsPath: string }
@@ -55,8 +66,13 @@ type ProjectAction =
         jsEntryPoint: string;
         jsExport: string;
         httpPath: string;
+        method: string;
       }[];
     };
+
+export type CodeChecksums = {
+  [key: string]: string;
+};
 
 const ProjectStateContext = createContext<ProjectState | null>(null);
 const ProjectDispatchContext = createContext<Dispatch<ProjectAction> | null>(
@@ -86,11 +102,13 @@ export function useProjectDispatch() {
   return useContext(ProjectDispatchContext);
 }
 
-const initialEditorCode = `\
+function initialEditorCode(fsPath: string) {
+  return `\
 export default function foo() {
-  return "hello from darx";
+  return "hello from ${fsPath}"; 
+}  
+  `;
 }
-`;
 
 function projectReducer(
   state: ProjectState,
@@ -98,18 +116,80 @@ function projectReducer(
 ): ProjectState {
   switch (action.type) {
     case "LoadCodes": {
-      state.directory.codes = action.codes;
+      const codes = action.codes.map((c) => {
+        const digest = md5(c.content).toString();
+        return {
+          ...c,
+          prevChecksum: digest,
+          curChecksum: digest,
+        };
+      });
+      state.directory.codes = codes;
       state.directory.httpRoutes = action.httpRoutes;
-      state.directory.curOpenCodeIdx = null;
       state.directory.treeViewData = buildTreeViewData(state.directory.codes);
       return state;
     }
+    case "PersistedCode": {
+      state.directory.codes = state.directory.codes.map((c) => {
+        const checksum = action.checksums[c.fsPath];
+        if (checksum) {
+          return { ...c, prevChecksum: checksum };
+        } else {
+          return c;
+        }
+      });
+      state.directory.httpRoutes = action.httpRoutes;
+      return state;
+    }
     case "NewJsFile": {
+      const fsPath = newFsPath(action.parentNodeId, action.fileName);
+      const content = initialEditorCode(fsPath);
       state.directory.codes.push({
-        fsPath: action.fsPath,
-        content: initialEditorCode,
+        fsPath,
+        content: content,
+        curChecksum: md5(content).toString(),
       });
       state.directory.treeViewData = buildTreeViewData(state.directory.codes);
+      // create a new tab
+      state.tabs.push({
+        type: "JsEditor",
+        codeIdx: state.directory.codes.length - 1,
+      });
+      state.curOpenTabIdx = state.tabs.length - 1;
+      return state;
+    }
+    case "OpenJsFile": {
+      console.log("OpenJsFile");
+      const fsPath = nodeIdToFsPath(action.nodeId);
+      const codeIdx = state.directory.codes.findIndex(
+        (c) => c.fsPath === fsPath
+      );
+      if (codeIdx < 0) {
+        throw new Error(
+          `Cannot find code with fsPath: ${fsPath} nodeId: ${action.nodeId}`
+        );
+      }
+      // state.curOpenTabIdx = codeIdx;
+      const tabIdx = state.tabs.findIndex(
+        (t) => t.type === "JsEditor" && t.codeIdx === codeIdx
+      );
+      if (tabIdx >= 0) {
+        state.curOpenTabIdx = tabIdx;
+        if (state.tabs[tabIdx]!.type !== "JsEditor") {
+          throw new Error("Unexpected tab type: " + state.tabs[tabIdx]!.type);
+        }
+        state.tabs[tabIdx] = { type: "JsEditor", codeIdx };
+      } else {
+        state.tabs.push({ type: "JsEditor", codeIdx: codeIdx });
+        state.curOpenTabIdx = state.tabs.length - 1;
+      }
+      return state;
+    }
+    case "UpdateJsFile": {
+      state.directory.codes[action.codeIdx]!.content = action.content;
+      state.directory.codes[action.codeIdx]!.curChecksum = md5(
+        action.content
+      ).toString();
       return state;
     }
     default:
@@ -200,6 +280,16 @@ function buildTreeViewData(
     }
   }
 
+  if (codes.length === 0) {
+    nodeList.push({
+      id: "/functions",
+      name: "functions",
+      parent: "/",
+      children: [],
+      isBranch: true,
+    });
+  }
+
   // build parent-child relationship between directory nodes,
   // since the "parent" field is already set, we only need
   // to set the "children" field.
@@ -214,4 +304,22 @@ function buildTreeViewData(
     }
   }
   return nodeList;
+}
+
+function nodeIdToFsPath(nodeId: NodeId): string {
+  const id = nodeId as string;
+  if (id.startsWith("/")) {
+    return id.replace("/", "");
+  } else {
+    throw new Error(`invalid nodeId: ${nodeId}`);
+  }
+}
+
+function newFsPath(parentNodeId: NodeId, fileName: string): string {
+  const parentId = parentNodeId as string;
+  if (parentId.startsWith("/")) {
+    return parentId.replace("/", "") + "/" + fileName;
+  } else {
+    throw new Error(`invalid parentNodeId: ${parentNodeId}`);
+  }
 }
