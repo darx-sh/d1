@@ -4676,7 +4676,7 @@ packages:
     dev: false
 
   github.com/darx-sh/react-accessible-treeview/7f72edff5de7b7258806569da874a9c84acfc327(classnames@2.3.2)(prop-types@15.8.1)(react-dom@18.2.0)(react@18.2.0):
-    resolution: {commit: 7f72edff5de7b7258806569da874a9c84acfc327, repo: git+ssh://git@github.com/darx-sh/react-accessible-treeview.git, type: git}
+    resolution: {tarball: https://codeload.github.com/darx-sh/react-accessible-treeview/tar.gz/7f72edff5de7b7258806569da874a9c84acfc327}
     id: github.com/darx-sh/react-accessible-treeview/7f72edff5de7b7258806569da874a9c84acfc327
     name: react-accessible-treeview
     version: 2.6.2

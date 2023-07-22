@@ -117,7 +117,6 @@ export default function LeftDirectory() {
             content: code.content,
           };
         });
-
         const routeState = http_routes.map((route) => {
           return {
             jsEntryPoint: route.js_entry_point,
