@@ -215,7 +215,7 @@ async fn deploy_code(
         deploy_seq,
         bundle_repo: "db".to_string(),
         bundles,
-        http_routes,
+        http_routes: http_routes.clone(),
     };
     let url = add_deployment_url();
     let rsp = reqwest::Client::new()
@@ -230,7 +230,7 @@ async fn deploy_code(
             rsp.text().await.unwrap()
         )));
     }
-    Ok(Json(DeployCodeRsp {}))
+    Ok(Json(DeployCodeRsp { http_routes }))
 }
 
 async fn list_code(
@@ -239,26 +239,36 @@ async fn list_code(
 ) -> Result<Json<ListCodeRsp>, ApiError> {
     let db_pool = &server_state.db_pool;
     let env_id = env_id.into_inner();
-    let bundle = sqlx::query!(
-        "
-    SELECT bundles.fs_path AS fs_path, bundles.code AS code
-    FROM bundles INNER JOIN deploys ON bundles.deploy_id = deploys.id
-    WHERE deploys.env_id = ? AND bundles.fs_path != '__registry.js' ORDER BY deploys.deploy_seq DESC LIMIT 1",
+    let deploy_id = sqlx::query!(
+        "SELECT id FROM deploys WHERE env_id = ? ORDER BY deploy_seq DESC LIMIT 1",
         env_id
-    )
-    .fetch_all(db_pool)
-    .await
-    .context("Failed to query bundles table")?;
+    ).fetch_optional(db_pool).await.context("Failed to query deploys table")?;
     let mut codes = vec![];
-    for b in bundle.iter() {
-        let content = b.code.as_ref().unwrap();
-        codes.push(Code {
-            fs_path: b.fs_path.clone(),
-            content: String::from_utf8(content.clone()).unwrap(),
-        });
+    let mut http_routes = vec![];
+    if let Some(deploy_id) = deploy_id {
+        let bundles = sqlx::query!("
+        SELECT fs_path, code FROM bundles WHERE deploy_id = ? AND fs_path != '__registry.js'", 
+            deploy_id.id).fetch_all(db_pool).await.context("Failed to query bundles table")?;
+        for b in bundles.iter() {
+            let content = b.code.as_ref().unwrap();
+            codes.push(Code {
+                fs_path: b.fs_path.clone(),
+                content: String::from_utf8(content.clone()).unwrap(),
+            });
+        }
+        let routes = sqlx::query!("\
+        SELECT http_path, method, js_entry_point, js_export FROM http_routes WHERE deploy_id = ?",
+            deploy_id.id).fetch_all(db_pool).await.context("Failed to query http_routes table")?;
+        for r in routes.iter() {
+            http_routes.push(HttpRoute {
+                http_path: r.http_path.clone(),
+                method: r.method.clone(),
+                js_entry_point: r.js_entry_point.clone(),
+                js_export: r.js_export.clone(),
+            });
+        }
     }
-    let rsp = ListCodeRsp { codes };
-    Ok(Json(rsp))
+    Ok(Json(ListCodeRsp { codes, http_routes }))
 }
 
 const REGISTRY_TEMPLATE: &str = r#"

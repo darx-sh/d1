@@ -50,6 +50,12 @@ importers:
       axios:
         specifier: ^1.4.0
         version: 1.4.0
+      axios-retry:
+        specifier: ^3.5.1
+        version: 3.5.1
+      crypto-js:
+        specifier: ^4.1.1
+        version: 4.1.1
       immer:
         specifier: ^10.0.2
         version: 10.0.2
@@ -80,10 +86,16 @@ importers:
       use-immer:
         specifier: ^0.9.0
         version: 0.9.0(immer@10.0.2)(react@18.2.0)
+      usehooks-ts:
+        specifier: ^2.9.1
+        version: 2.9.1(react-dom@18.2.0)(react@18.2.0)
       zod:
         specifier: ^3.21.4
         version: 3.21.4
     devDependencies:
+      '@types/crypto-js':
+        specifier: ^4.1.1
+        version: 4.1.1
       '@types/eslint':
         specifier: ^8.21.3
         version: 8.21.3
@@ -1589,6 +1601,10 @@ packages:
     resolution: {integrity: sha512-vxhUy4J8lyeyinH7Azl1pdd43GJhZH/tP2weN8TntQblOY+A0XbT8DJk1/oCPuOOyg/Ja757rG0CgHcWC8OfMA==}
     dev: true
 
+  /@types/crypto-js@4.1.1:
+    resolution: {integrity: sha512-BG7fQKZ689HIoc5h+6D2Dgq1fABRa0RbBWKBd9SP/MVRVXROflpm5fhwyATX5duFmbStzyzyycPB8qUYKDH3NA==}
+    dev: true
+
   /@types/eslint@8.21.3:
     resolution: {integrity: sha512-fa7GkppZVEByMWGbTtE5MbmXWJTVbrjjaS8K6uQj+XtuuUv1fsuPAxhygfqLmsb/Ufb3CV8deFCpiMfAgi00Sw==}
     dependencies:
@@ -2006,6 +2022,13 @@ packages:
     engines: {node: '>=4'}
     dev: true
 
+  /axios-retry@3.5.1:
+    resolution: {integrity: sha512-mQRJ4IyAUnYig14BQ4MnnNHHuH1cNH7NW4JxEUD6mNJwK6pwOY66wKLCwZ6Y0o3POpfStalqRC+J4+Hnn6Om7w==}
+    dependencies:
+      '@babel/runtime': 7.22.5
+      is-retry-allowed: 2.2.0
+    dev: false
+
   /axios@1.4.0:
     resolution: {integrity: sha512-S4XCWMEmzvo64T9GfvQDOXgYRDJ/wsSZc7Jvdgx5u1sd0JwsuPLqb3SYmusag+edF6ziyMensPVqLTSc1PiSEA==}
     dependencies:
@@ -2211,6 +2234,10 @@ packages:
       shebang-command: 2.0.0
       which: 2.0.2
     dev: true
+
+  /crypto-js@4.1.1:
+    resolution: {integrity: sha512-o2JlM7ydqd3Qk9CA0L4NL6mTzU2sdx96a+oOfPu8Mkl/PK51vSyoi8/rQ8NknZtk44vq15lmhAj9CIAGwgeWKw==}
+    dev: false
 
   /cssesc@3.0.0:
     resolution: {integrity: sha512-/Tb/JcjK111nNScGob5MNtsntNM1aCNUDipB/TkwZFhyDrrE47SOx/18wF2bbjgc3ZzCSKW1T5nt5EbFoAz/Vg==}
@@ -3223,6 +3250,11 @@ packages:
       call-bind: 1.0.2
       has-tostringtag: 1.0.0
     dev: true
+
+  /is-retry-allowed@2.2.0:
+    resolution: {integrity: sha512-XVm7LOeLpTW4jV19QSH38vkswxoLud8sQ57YwJVTPWdiaI9I8keEhGFpBlslyVsgdQy4Opg8QOLb8YRgsyZiQg==}
+    engines: {node: '>=10'}
+    dev: false
 
   /is-shared-array-buffer@1.0.2:
     resolution: {integrity: sha512-sqN2UDu1/0y6uvXyStCOzyhAjCSlHceFoMKJW8W9EU9cvic/QdsZ0kEU93HEy3IUEFZIiH/3w+AH/UQbPHNdhA==}
@@ -4544,6 +4576,17 @@ packages:
       react: ^16.8.0 || ^17.0.0 || ^18.0.0
     dependencies:
       react: 18.2.0
+    dev: false
+
+  /usehooks-ts@2.9.1(react-dom@18.2.0)(react@18.2.0):
+    resolution: {integrity: sha512-2FAuSIGHlY+apM9FVlj8/oNhd+1y+Uwv5QNkMQz1oSfdHk4PXo1qoCw9I5M7j0vpH8CSWFJwXbVPeYDjLCx9PA==}
+    engines: {node: '>=16.15.0', npm: '>=8'}
+    peerDependencies:
+      react: ^16.8.0  || ^17.0.0 || ^18.0.0
+      react-dom: ^16.8.0  || ^17.0.0 || ^18.0.0
+    dependencies:
+      react: 18.2.0
+      react-dom: 18.2.0(react@18.2.0)
     dev: false
 
   /util-deprecate@1.0.2:

@@ -4,6 +4,7 @@ import TopNav from "~/components/project_v2/TopNav";
 import LeftContainer from "~/components/project_v2/LeftContainer";
 import MiddleContainer from "~/components/project_v2/MiddleContainer";
 import { ProjectProvider } from "~/components/project_v2/ProjectContext";
+import RightContainer from "~/components/project_v2/RightContainer";
 
 function ProjectDetail() {
   const router = useRouter();
@@ -27,7 +28,9 @@ function ProjectDetail() {
           <div className="flex-1 border">
             <MiddleContainer></MiddleContainer>
           </div>
-          <div className="w-96 border"></div>
+          <div className="w-96 border">
+            <RightContainer></RightContainer>
+          </div>
         </div>
       </div>
     </ProjectProvider>
