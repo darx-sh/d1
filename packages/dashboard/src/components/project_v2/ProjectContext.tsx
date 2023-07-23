@@ -19,7 +19,7 @@ type ProjectState = {
   curOpenTabIdx: number | null;
 };
 
-type HttpRoute = {
+export type HttpRoute = {
   jsEntryPoint: string;
   jsExport: string;
   httpPath: string;

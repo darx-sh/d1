@@ -36,6 +36,8 @@ const client = z.object(
   /** @satisfies {Record<`NEXT_PUBLIC_${string}`, import('zod').ZodType>} */ (
     {
       // NEXT_PUBLIC_CLIENTVAR: z.string().min(1),
+      NEXT_PUBLIC_CONTROL_PLANE_URL: z.string().url(),
+      NEXT_PUBLIC_DATA_PLANE_URL: z.string().url(),
     }
   ),
 );
@@ -59,6 +61,8 @@ const processEnv = {
   // DISCORD_CLIENT_ID: process.env.DISCORD_CLIENT_ID,
   // DISCORD_CLIENT_SECRET: process.env.DISCORD_CLIENT_SECRET,
   // NEXT_PUBLIC_CLIENTVAR: process.env.NEXT_PUBLIC_CLIENTVAR,
+  NEXT_PUBLIC_CONTROL_PLANE_URL: process.env.NEXT_PUBLIC_CONTROL_PLANE_URL,
+  NEXT_PUBLIC_DATA_PLANE_URL: process.env.NEXT_PUBLIC_DATA_PLANE_URL,
 };
 
 // Don't touch the part below

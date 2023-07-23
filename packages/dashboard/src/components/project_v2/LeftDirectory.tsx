@@ -16,6 +16,8 @@ import {
 import axios from "axios";
 import axiosRetry from "axios-retry";
 import { useInterval } from "usehooks-ts";
+import { INode } from "react-accessible-treeview/src/TreeView/types";
+import { ITreeViewOnNodeSelectProps } from "react-accessible-treeview/src/TreeView";
 
 type MenuPosition = {
   coord: { x: number; y: number } | null;
@@ -25,7 +27,7 @@ type MenuPosition = {
 };
 
 export default function LeftDirectory() {
-  const [expandedIds, setExpandedIds] = useState<NodeId[]>([]);
+  const [expandedIds, setExpandedIds] = useState<NodeId[]>(["/functions"]);
   const [isLoading, setIsLoading] = useState(true);
   const [menuPosition, setMenuPosition] = useState({
     coord: null,
@@ -224,6 +226,16 @@ export default function LeftDirectory() {
     );
   };
 
+  const handleNodeSelect = (nodeSelectProps: ITreeViewOnNodeSelectProps) => {
+    const { isBranch, element } = nodeSelectProps;
+    if (!isBranch) {
+      projectDispatch!({
+        type: "OpenJsFile",
+        nodeId: element.id,
+      });
+    }
+  };
+
   return (
     <>
       {isLoading ? (
@@ -257,9 +269,9 @@ export default function LeftDirectory() {
           </div>
           <TreeView
             data={projectState!.directory.treeViewData}
-            defaultExpandedIds={["/functions", "/"]}
             expandedIds={expandedIds}
             aria-label="directory tree"
+            onNodeSelect={handleNodeSelect}
             nodeRenderer={({
               element,
               isSelected,
@@ -280,14 +292,6 @@ export default function LeftDirectory() {
                         element.isBranch,
                         element.id
                       );
-                    }}
-                    onDoubleClick={(event) => {
-                      if (!element.isBranch) {
-                        projectDispatch!({
-                          type: "OpenJsFile",
-                          nodeId: element.id,
-                        });
-                      }
                     }}
                   >
                     {isBranch && isExpanded ? (
