@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { FaRegFolder, FaRegFolderOpen } from "react-icons/fa";
-import TreeView, { flattenTree } from "react-accessible-treeview";
+import TreeView, { flattenTree } from "~/components/react-tree-view";
 import FileMenu from "./FileMenu";
 import FileContent from "./FileContent";
 import NewFileDialog from "./NewFileDialog";

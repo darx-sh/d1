@@ -1,6 +1,6 @@
 import { createContext, useContext, ReactNode, Dispatch } from "react";
 import { useImmerReducer } from "use-immer";
-import { INode, NodeId } from "react-accessible-treeview";
+import { INode, NodeId } from "~/components/react-tree-view";
 import md5 from "crypto-js/md5";
 
 type ProjectState = {

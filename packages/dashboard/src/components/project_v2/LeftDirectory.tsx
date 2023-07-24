@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import FileMenu from "~/components/project/FileMenu";
-import TreeView, { NodeId } from "react-accessible-treeview";
+import TreeView, { NodeId } from "~/components/react-tree-view";
 import {
   FolderIcon,
   FolderOpenIcon,
@@ -16,8 +16,7 @@ import {
 import axios from "axios";
 import axiosRetry from "axios-retry";
 import { useInterval } from "usehooks-ts";
-import { INode } from "react-accessible-treeview/src/TreeView/types";
-import { ITreeViewOnNodeSelectProps } from "react-accessible-treeview/src/TreeView";
+import { ITreeViewOnNodeSelectProps } from "~/components/react-tree-view";
 
 type MenuPosition = {
   coord: { x: number; y: number } | null;
@@ -269,9 +268,10 @@ export default function LeftDirectory() {
           </div>
           <TreeView
             data={projectState!.directory.treeViewData}
+            defaultExpandedIds={["/functions", "/"]}
             expandedIds={expandedIds}
-            aria-label="directory tree"
             onNodeSelect={handleNodeSelect}
+            aria-label="directory tree"
             nodeRenderer={({
               element,
               isSelected,
