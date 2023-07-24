@@ -159,7 +159,6 @@ function projectReducer(
       return state;
     }
     case "OpenJsFile": {
-      console.log("OpenJsFile");
       const fsPath = nodeIdToFsPath(action.nodeId);
       const codeIdx = state.directory.codes.findIndex(
         (c) => c.fsPath === fsPath
@@ -190,6 +189,10 @@ function projectReducer(
       state.directory.codes[action.codeIdx]!.curChecksum = md5(
         action.content
       ).toString();
+      return state;
+    }
+    case "SelectTab": {
+      state.curOpenTabIdx = action.tabIdx;
       return state;
     }
     default:

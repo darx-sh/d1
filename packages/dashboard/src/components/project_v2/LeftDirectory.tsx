@@ -17,6 +17,7 @@ import axios from "axios";
 import axiosRetry from "axios-retry";
 import { useInterval } from "usehooks-ts";
 import { ITreeViewOnNodeSelectProps } from "~/components/react-tree-view";
+import { classNames } from "~/utils";
 
 type MenuPosition = {
   coord: { x: number; y: number } | null;
@@ -281,7 +282,12 @@ export default function LeftDirectory() {
               level,
             }) => {
               return (
-                <div className="mt-4 pl-3">
+                <div
+                  className={classNames(
+                    isSelected && !isBranch ? "bg-blue-100" : "",
+                    "mt-4 pl-3"
+                  )}
+                >
                   <div
                     {...getNodeProps()}
                     style={{ paddingLeft: 20 * (level - 1) }}
