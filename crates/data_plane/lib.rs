@@ -6,9 +6,12 @@ use std::rc::Rc;
 use std::sync::OnceLock;
 use std::time::Duration;
 
+use actix_cors::Cors;
 use actix_web::dev::{ConnectionInfo, Server};
 use actix_web::web::{get, post, Json, Path};
-use actix_web::{App, HttpResponse, HttpResponseBuilder, HttpServer};
+use actix_web::{
+    App, HttpRequest, HttpResponse, HttpResponseBuilder, HttpServer,
+};
 use anyhow::{Context, Result};
 use deno_core::{serde_v8, v8};
 use dotenvy::dotenv;
@@ -68,8 +71,13 @@ pub async fn run_server(
     info!("listen on {}", socket_addr);
 
     Ok(HttpServer::new(move || {
+        let cors = Cors::default()
+            .allow_any_method()
+            .allow_any_header()
+            .allow_any_origin();
         App::new()
             .wrap(TracingLogger::default())
+            .wrap(cors)
             .route("/", get().to(|| async { "data plane healthy." }))
             .route("/invoke/{func_url}", post().to(invoke_function))
             .route("/add_deployment", post().to(add_deployment))
@@ -146,17 +154,34 @@ async fn invoke_function0(
 async fn invoke_function(
     conn: ConnectionInfo,
     func_url: Path<String>,
+    http_req: HttpRequest,
     Json(req): Json<serde_json::Value>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
-    let domain = conn.host();
-    let env_id = extract_env_id(domain)?;
+    let darx_env = env::var("DARX_ENV").expect("DARX_ENV should be configured");
+    let host = if darx_env != "production" {
+        // dev environment use a special Darx-Dev-Host header to specify the host.
+        http_req
+            .headers()
+            .get("Darx-Dev-Host")
+            .map_or("".to_string(), |v| {
+                v.to_str()
+                    .context(
+                        "Darx-Dev-Host contains non visible ascii characters",
+                    )
+                    .unwrap()
+                    .to_string()
+            })
+    } else {
+        conn.host().to_string()
+    };
+    let env_id = extract_env_id(host.as_str())?;
     let func_url = func_url.into_inner();
 
     let (deploy_seq, route) =
         match_route(env_id.as_str(), func_url.as_str(), "POST").ok_or(
             ApiError::FunctionNotFound(format!(
-                "domain: {}, env_id: {}",
-                domain, &env_id
+                "host: {}, env_id: {}",
+                host, &env_id
             )),
         )?;
 
