@@ -9,7 +9,12 @@ const myTheme = EditorView.theme({
   "&": {
     fontSize: "1rem",
     lineHeight: "1.5rem",
+    maxHeight: "670px",
   },
+  "&.cm-focused": {
+    outline: "none",
+  },
+  ".cm-scroller": { overflow: "auto" },
 });
 
 export default function MiddleToolContent() {
@@ -25,7 +30,7 @@ export default function MiddleToolContent() {
           <CodeMirror
             value={code!.content}
             theme={githubLight}
-            extensions={[javascript(), myTheme]}
+            extensions={[javascript(), myTheme, EditorView.lineWrapping]}
             onChange={(value, viewUpdate) => {
               const t = tab as { type: "JsEditor"; codeIdx: number };
               projectDispatch!({

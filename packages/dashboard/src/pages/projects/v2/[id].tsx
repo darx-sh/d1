@@ -17,18 +17,18 @@ function ProjectDetail() {
 
   return (
     <ProjectProvider>
-      <div className="h-screen overflow-hidden">
-        <div className="h-16 border">
+      <div className="flex h-screen flex-col bg-gray-100">
+        <div className="h-16">
           <TopNav nav={topNav}></TopNav>
         </div>
-        <div className="flex h-full">
-          <div className="w-56 border">
+        <div className="flex flex-1 space-x-2">
+          <div className="w-56 border-r-2 border-t-2 border-gray-300 bg-gray-50">
             <LeftContainer></LeftContainer>
           </div>
-          <div className="flex-1 border">
+          <div className="mb-5 flex-1 rounded border-2 border-gray-300 bg-white shadow-lg">
             <MiddleContainer></MiddleContainer>
           </div>
-          <div className="w-96 border">
+          <div className="w-1/5 border-l-2 border-t-2 border-gray-300">
             <RightContainer></RightContainer>
           </div>
         </div>

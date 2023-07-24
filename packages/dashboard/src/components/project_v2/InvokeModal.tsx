@@ -1,11 +1,12 @@
 import React, { Fragment, useState } from "react";
 import { Dialog, Transition } from "@headlessui/react";
 import { HttpRoute } from "~/components/project_v2/ProjectContext";
-import { githubLight } from "@uiw/codemirror-theme-github";
+import { githubDark, githubLight } from "@uiw/codemirror-theme-github";
 import { json } from "@codemirror/lang-json";
 import { EditorView } from "@codemirror/view";
 import CodeMirror from "@uiw/react-codemirror";
-import { PlayCircleIcon } from "@heroicons/react/24/solid";
+import { PlayCircleIcon, PlayIcon } from "@heroicons/react/24/solid";
+import { XMarkIcon, ClipboardIcon } from "@heroicons/react/24/outline";
 import axios from "axios";
 import { env } from "~/env.mjs";
 
@@ -23,7 +24,8 @@ const myTheme = EditorView.theme({
 
 export default function InvokeModal(props: InvokeModalProps) {
   const [open, setOpen] = useState(true);
-  const [postParams, setPostParams] = useState<string>("{\n\n}");
+  const emptyJsonStr = JSON.stringify({}, null, 2);
+  const [postParams, setPostParams] = useState<string>(emptyJsonStr);
   const [postResult, setPostResult] = useState<string | null>(null);
 
   const functionUrl = `${env.NEXT_PUBLIC_DATA_PLANE_URL}/invoke/${props.httpRoute.httpPath}`;
@@ -38,83 +40,142 @@ export default function InvokeModal(props: InvokeModalProps) {
   }
 
   const handleInvoke = () => {
+    setPostResult(null);
     axios
       .post(functionUrl, JSON.parse(postParams), {
         headers: { "Darx-Dev-Host": `${envId}.darx.sh` },
       })
       .then((response) => {
-        console.log("invoke function response: ", response.data);
         setPostResult(JSON.stringify(response.data));
       })
       .catch((error) => console.log("invoke function error: ", error));
   };
 
+  const myTheme = EditorView.theme({
+    "&": {
+      fontSize: "1rem",
+      lineHeight: "1.5rem",
+      maxHeight: "670px",
+    },
+    "&.cm-focused": {
+      outline: "none",
+    },
+    ".cm-scroller": { overflow: "auto" },
+  });
+
   return (
     <Transition.Root show={open} as={Fragment}>
-      <Dialog as="div" className="relative z-10" onClose={props.onClose}>
-        <Transition.Child
-          as={Fragment}
-          enter="ease-out duration-300"
-          enterFrom="opacity-0"
-          enterTo="opacity-100"
-          leave="ease-in duration-200"
-          leaveFrom="opacity-100"
-          leaveTo="opacity-0"
-        >
-          <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" />
-        </Transition.Child>
-
-        <div className="fixed inset-0 z-10">
-          <div className="flex h-full items-end items-center justify-center p-0 px-4 py-9 text-center">
-            <Transition.Child
-              as={Fragment}
-              enter="ease-out duration-300"
-              enterFrom="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-              enterTo="opacity-100 translate-y-0 sm:scale-100"
-              leave="ease-in duration-200"
-              leaveFrom="opacity-100 translate-y-0 sm:scale-100"
-              leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-            >
-              <Dialog.Panel className="relative h-full w-10/12 transform overflow-hidden rounded-lg bg-white px-4 pb-5 pt-5 text-left shadow-xl transition-all">
-                <form>
-                  <div className="space-y-12">
-                    <div className="flex border-b border-gray-900/10">
-                      <h2 className="px-5 text-base font-semibold  text-gray-900">
-                        File Name: {"/" + props.httpRoute.jsEntryPoint}
-                      </h2>
-                      <h2 className="px-5 text-base font-semibold text-gray-900">
-                        Export Name: {props.httpRoute.jsExport}
-                      </h2>
-                    </div>
-                    <div className="border-b border-gray-900/10 px-5">
-                      Http endpoint: {"/" + props.httpRoute.httpPath}
-                    </div>
-                    <div className="mt-2">
-                      <div className="flex items-center">
-                        <div className="p-2">Parameters</div>
+      <Dialog
+        as="div"
+        className="relative z-10"
+        onClose={() => {
+          setOpen(false);
+          props.onClose();
+        }}
+      >
+        <div className="fixed inset-0" />
+        <div className="fixed inset-0 overflow-hidden">
+          <div className="absolute inset-0 overflow-hidden">
+            <div className="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10">
+              <Transition.Child
+                as={Fragment}
+                enter="transform transition ease-in-out duration-500 sm:duration-700"
+                enterFrom="translate-x-full"
+                enterTo="translate-x-0"
+                leave="transform transition ease-in-out duration-500 sm:duration-700"
+                leaveFrom="translate-x-0"
+                leaveTo="translate-x-full"
+              >
+                <Dialog.Panel className="pointer-events-auto w-screen max-w-md">
+                  <div className="flex h-full flex-col overflow-y-scroll border-l-2 bg-white py-3 shadow-xl">
+                    <div className="px-4 sm:px-6">
+                      <div className="flex items-start justify-between">
+                        <Dialog.Title className="flex text-base text-gray-900">
+                          <div className="text-small p-2 font-light">POST</div>
+                          <div className="text-small p-2 font-normal">
+                            {"/" + props.httpRoute.httpPath}
+                          </div>
+                        </Dialog.Title>
+                        <div className="ml-3 flex h-7 items-center">
+                          <button
+                            type="button"
+                            className="rounded-md bg-white text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                            onClick={() => {
+                              setOpen(false);
+                              props.onClose();
+                            }}
+                          >
+                            <span className="sr-only">Close panel</span>
+                            <XMarkIcon className="h-6 w-6" aria-hidden="true" />
+                          </button>
+                        </div>
                       </div>
-                      <CodeMirror
-                        value={postParams}
-                        theme={githubLight}
-                        extensions={[json(), myTheme]}
-                        onChange={(value, viewUpdate) => {
-                          setPostParams(value);
-                        }}
-                      ></CodeMirror>
-                      <div className="flex pt-2">
-                        <p>Invoke http</p>
-                        <PlayCircleIcon
-                          className="h-8 w-8 fill-blue-500"
-                          onClick={() => handleInvoke()}
-                        ></PlayCircleIcon>
-                      </div>
-                      <div>{curlCommand}</div>
-                      <div>{postResult}</div>
                     </div>
+                    <div className="relative mt-3 flex-1 px-4 sm:px-6">
+                      <div className=" border-2 p-2 shadow-md">
+                        <div className="p-2 text-xs font-light">JSON Body</div>
+                        <CodeMirror
+                          value={postParams}
+                          theme={githubLight}
+                          extensions={[
+                            json(),
+                            myTheme,
+                            EditorView.lineWrapping,
+                          ]}
+                          height="200px"
+                          basicSetup={{ lineNumbers: false, foldGutter: false }}
+                          onChange={(value, viewUpdate) => {
+                            setPostParams(value);
+                          }}
+                        ></CodeMirror>
+                        <button
+                          type="button"
+                          className="mt-2 rounded-md bg-indigo-600 px-2.5 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                          onClick={handleInvoke}
+                        >
+                          Send Request
+                        </button>
+                      </div>
+                      <div className="mt-3 max-w-fit overflow-x-auto">
+                        <div className="flex items-center justify-end">
+                          <p className="p-1 text-sm font-light italic">
+                            Example curl command
+                          </p>
+                        </div>
+                        <p className="whitespace-nowrap bg-gray-100 p-4 text-sm font-light italic">
+                          {curlCommand}
+                        </p>
+                      </div>
+                    </div>
+                    {postResult && (
+                      <div className="relative mt-6 flex-1 px-4 sm:px-6">
+                        <div className="p-2 font-light">Result</div>
+                        <CodeMirror
+                          value={JSON.stringify(
+                            JSON.parse(postResult),
+                            null,
+                            2
+                          )}
+                          theme={githubDark}
+                          extensions={[
+                            json(),
+                            myTheme,
+                            EditorView.lineWrapping,
+                          ]}
+                          height="200px"
+                          readOnly={true}
+                          basicSetup={{
+                            lineNumbers: false,
+                            foldGutter: false,
+                            highlightActiveLine: false,
+                          }}
+                        ></CodeMirror>
+                      </div>
+                    )}
                   </div>
-                </form>
-              </Dialog.Panel>
-            </Transition.Child>
+                </Dialog.Panel>
+              </Transition.Child>
+            </div>
           </div>
         </div>
       </Dialog>

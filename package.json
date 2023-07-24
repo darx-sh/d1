@@ -4,8 +4,12 @@
   "description": "Makes your database more accessible",
   "private": true,
   "scripts": {
-    "dev": "turbo dev",
-    "build": "turbo build",
+    "dev": "turbo run dev --parallel",
+    "dev:dashboard": "turbo run dev --filter dashboard",
+    "dev:server": "turbo run dev --filter server",
+    "dev:d": "npm run dev:dashboard",
+    "dev:s": "npm run dev:server",
+    "build": "turbo run build",
     "lint": "turbo lint --continue",
     "typecheck": "turbo typecheck --continue"
   },
