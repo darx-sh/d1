@@ -78,21 +78,18 @@ async fn deploy_code(
             );
             continue;
         }
-        let js_exports =
+        let fn_sigs =
             parse_module_export(code.fs_path.as_str(), code.content.as_str())?;
-        for js_export in js_exports.iter() {
+        for sig in fn_sigs.iter() {
             // the http route should start without `functions`.
-            let route = build_route(
-                Some(functions_dir),
-                code.fs_path.as_str(),
-                js_export,
-            )?;
+            let route =
+                build_route(Some(functions_dir), code.fs_path.as_str(), sig)?;
             http_routes.push(route);
         }
     }
     // create new deploy
     let db_pool = &server_state.db_pool;
-    let txn = db_pool
+    let mut txn = db_pool
         .begin()
         .await
         .context("Failed to start database transaction")?;
@@ -100,7 +97,7 @@ async fn deploy_code(
         "SELECT next_deploy_seq FROM envs WHERE id = ? FOR UPDATE",
         env_id
     )
-    .fetch_optional(db_pool)
+    .fetch_optional(&mut txn)
     .await
     .context("Failed to find env")?
     .ok_or(ApiError::EnvNotFound(env_id.clone()))?;
@@ -109,7 +106,7 @@ async fn deploy_code(
         "UPDATE envs SET next_deploy_seq = next_deploy_seq + 1 WHERE id = ?",
         env_id
     )
-    .execute(db_pool)
+    .execute(&mut txn)
     .await
     .context("Failed to update envs table")?;
 
@@ -126,7 +123,7 @@ async fn deploy_code(
         req.codes.len() as i64,
         req.codes.len() as i64,
     )
-        .execute(db_pool)
+        .execute(&mut txn)
         .await
         .context("Failed to insert into deploys table")?;
 
@@ -144,7 +141,7 @@ async fn deploy_code(
             bundle.content,
             "success",
         )
-            .execute(db_pool)
+            .execute(&mut txn)
             .await
             .context("Failed to insert into bundles table")?;
         bundles.push(Bundle {
@@ -171,7 +168,7 @@ async fn deploy_code(
         REGISTRY_FILE_NAME,
         "success",
         registry_bundle,
-    ).execute(db_pool).await.context("Failed to insert registry bundle")?;
+    ).execute(&mut txn).await.context("Failed to insert registry bundle")?;
 
     bundles.push(Bundle {
         id: registry_bundle_id,
@@ -182,14 +179,16 @@ async fn deploy_code(
     for route in http_routes.iter() {
         let route_id = new_nano_id();
         sqlx::query!(
-            "INSERT INTO http_routes (id, updated_at, method, js_entry_point, js_export, deploy_id, http_path) VALUES (?, CURRENT_TIMESTAMP(3), ?, ?, ?, ?, ?)",
+            "INSERT INTO http_routes (id, updated_at, method, js_entry_point, js_export, deploy_id, http_path, func_sig_version, func_sig) VALUES (?, CURRENT_TIMESTAMP(3), ?, ?, ?, ?, ?, ?, ?)",
             route_id,
             "POST",
             route.js_entry_point,
             route.js_export,
             deploy_id,
-            route.http_path
-        ).execute(db_pool).await.context("Failed to insert into http_routes table")?;
+            route.http_path,
+            route.func_sig_version,
+            serde_json::to_string(&route.func_sig).context("Failed to serialize func_sig")?,
+        ).execute(&mut txn).await.context("Failed to insert into http_routes table")?;
 
         tracing::debug!(
             env = env_id,
@@ -257,7 +256,7 @@ async fn list_code(
             });
         }
         let routes = sqlx::query!("\
-        SELECT http_path, method, js_entry_point, js_export FROM http_routes WHERE deploy_id = ?",
+        SELECT http_path, method, js_entry_point, js_export, func_sig_version, func_sig FROM http_routes WHERE deploy_id = ?",
             deploy_id.id).fetch_all(db_pool).await.context("Failed to query http_routes table")?;
         for r in routes.iter() {
             http_routes.push(HttpRoute {
@@ -265,6 +264,15 @@ async fn list_code(
                 method: r.method.clone(),
                 js_entry_point: r.js_entry_point.clone(),
                 js_export: r.js_export.clone(),
+                func_sig_version: r.func_sig_version,
+                func_sig: serde_json::from_value(r.func_sig.clone()).map_err(
+                    |e| {
+                        ApiError::Internal(anyhow!(
+                            "Failed to parse func_sig: {}",
+                            e
+                        ))
+                    },
+                )?,
             });
         }
     }
@@ -320,6 +328,7 @@ fn new_nano_id() -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use darx_api::FunctionSignatureV1;
 
     #[test]
     fn test_registry_code() -> Result<()> {
@@ -329,12 +338,22 @@ mod tests {
                 method: "POST".to_string(),
                 js_entry_point: "foo.js".to_string(),
                 js_export: "default".to_string(),
+                func_sig_version: 1,
+                func_sig: FunctionSignatureV1 {
+                    export_name: "default".to_string(),
+                    param_names: vec![],
+                },
             },
             HttpRoute {
                 http_path: "foo.foo".to_string(),
                 method: "POST".to_string(),
                 js_entry_point: "foo.js".to_string(),
                 js_export: "foo".to_string(),
+                func_sig_version: 1,
+                func_sig: FunctionSignatureV1 {
+                    export_name: "foo".to_string(),
+                    param_names: vec![],
+                },
             },
         ];
         let code = registry_code(&routes)?;

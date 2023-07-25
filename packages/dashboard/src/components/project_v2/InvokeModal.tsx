@@ -1,6 +1,10 @@
 import React, { Fragment, useState } from "react";
 import { Dialog, Transition } from "@headlessui/react";
-import { HttpRoute } from "~/components/project_v2/ProjectContext";
+import {
+  HttpRoute,
+  useProjectDispatch,
+  useProjectState,
+} from "~/components/project_v2/ProjectContext";
 import { githubDark, githubLight } from "@uiw/codemirror-theme-github";
 import { json } from "@codemirror/lang-json";
 import { EditorView } from "@codemirror/view";
@@ -23,9 +27,10 @@ const myTheme = EditorView.theme({
 });
 
 export default function InvokeModal(props: InvokeModalProps) {
+  console.log(`invoke modal, httpRoute = ${props.httpRoute.curParams}`);
   const [open, setOpen] = useState(true);
-  const emptyJsonStr = JSON.stringify({}, null, 2);
-  const [postParams, setPostParams] = useState<string>(emptyJsonStr);
+  const projectState = useProjectState()!;
+  const projectDispatch = useProjectDispatch()!;
   const [postResult, setPostResult] = useState<string | null>(null);
 
   const functionUrl = `${env.NEXT_PUBLIC_DATA_PLANE_URL}/invoke/${props.httpRoute.httpPath}`;
@@ -34,15 +39,19 @@ export default function InvokeModal(props: InvokeModalProps) {
   const envId = "cljb3ovlt0002e38vwo0xi5ge";
   let curlCommand = "";
   if (url.hostname === "localhost" || url.hostname === "127.0.0.1") {
-    curlCommand = `curl -i -X POST -H "Content-Type: application/json" -H "Darx-Dev-Host: ${envId}.darx.sh" -d '${postParams}' ${functionUrl}`;
+    curlCommand = `curl -i -X POST -H "Content-Type: application/json" -H "Darx-Dev-Host: ${envId}.darx.sh" -d '${props.httpRoute.curParams}' ${functionUrl}`;
   } else {
-    curlCommand = `curl -i -X POST -H "Content-Type: application/json" -d '${postParams}' ${functionUrl}`;
+    curlCommand = `curl -i -X POST -H "Content-Type: application/json" -d '${props.httpRoute.curParams}' ${functionUrl}`;
   }
 
   const handleInvoke = () => {
     setPostResult(null);
+    // use projectState to fetch newest data.
+    const r = projectState.directory.httpRoutes.filter((r) => {
+      return r.httpPath === props.httpRoute.httpPath;
+    })[0]!;
     axios
-      .post(functionUrl, JSON.parse(postParams), {
+      .post(functionUrl, JSON.parse(r.curParams), {
         headers: { "Darx-Dev-Host": `${envId}.darx.sh` },
       })
       .then((response) => {
@@ -115,7 +124,7 @@ export default function InvokeModal(props: InvokeModalProps) {
                       <div className=" border-2 p-2 shadow-md">
                         <div className="p-2 text-xs font-light">JSON Body</div>
                         <CodeMirror
-                          value={postParams}
+                          value={props.httpRoute.curParams}
                           theme={githubLight}
                           extensions={[
                             json(),
@@ -125,7 +134,11 @@ export default function InvokeModal(props: InvokeModalProps) {
                           height="200px"
                           basicSetup={{ lineNumbers: false, foldGutter: false }}
                           onChange={(value, viewUpdate) => {
-                            setPostParams(value);
+                            projectDispatch({
+                              type: "UpdatePostParam",
+                              httpRoute: props.httpRoute,
+                              param: value,
+                            });
                           }}
                         ></CodeMirror>
                         <button

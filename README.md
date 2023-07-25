@@ -1,3 +1,14 @@
+# Play with Dashboard
+
+```
+# start control plane and data plane server
+pn dev:s
+
+# start dashboard
+pn dev:d
+```
+
+
 
 # Example of expose REST api for JS function
 
@@ -5,7 +16,7 @@
 ```bash
 mkdir -p ./tmp
 
-cd crates/server
+cd crates/control_plane
 
 atlas schema apply -u "mysql://root:12345678@localhost:3306/darx_control" --to file://schema.hcl
 ```

@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result};
 
-use darx_api::HttpRoute;
+use darx_api::{FunctionSignatureV1, HttpRoute};
 
 /// Build http path from entry point and export.
 /// For a pair of (entry_point, export), here are some examples:
@@ -11,7 +11,7 @@ use darx_api::HttpRoute;
 pub fn build_route(
     prefix: Option<&str>,
     entry_point: &str,
-    export: &str,
+    func_sig: &FunctionSignatureV1,
 ) -> Result<HttpRoute> {
     let path = if entry_point.ends_with(".js") {
         entry_point.strip_suffix(".js").unwrap()
@@ -27,34 +27,38 @@ pub fn build_route(
     } else {
         path
     };
-    let path = if export == "default" {
+    let path = if func_sig.export_name == "default" {
         path.to_string()
     } else {
-        format!("{}.{}", path, export)
+        format!("{}.{}", path, func_sig.export_name)
     };
     Ok(HttpRoute {
         http_path: path,
         method: "POST".to_string(),
         js_entry_point: entry_point.to_string(),
-        js_export: export.to_string(),
+        js_export: func_sig.export_name.to_string(),
+        func_sig_version: 1,
+        func_sig: func_sig.clone(),
     })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn test_build_route_default_export() {
         let entry_point = "foo.js";
-        let export = "default";
+        let sig = FunctionSignatureV1 {
+            export_name: "default".to_string(),
+            param_names: vec![],
+        };
         assert_eq!(
-            build_route(None, entry_point, export).unwrap().http_path,
+            build_route(None, entry_point, &sig).unwrap().http_path,
             "foo"
         );
 
         assert_eq!(
-            build_route(Some("functions/"), entry_point, export)
+            build_route(Some("functions/"), entry_point, &sig)
                 .unwrap()
                 .http_path,
             "foo"
@@ -64,14 +68,17 @@ mod tests {
     #[test]
     fn test_build_route_custom_export() {
         let entry_point = "foo.js";
-        let export = "bar";
+        let sig = FunctionSignatureV1 {
+            export_name: "bar".to_string(),
+            param_names: vec![],
+        };
         assert_eq!(
-            build_route(None, entry_point, export).unwrap().http_path,
+            build_route(None, entry_point, &sig).unwrap().http_path,
             "foo.bar"
         );
 
         assert_eq!(
-            build_route(Some("functions/"), entry_point, export)
+            build_route(Some("functions/"), entry_point, &sig)
                 .unwrap()
                 .http_path,
             "foo.bar"
@@ -81,14 +88,17 @@ mod tests {
     #[test]
     fn test_build_route_nested_default_export() {
         let entry_point = "foo/bar.js";
-        let export = "default";
+        let sig = FunctionSignatureV1 {
+            export_name: "default".to_string(),
+            param_names: vec![],
+        };
         assert_eq!(
-            build_route(None, entry_point, export).unwrap().http_path,
+            build_route(None, entry_point, &sig).unwrap().http_path,
             "foo/bar"
         );
 
         assert_eq!(
-            build_route(Some("functions/"), entry_point, export)
+            build_route(Some("functions/"), entry_point, &sig)
                 .unwrap()
                 .http_path,
             "foo/bar"
@@ -98,13 +108,16 @@ mod tests {
     #[test]
     fn test_build_route_nested_custom_export() {
         let entry_point = "foo/bar.js";
-        let export = "baz";
+        let sig = FunctionSignatureV1 {
+            export_name: "baz".to_string(),
+            param_names: vec![],
+        };
         assert_eq!(
-            build_route(None, entry_point, export).unwrap().http_path,
+            build_route(None, entry_point, &sig).unwrap().http_path,
             "foo/bar.baz"
         );
         assert_eq!(
-            build_route(Some("functions/"), entry_point, export)
+            build_route(Some("functions/"), entry_point, &sig)
                 .unwrap()
                 .http_path,
             "foo/bar.baz"
@@ -114,51 +127,11 @@ mod tests {
     #[test]
     fn test_build_route_invalid_entry_point() {
         let entry_point = "foo.html";
-        let export = "default";
-        assert!(build_route(None, entry_point, export).is_err());
-        assert!(build_route(Some("functions/"), entry_point, export).is_err());
+        let sig = FunctionSignatureV1 {
+            export_name: "default".to_string(),
+            param_names: vec![],
+        };
+        assert!(build_route(None, entry_point, &sig).is_err());
+        assert!(build_route(Some("functions/"), entry_point, &sig).is_err());
     }
-
-    // #[tokio::test]
-    // async fn test_api_route() {
-    //     let meta_file_path = format!(
-    //         "{}/examples/projects/1234567/functions/__output/meta.json",
-    //         env!("CARGO_MANIFEST_DIR")
-    //     );
-    //     let routes = build_routes(meta_file_path.as_str())
-    //         .await
-    //         .expect("Failed to build routes");
-    //
-    //     assert_eq!(routes.len(), 5);
-    //     assert_eq!(
-    //         routes,
-    //         vec![
-    //             Route {
-    //                 http_path: "foo".to_string(),
-    //                 js_entry_point: "foo.js".to_string(),
-    //                 js_export: "default".to_string(),
-    //             },
-    //             Route {
-    //                 http_path: "foo.bar".to_string(),
-    //                 js_entry_point: "foo.js".to_string(),
-    //                 js_export: "bar".to_string(),
-    //             },
-    //             Route {
-    //                 http_path: "foo.foo".to_string(),
-    //                 js_entry_point: "foo.js".to_string(),
-    //                 js_export: "foo".to_string(),
-    //             },
-    //             Route {
-    //                 http_path: "foo.fooWithParam".to_string(),
-    //                 js_entry_point: "foo.js".to_string(),
-    //                 js_export: "fooWithParam".to_string(),
-    //             },
-    //             Route {
-    //                 http_path: "foo/foo".to_string(),
-    //                 js_entry_point: "foo/foo.js".to_string(),
-    //                 js_export: "default".to_string(),
-    //             }
-    //         ]
-    //     )
-    // }
 }

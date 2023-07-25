@@ -11,6 +11,7 @@ import {
   useProjectState,
   useProjectDispatch,
   CodeChecksums,
+  initialHttpParam,
 } from "~/components/project_v2/ProjectContext";
 
 import axios from "axios";
@@ -125,6 +126,7 @@ export default function LeftDirectory() {
             jsExport: route.js_export,
             httpPath: route.http_path,
             method: route.method,
+            curParams: initialHttpParam,
           };
         });
         projectDispatch!({
@@ -187,6 +189,7 @@ export default function LeftDirectory() {
               method: route.method,
               jsEntryPoint: route.js_entry_point,
               jsExport: route.js_export,
+              curParams: initialHttpParam,
             };
           });
           setDeployingCode(false);
@@ -227,8 +230,8 @@ export default function LeftDirectory() {
   };
 
   const handleNodeSelect = (nodeSelectProps: ITreeViewOnNodeSelectProps) => {
-    const { isBranch, element } = nodeSelectProps;
-    if (!isBranch) {
+    const { element } = nodeSelectProps;
+    if (!element.isBranch) {
       projectDispatch!({
         type: "OpenJsFile",
         nodeId: element.id,

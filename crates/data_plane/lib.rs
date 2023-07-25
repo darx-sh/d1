@@ -15,6 +15,9 @@ use actix_web::{
 use anyhow::{Context, Result};
 use deno_core::{serde_v8, v8};
 use dotenvy::dotenv;
+use handlebars::Handlebars;
+use serde_json;
+use serde_json::json;
 use tokio::fs;
 use tracing::{debug, info};
 use tracing_actix_web::TracingLogger;
@@ -92,6 +95,7 @@ async fn invoke_function0(
     req: serde_json::Value,
     js_entry_point: &str,
     js_export: &str,
+    param_names: &Vec<String>,
 ) -> Result<serde_json::Value, ApiError> {
     let bundle_dir =
         find_bundle_dir(BUNDLES_DIR.get().unwrap(), env_id, deploy_seq)
@@ -102,34 +106,44 @@ async fn invoke_function0(
     let cache = CACHE.with(Rc::clone);
     let mut cache = cache.borrow_mut();
     let cached = cache.get_mut(&snapshot_path);
-    let isolate = if cached.is_none() {
-        debug!("cache miss, cur size {}", cache.len());
+    // let isolate = if cached.is_none() {
+    //     debug!("cache miss, cur size {}", cache.len());
+    //
+    //     let snapshot =
+    //         fs::read(&snapshot_path).await.map_err(ApiError::IoError)?;
+    //
+    //     let isolate = DarxIsolate::new_with_snapshot(
+    //         env_id,
+    //         deploy_seq,
+    //         bundle_dir,
+    //         snapshot.into_boxed_slice(),
+    //     )
+    //     .await;
+    //     cache.put(snapshot_path.clone(), isolate);
+    //     cache.get_mut(&snapshot_path).unwrap()
+    // } else {
+    //     cached.unwrap()
+    // };
 
-        let snapshot =
-            fs::read(&snapshot_path).await.map_err(ApiError::IoError)?;
+    let snapshot = fs::read(&snapshot_path).await.map_err(ApiError::IoError)?;
 
-        let isolate = DarxIsolate::new_with_snapshot(
-            env_id,
-            deploy_seq,
-            bundle_dir,
-            snapshot.into_boxed_slice(),
-        )
-        .await;
-        cache.put(snapshot_path.clone(), isolate);
-        cache.get_mut(&snapshot_path).unwrap()
-    } else {
-        cached.unwrap()
-    };
+    let mut isolate = DarxIsolate::new_with_snapshot(
+        env_id,
+        deploy_seq,
+        bundle_dir,
+        snapshot.into_boxed_slice(),
+    )
+    .await;
 
     let script_result = isolate
         .js_runtime
         .execute_script(
             "invoke_function",
-            format!(
-                "{}({});",
+            invoking_code(
                 unique_js_export(js_entry_point, js_export),
-                req
-            ),
+                param_names.clone(),
+                req,
+            )?,
         )
         .map_err(ApiError::Internal)?;
 
@@ -191,6 +205,7 @@ async fn invoke_function(
         req,
         &route.js_entry_point,
         &route.js_export,
+        &route.func_sig.param_names,
     )
     .await?;
     Ok(Json(ret))
@@ -231,133 +246,39 @@ async fn add_deployment(
     Ok(HttpResponse::Ok())
 }
 
-// fn project_db_file(db_dir: &Path, project_id: &str) -> PathBuf {
-//     db_dir.join(project_id)
-// }
-//
-// fn project_db_conn(
-//     db_dir: &Path,
-//     project_id: &str,
-// ) -> Result<rusqlite::Connection, ApiError> {
-//     let db_file = project_db_file(db_dir, project_id);
-//     rusqlite::Connection::open(db_file.as_path()).map_err(|e| {
-//         ApiError::Internal(anyhow!(
-//             "failed to open sqlite file: {}, error: {}",
-//             db_file.to_str().unwrap(),
-//             e
-//         ))
-//     })
-// }
+const INVOKING_TEMPLATE: &str = r#"
+// an object of parameters
+const paramValuesJson = '{{{param_values_json}}}';
 
-// async fn load_bundles_from_db(
-//     project_id: &str,
-//     deployment_id: &str,
-// ) -> Result<(Vec<Bundle>, serde_json::Value)> {
-//     let db_type = darx_db::get_db_type(project_id)?;
-//     match db_type {
-//         DBType::MySQL => {
-//             darx_db::mysql::load_bundles_from_db(project_id, deployment_id)
-//                 .await
-//         }
-//         DBType::Sqlite => {
-//             unimplemented!()
-//         }
-//     }
-// }
+// an array of function parameter names
+const paramNamesJson = '{{{param_names_json}}}'; 
 
-// async fn create_local_bundles(
-//     projects_dir: &Path,
-//     project_id: &str,
-//     deployment_id: DeploymentId,
-//     bundles: &Vec<Bundle>,
-//     bundle_meta: &serde_json::Value,
-// ) -> Result<()> {
-//     let project_dir = deployment_dir(projects_dir, project_id);
-//     fs::create_dir_all(project_dir.as_path())
-//         .await
-//         .with_context(|| {
-//             format!(
-//                 "failed to create directory: {}",
-//                 project_dir.to_str().unwrap()
-//             )
-//         })?;
-//
-//     // setup a clean temporary path.
-//
-//     let tmp_dir = project_dir.join("tmp");
-//     fs::create_dir_all(tmp_dir.as_path()).await?;
-//     fs::remove_dir_all(tmp_dir.as_path()).await?;
-//     fs::create_dir_all(tmp_dir.as_path())
-//         .await
-//         .with_context(|| {
-//             format!(
-//                 "failed to create tmp directory: {}",
-//                 tmp_dir.to_str().unwrap()
-//             )
-//         })?;
-//
-//     let bundle_meta_file = tmp_dir.join("meta.json");
-//     let mut f = File::create(bundle_meta_file.as_path())
-//         .await
-//         .with_context(|| {
-//             format!(
-//                 "failed to create file: {}",
-//                 bundle_meta_file.to_str().unwrap()
-//             )
-//         })?;
-//     f.write_all(bundle_meta.to_string().as_ref())
-//         .await
-//         .with_context(|| {
-//             format!(
-//                 "failed to write file: {}",
-//                 bundle_meta_file.to_str().unwrap()
-//             )
-//         })?;
-//
-//     for bundle in bundles {
-//         let bundle_path = tmp_dir.join(bundle.path.as_str());
-//         if let Some(parent) = bundle_path.parent() {
-//             fs::create_dir_all(parent).await?;
-//         }
-//         let mut f =
-//             File::create(bundle_path.as_path()).await.with_context(|| {
-//                 format!(
-//                     "failed to create file: {}",
-//                     bundle_path.to_str().unwrap()
-//                 )
-//             })?;
-//
-//         f.write_all(bundle.code.as_ref()).await.with_context(|| {
-//             format!("failed to write file: {}", bundle_path.to_str().unwrap())
-//         })?;
-//     }
-//
-//     let meta_path = tmp_dir.join("meta.json");
-//     let mut f = File::create(meta_path.as_path()).await.with_context(|| {
-//         format!("failed to create file: {}", meta_path.to_str().unwrap())
-//     })?;
-//
-//     f.write_all(bundle_meta.to_string().as_ref()).await?;
-//
-//     // rename the temporary directory to final directory.
-//     let deploy_path = project_dir.join(deployment_id.to_string().as_str());
-//     fs::rename(tmp_dir.as_path(), deploy_path.as_path()).await?;
-//
-//     // delete the temporary directory.
-//     fs::remove_dir_all(tmp_dir.as_path()).await?;
-//     Ok(())
-// }
+const paramValues = JSON.parse(paramValuesJson);
+const paramNames = JSON.parse(paramNamesJson);
 
-// #[derive(Deserialize)]
-// struct ConnectDBRequest {
-//     project_id: String,
-//     db_type: DBType,
-//     db_url: String,
-// }
+const paramsArray = paramNames.map((name) => {
+    return paramValues[name];
+});
 
-// struct ServerState {
-//     bundles_dir: PathBuf,
-// }
+{{func_name}}(...paramsArray);
+"#;
+
+fn invoking_code(
+    func_name: String,
+    param_names: Vec<String>,
+    param_values: serde_json::Value,
+) -> Result<String> {
+    let reg = Handlebars::new();
+    let code = reg.render_template(
+        INVOKING_TEMPLATE,
+        &json!({
+            "func_name": func_name,
+            "param_values_json": serde_json::to_string(&param_values).unwrap(),
+            "param_names_json": serde_json::to_string(&param_names).unwrap(),
+        }),
+    )?;
+    Ok(code)
+}
 
 fn extract_env_id(domain: &str) -> Result<String> {
     let mut parts = domain.split('.');
@@ -372,7 +293,17 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_sqrt() -> Result<()> {
+    fn test_invoking_code_simple() -> Result<()> {
+        let code = invoking_code(
+            "foo".to_string(),
+            vec!["a".to_string(), "b".to_string(), "c".to_string()],
+            json!({
+                "a": [1, 2, 3],
+                "b": "hello",
+                "c": 3,
+            }),
+        )?;
+        println!("{}", code);
         Ok(())
     }
 }

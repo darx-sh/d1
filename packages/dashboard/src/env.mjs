@@ -6,23 +6,23 @@ import { z } from "zod";
  */
 const server = z.object({
   DATABASE_URL: z.string().url(),
-  S3_REGION: z.string(),
-  S3_BUCKET: z.string(),
-  S3_ACCESS_KEY_ID: z.string(),
-  S3_SECRET_ACCESS_KEY: z.string(),
-  REDIS_URL: z.string(),
+  // S3_REGION: z.string(),
+  // S3_BUCKET: z.string(),
+  // S3_ACCESS_KEY_ID: z.string(),
+  // S3_SECRET_ACCESS_KEY: z.string(),
+  // REDIS_URL: z.string(),
   NODE_ENV: z.enum(["development", "test", "production"]),
-  NEXTAUTH_SECRET:
-    process.env.NODE_ENV === "production"
-      ? z.string().min(1)
-      : z.string().min(1).optional(),
-  NEXTAUTH_URL: z.preprocess(
-    // This makes Vercel deployments not fail if you don't set NEXTAUTH_URL
-    // Since NextAuth.js automatically uses the VERCEL_URL if present.
-    (str) => process.env.VERCEL_URL ?? str,
-    // VERCEL_URL doesn't include `https` so it cant be validated as a URL
-    process.env.VERCEL ? z.string().min(1) : z.string().url(),
-  ),
+  // NEXTAUTH_SECRET:
+  //   process.env.NODE_ENV === "production"
+  //     ? z.string().min(1)
+  //     : z.string().min(1).optional(),
+  // NEXTAUTH_URL: z.preprocess(
+  //   // This makes Vercel deployments not fail if you don't set NEXTAUTH_URL
+  //   // Since NextAuth.js automatically uses the VERCEL_URL if present.
+  //   (str) => process.env.VERCEL_URL ?? str,
+  //   // VERCEL_URL doesn't include `https` so it cant be validated as a URL
+  //   process.env.VERCEL ? z.string().min(1) : z.string().url(),
+  // ),
   // Add `.min(1) on ID and SECRET if you want to make sure they're not empty
   // DISCORD_CLIENT_ID: z.string(),
   // DISCORD_CLIENT_SECRET: z.string(),
@@ -50,14 +50,14 @@ const client = z.object(
  */
 const processEnv = {
   DATABASE_URL: process.env.DATABASE_URL,
-  S3_REGION: process.env.S3_REGION,
-  S3_BUCKET: process.env.S3_BUCKET,
-  S3_ACCESS_KEY_ID: process.env.S3_ACCESS_KEY_ID,
-  S3_SECRET_ACCESS_KEY: process.env.S3_SECRET_ACCESS_KEY,
-  REDIS_URL: process.env.REDIS_URL,
+  // S3_REGION: process.env.S3_REGION,
+  // S3_BUCKET: process.env.S3_BUCKET,
+  // S3_ACCESS_KEY_ID: process.env.S3_ACCESS_KEY_ID,
+  // S3_SECRET_ACCESS_KEY: process.env.S3_SECRET_ACCESS_KEY,
+  // REDIS_URL: process.env.REDIS_URL,
   NODE_ENV: process.env.NODE_ENV,
-  NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
-  NEXTAUTH_URL: process.env.NEXTAUTH_URL,
+  // NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
+  // NEXTAUTH_URL: process.env.NEXTAUTH_URL,
   // DISCORD_CLIENT_ID: process.env.DISCORD_CLIENT_ID,
   // DISCORD_CLIENT_SECRET: process.env.DISCORD_CLIENT_SECRET,
   // NEXT_PUBLIC_CLIENTVAR: process.env.NEXT_PUBLIC_CLIENTVAR,

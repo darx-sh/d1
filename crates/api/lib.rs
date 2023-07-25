@@ -70,15 +70,25 @@ pub struct Bundle {
     pub code: Option<Vec<u8>>,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HttpRoute {
     pub http_path: String,
     pub method: String,
     /// `js_entry_point` is used to find the js file.
     pub js_entry_point: String,
     pub js_export: String,
+
+    pub func_sig_version: i32,
+    pub func_sig: FunctionSignatureV1,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct FunctionSignatureV1 {
+    pub export_name: String,
+    pub param_names: Vec<String>,
+}
+
+/// [`unique_js_export`] returns a unique function name
 pub fn unique_js_export(js_entry_point: &str, js_export: &str) -> String {
     let js_entry_point =
         js_entry_point.strip_suffix(".js").unwrap_or(js_entry_point);
