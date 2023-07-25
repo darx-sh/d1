@@ -24,9 +24,12 @@ export type HttpRoute = {
   jsExport: string;
   httpPath: string;
   method: string;
+  curParams: string;
 };
 
 type Tab = { type: "JsEditor"; codeIdx: number } | { type: "Database" };
+
+export const initialHttpParam = JSON.stringify({}, null, 2);
 
 const initialProject: ProjectState = {
   directory: {
@@ -62,13 +65,9 @@ type ProjectAction =
   | { type: "SelectTab"; tabIdx: number }
   | {
       type: "UpdateHttpRoutes";
-      httpRoutes: {
-        jsEntryPoint: string;
-        jsExport: string;
-        httpPath: string;
-        method: string;
-      }[];
-    };
+      httpRoutes: HttpRoute[];
+    }
+  | { type: "UpdatePostParam"; httpRoute: HttpRoute; param: string };
 
 export type CodeChecksums = {
   [key: string]: string;
@@ -165,7 +164,7 @@ function projectReducer(
       );
       if (codeIdx < 0) {
         throw new Error(
-          `Cannot find code with fsPath: ${fsPath} nodeId: ${action.nodeId}`
+          `Cannot find code with fsPath: ${fsPath}, nodeId: ${action.nodeId}`
         );
       }
       // state.curOpenTabIdx = codeIdx;
@@ -193,6 +192,19 @@ function projectReducer(
     }
     case "SelectTab": {
       state.curOpenTabIdx = action.tabIdx;
+      return state;
+    }
+    case "UpdatePostParam": {
+      const { httpRoute, param } = action;
+      const idx = state.directory.httpRoutes.findIndex((r) => {
+        return (
+          r.httpPath === httpRoute.httpPath && r.method === httpRoute.method
+        );
+      });
+      if (idx >= 0) {
+        state.directory.httpRoutes[idx]!.curParams = param;
+      }
+      console.log(`UpdatePostParam: param = ${param}, idx = ${idx}`);
       return state;
     }
     default:
