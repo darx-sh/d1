@@ -209,6 +209,15 @@ table "http_routes" {
     null = false
     type = varchar(191)
   }
+  column "func_sig_version" {
+    null = false
+    default = 1
+    type = int
+  }
+  column "func_sig" {
+    null = false
+    type = json
+  }
   primary_key {
     columns = [column.id]
   }

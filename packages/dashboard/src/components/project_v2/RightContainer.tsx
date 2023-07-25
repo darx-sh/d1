@@ -73,7 +73,16 @@ export default function RightContainer() {
                           <a
                             href="#"
                             className="text-indigo-600 hover:text-indigo-900"
-                            onClick={() => handleInvoke(route)}
+                            onClick={() => {
+                              // use projectState to fetch newest data.
+                              const r =
+                                projectState.directory.httpRoutes.filter(
+                                  (r) => {
+                                    return r.httpPath === route.httpPath;
+                                  }
+                                )[0]!;
+                              handleInvoke(r);
+                            }}
                           >
                             Invoke
                           </a>

@@ -38,7 +38,9 @@ pub async fn init_deployments(
         http_routes.http_path AS http_path, \
         http_routes.js_entry_point AS js_entry_point, \
         http_routes.js_export AS js_export,
-        http_routes.method AS method \
+        http_routes.method AS method, \
+        http_routes.func_sig_version AS func_sig_version, \
+        http_routes.func_sig AS func_sig \
     FROM deploys INNER JOIN http_routes ON http_routes.deploy_id = deploys.id \
     WHERE deploys.bundle_upload_cnt = deploys.bundle_cnt"
     )
@@ -52,6 +54,9 @@ pub async fn init_deployments(
             js_entry_point: deploy.js_entry_point.clone(),
             js_export: deploy.js_export.clone(),
             method: deploy.method.clone(),
+            func_sig_version: deploy.func_sig_version,
+            func_sig: serde_json::from_value(deploy.func_sig.clone())
+                .context("Failed to extract func_sig")?,
         };
 
         add_single_http_route(

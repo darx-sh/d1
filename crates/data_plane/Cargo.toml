@@ -34,3 +34,4 @@ once_cell.workspace = true
 tracing.workspace = true
 arrayvec.workspace = true
 patricia_tree.workspace = true
+handlebars.workspace = true

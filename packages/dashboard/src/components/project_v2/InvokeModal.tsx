@@ -3,6 +3,7 @@ import { Dialog, Transition } from "@headlessui/react";
 import {
   HttpRoute,
   useProjectDispatch,
+  useProjectState,
 } from "~/components/project_v2/ProjectContext";
 import { githubDark, githubLight } from "@uiw/codemirror-theme-github";
 import { json } from "@codemirror/lang-json";
@@ -28,7 +29,8 @@ const myTheme = EditorView.theme({
 export default function InvokeModal(props: InvokeModalProps) {
   console.log(`invoke modal, httpRoute = ${props.httpRoute.curParams}`);
   const [open, setOpen] = useState(true);
-  const dispatch = useProjectDispatch()!;
+  const projectState = useProjectState()!;
+  const projectDispatch = useProjectDispatch()!;
   const [postResult, setPostResult] = useState<string | null>(null);
 
   const functionUrl = `${env.NEXT_PUBLIC_DATA_PLANE_URL}/invoke/${props.httpRoute.httpPath}`;
@@ -44,8 +46,12 @@ export default function InvokeModal(props: InvokeModalProps) {
 
   const handleInvoke = () => {
     setPostResult(null);
+    // use projectState to fetch newest data.
+    const r = projectState.directory.httpRoutes.filter((r) => {
+      return r.httpPath === props.httpRoute.httpPath;
+    })[0]!;
     axios
-      .post(functionUrl, JSON.parse(props.httpRoute.curParams), {
+      .post(functionUrl, JSON.parse(r.curParams), {
         headers: { "Darx-Dev-Host": `${envId}.darx.sh` },
       })
       .then((response) => {
@@ -128,7 +134,7 @@ export default function InvokeModal(props: InvokeModalProps) {
                           height="200px"
                           basicSetup={{ lineNumbers: false, foldGutter: false }}
                           onChange={(value, viewUpdate) => {
-                            dispatch({
+                            projectDispatch({
                               type: "UpdatePostParam",
                               httpRoute: props.httpRoute,
                               param: value,

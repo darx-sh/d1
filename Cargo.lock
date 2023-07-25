@@ -1079,6 +1079,7 @@ dependencies = [
  "deno_core",
  "dotenvy",
  "futures-util",
+ "handlebars",
  "once_cell",
  "patricia_tree",
  "redis",
