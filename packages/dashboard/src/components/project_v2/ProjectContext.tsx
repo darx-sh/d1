@@ -63,10 +63,6 @@ type ProjectAction =
   | { type: "DoubleClickJsFile"; fsPath: string }
   | { type: "CloseJsTab"; fsPath: string }
   | { type: "SelectTab"; tabIdx: number }
-  | {
-      type: "UpdateHttpRoutes";
-      httpRoutes: HttpRoute[];
-    }
   | { type: "UpdatePostParam"; httpRoute: HttpRoute; param: string };
 
 export type CodeChecksums = {
