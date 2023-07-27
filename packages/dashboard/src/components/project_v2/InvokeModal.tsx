@@ -1,4 +1,4 @@
-import React, { Fragment, useState } from "react";
+import React, { Fragment, useState, useRef } from "react";
 import { Dialog, Transition } from "@headlessui/react";
 import {
   HttpRoute,
@@ -9,8 +9,7 @@ import { githubDark, githubLight } from "@uiw/codemirror-theme-github";
 import { json } from "@codemirror/lang-json";
 import { EditorView } from "@codemirror/view";
 import CodeMirror from "@uiw/react-codemirror";
-import { PlayCircleIcon, PlayIcon } from "@heroicons/react/24/solid";
-import { XMarkIcon, ClipboardIcon } from "@heroicons/react/24/outline";
+import { XMarkIcon } from "@heroicons/react/24/outline";
 import axios from "axios";
 import { env } from "~/env.mjs";
 
@@ -27,12 +26,13 @@ const myTheme = EditorView.theme({
 });
 
 export default function InvokeModal(props: InvokeModalProps) {
-  console.log(`invoke modal, httpRoute = ${props.httpRoute.curParams}`);
   const [open, setOpen] = useState(true);
   const projectState = useProjectState()!;
   const projectDispatch = useProjectDispatch()!;
   const [postResult, setPostResult] = useState<string | null>(null);
-
+  const paramsRef = useRef<string>(projectState.directory.httpRoutes.filter((r) => {
+    return r.httpPath === props.httpRoute.httpPath;
+  })[0]!.curParams);
   const functionUrl = `${env.NEXT_PUBLIC_DATA_PLANE_URL}/invoke/${props.httpRoute.httpPath}`;
   const url = new URL(functionUrl);
   // todo: hardcode env id for now.
@@ -46,12 +46,8 @@ export default function InvokeModal(props: InvokeModalProps) {
 
   const handleInvoke = () => {
     setPostResult(null);
-    // use projectState to fetch newest data.
-    const r = projectState.directory.httpRoutes.filter((r) => {
-      return r.httpPath === props.httpRoute.httpPath;
-    })[0]!;
     axios
-      .post(functionUrl, JSON.parse(r.curParams), {
+      .post(functionUrl, JSON.parse(paramsRef.current), {
         headers: { "Darx-Dev-Host": `${envId}.darx.sh` },
       })
       .then((response) => {
@@ -134,6 +130,7 @@ export default function InvokeModal(props: InvokeModalProps) {
                           height="200px"
                           basicSetup={{ lineNumbers: false, foldGutter: false }}
                           onChange={(value, viewUpdate) => {
+                            paramsRef.current = value;
                             projectDispatch({
                               type: "UpdatePostParam",
                               httpRoute: props.httpRoute,
