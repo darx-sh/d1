@@ -28,18 +28,18 @@ pub fn add_deployment_url() -> String {
 pub struct DeployCodeReq {
     pub tag: Option<String>,
     pub desc: Option<String>,
-    pub codes: Vec<Code>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Code {
-    pub fs_path: String,
-    pub content: String,
+    pub codes: Vec<CodeReq>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DeployCodeRsp {
     pub http_routes: Vec<HttpRoute>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CodeReq {
+    pub fs_path: String,
+    pub content: String,
 }
 
 ///
@@ -58,16 +58,15 @@ pub struct ListCodeRsp {
 pub struct AddDeploymentReq {
     pub env_id: String,
     pub deploy_seq: i32,
-    pub bundle_repo: String,
-    pub bundles: Vec<Bundle>,
+    pub codes: Vec<Code>,
     pub http_routes: Vec<HttpRoute>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Bundle {
+pub struct Code {
     pub id: String,
     pub fs_path: String,
-    pub code: Option<Vec<u8>>,
+    pub content: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

@@ -19,7 +19,7 @@ use handlebars::Handlebars;
 use serde_json;
 use serde_json::json;
 use tokio::fs;
-use tracing::{debug, info};
+use tracing::info;
 use tracing_actix_web::TracingLogger;
 
 use darx_api::{unique_js_export, AddDeploymentReq, ApiError};
@@ -214,7 +214,7 @@ async fn invoke_function(
 async fn add_deployment(
     Json(req): Json<AddDeploymentReq>,
 ) -> Result<HttpResponseBuilder, ApiError> {
-    let bundles_len = req.bundles.len();
+    let bundles_len = req.codes.len();
     let routes_len = req.http_routes.len();
 
     let mut deployment_route = DeploymentRoute {
@@ -231,7 +231,7 @@ async fn add_deployment(
         req.env_id.as_str(),
         req.deploy_seq,
         BUNDLES_DIR.get().unwrap(),
-        &req.bundles,
+        &req.codes,
     )
     .await?;
     add_route(deployment_route);

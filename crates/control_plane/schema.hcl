@@ -100,23 +100,10 @@ table "deploys" {
     null = false
     type = varchar(191)
   }
-  column "bundle_repo" {
-    null = false
-    type = varchar(191)
-  }
-  column "bundle_upload_cnt" {
-    null    = false
-    type    = int
-    default = 0
-  }
   column "deploy_seq" {
     null    = false
     type    = int
     default = 0
-  }
-  column "bundle_cnt" {
-    null = false
-    type = int
   }
   primary_key {
     columns = [column.id]
@@ -127,7 +114,7 @@ table "deploys" {
   }
 }
 
-table "bundles" {
+table "codes" {
   schema  = schema.darx_control
   collate = "utf8mb4_unicode_ci"
   column "id" {
@@ -143,15 +130,6 @@ table "bundles" {
     null = false
     type = datetime(3)
   }
-  column "bytes" {
-    null = false
-    type = int
-  }
-  column "upload_status" {
-    null    = false
-    type    = varchar(191)
-    default = "running"
-  }
   column "deploy_id" {
     null = false
     type = varchar(191)
@@ -160,15 +138,19 @@ table "bundles" {
     null = false
     type = text
   }
-  column "code" {
-    null = true
+  column "content" {
+    null = false
     # 16 MB
     type = mediumblob
+  }
+  column "content_size" {
+    null = false
+    type = int
   }
   primary_key {
     columns = [column.id]
   }
-  index "bundles_deployment_id_idx" {
+  index "codes_deployment_id_idx" {
     columns = [column.deploy_id]
   }
 }
@@ -223,6 +205,104 @@ table "http_routes" {
   }
   index "http_routes_deploy_id_idx" {
     columns = [column.deploy_id]
+  }
+}
+
+table "plugins" {
+  schema = schema.darx_control
+  collate = "utf8mb4_unicode_ci"
+  column "id" {
+    null = false
+    type = varchar(191)
+  }
+  column "created_at" {
+    null    = false
+    type    = datetime(3)
+    default = sql("CURRENT_TIMESTAMP(3)")
+  }
+  column "updated_at" {
+    null = false
+    type = datetime(3)
+  }
+  column "name" {
+      null = false
+      type = varchar(191)
+  }
+  primary_key {
+    columns = [column.id]
+  }
+}
+
+table "code_templates" {
+  schema  = schema.darx_control
+  collate = "utf8mb4_unicode_ci"
+  column "id" {
+    null = false
+    type = varchar(191)
+  }
+  column "created_at" {
+    null    = false
+    type    = datetime(3)
+    default = sql("CURRENT_TIMESTAMP(3)")
+  }
+  column "updated_at" {
+    null = false
+    type = datetime(3)
+  }
+  column "fs_path" {
+    null = false
+    type = text
+  }
+  column "content" {
+    null = false
+    # 16 MB
+    type = mediumblob
+  }
+  column "content_size" {
+    null = false
+    type = int
+  }
+  column "plugin_id" {
+      null = false
+      type = varchar(191)
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  index "code_templates_plugin_id_idx" {
+    columns = [column.plugin_id]
+  }
+}
+
+table "plugin_installs" {
+  schema  = schema.darx_control
+  collate = "utf8mb4_unicode_ci"
+  column "id" {
+    null = false
+    type = varchar(191)
+  }
+  column "created_at" {
+    null    = false
+    type    = datetime(3)
+    default = sql("CURRENT_TIMESTAMP(3)")
+  }
+  column "updated_at" {
+    null = false
+    type = datetime(3)
+  }
+  column "env_id" {
+    null = false
+    type = varchar(191)
+  }
+  column "plugin_id" {
+    null = false
+    type = varchar(191)
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  index "plugin_installs_env_id_plugin_id_idx" {
+    columns = [column.env_id, column.plugin_id]
   }
 }
 
