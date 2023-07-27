@@ -49,6 +49,9 @@ pub async fn run_server(
     socket_addr: SocketAddr,
     working_dir: PathBuf,
 ) -> Result<Server> {
+    fs::create_dir_all(working_dir.as_path())
+        .await
+        .context("Failed to create working directory")?;
     let working_dir = fs::canonicalize(working_dir)
         .await
         .context("Failed to canonicalize working dir")?;
