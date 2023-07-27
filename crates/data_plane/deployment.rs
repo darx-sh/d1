@@ -9,7 +9,7 @@ use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 use tokio::time::Instant;
 
-use darx_api::{Bundle, HttpRoute, REGISTRY_FILE_NAME};
+use darx_api::{Code, HttpRoute, REGISTRY_FILE_NAME};
 use darx_isolate_runtime::DarxIsolate;
 use patricia_tree::StringPatriciaMap;
 
@@ -41,8 +41,7 @@ pub async fn init_deployments(
         http_routes.method AS method, \
         http_routes.func_sig_version AS func_sig_version, \
         http_routes.func_sig AS func_sig \
-    FROM deploys INNER JOIN http_routes ON http_routes.deploy_id = deploys.id \
-    WHERE deploys.bundle_upload_cnt = deploys.bundle_cnt"
+    FROM deploys INNER JOIN http_routes ON http_routes.deploy_id = deploys.id"
     )
     .fetch_all(pool)
     .await
@@ -66,31 +65,30 @@ pub async fn init_deployments(
         );
     }
 
-    let bundles = sqlx::query!(
+    let codes = sqlx::query!(
         "SELECT \
             deploys.env_id AS env_id, \
             deploys.deploy_seq AS deploy_seq, \
-            bundles.id AS id, \
-            bundles.fs_path AS fs_path, \
-            bundles.code AS code \
+            codes.id AS id, \
+            codes.fs_path AS fs_path, \
+            codes.content AS content \
         FROM \
-            bundles INNER JOIN deploys ON deploys.id = bundles.deploy_id \
-        WHERE deploys.bundle_upload_cnt = deploys.bundle_cnt"
+            codes INNER JOIN deploys ON deploys.id = codes.deploy_id"
     )
     .fetch_all(pool)
     .await
     .context("Failed to load bundles from db")?;
 
-    let mut map: HashMap<(&str, i32), Vec<Bundle>> =
-        HashMap::with_capacity(bundles.len());
+    let mut map: HashMap<(&str, i32), Vec<Code>> =
+        HashMap::with_capacity(codes.len());
 
-    for bundle in bundles.iter() {
-        map.entry((bundle.env_id.as_str(), bundle.deploy_seq))
+    for code in codes.iter() {
+        map.entry((code.env_id.as_str(), code.deploy_seq))
             .or_default()
-            .push(Bundle {
-                id: bundle.id.clone(),
-                fs_path: bundle.fs_path.clone(),
-                code: bundle.code.clone(),
+            .push(Code {
+                id: code.id.clone(),
+                fs_path: code.fs_path.clone(),
+                content: String::from_utf8(code.content.clone())?,
             });
     }
 
@@ -148,7 +146,7 @@ pub async fn add_bundle_files(
     env_id: &str,
     deploy_seq: i32,
     bundles_dir: impl AsRef<Path>,
-    bundles: &Vec<Bundle>,
+    bundles: &Vec<Code>,
 ) -> Result<()> {
     // setup bundle files
     for bundle in bundles.iter() {
@@ -182,7 +180,7 @@ async fn add_single_bundle_file(
     bundles_dir: &Path,
     env_id: &str,
     deploy_seq: i32,
-    bundle: &Bundle,
+    bundle: &Code,
 ) -> Result<()> {
     let bundle_dir =
         setup_bundle_deployment_dir(bundles_dir.as_ref(), env_id, deploy_seq)
@@ -196,8 +194,7 @@ async fn add_single_bundle_file(
     }
 
     let mut file = File::create(bundle_file.as_path()).await?;
-    file.write_all(bundle.code.as_ref().unwrap().as_slice())
-        .await?;
+    file.write_all(bundle.content.as_ref()).await?;
     Ok(())
 }
 

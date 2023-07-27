@@ -15,9 +15,8 @@ use serde_json::json;
 use tracing_actix_web::TracingLogger;
 
 use darx_api::{
-    add_deployment_url, unique_js_export, AddDeploymentReq, ApiError, Bundle,
-    Code, DeployCodeReq, DeployCodeRsp, HttpRoute, ListCodeRsp,
-    REGISTRY_FILE_NAME,
+    add_deployment_url, unique_js_export, AddDeploymentReq, ApiError, Code,
+    DeployCodeReq, DeployCodeRsp, HttpRoute, ListCodeRsp, REGISTRY_FILE_NAME,
 };
 
 use crate::esm_parser::parse_module_export;
@@ -78,8 +77,9 @@ async fn deploy_code(
             );
             continue;
         }
+        let content = code.content.clone();
         let fn_sigs =
-            parse_module_export(code.fs_path.as_str(), code.content.as_str())?;
+            parse_module_export(code.fs_path.as_str(), content.as_str())?;
         for sig in fn_sigs.iter() {
             // the http route should start without `functions`.
             let route =
@@ -113,67 +113,60 @@ async fn deploy_code(
     let deploy_seq = env.next_deploy_seq + 1;
     let deploy_id = new_nano_id();
     sqlx::query!(
-        "INSERT INTO deploys (id, updated_at, tag, description, env_id, deploy_seq, bundle_repo, bundle_cnt, bundle_upload_cnt) VALUES (?, CURRENT_TIMESTAMP(3), ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO deploys (id, updated_at, tag, description, env_id, deploy_seq) VALUES (?, CURRENT_TIMESTAMP(3), ?, ?, ?, ?)",
         deploy_id,
         req.tag,
         req.desc,
         env_id,
         deploy_seq,
-        "db",
-        req.codes.len() as i64,
-        req.codes.len() as i64,
     )
         .execute(&mut txn)
         .await
         .context("Failed to insert into deploys table")?;
 
-    // create new bundles
-    // create new bundle
-    let mut bundles = vec![];
-    for bundle in req.codes.iter() {
-        let bundle_id = new_nano_id();
+    let mut codes = vec![];
+    for code in req.codes.iter() {
+        let code_id = new_nano_id();
         sqlx::query!(
-            "INSERT INTO bundles (id, updated_at, bytes, deploy_id, fs_path, code, upload_status) VALUES (?, CURRENT_TIMESTAMP(3), ?, ?, ?, ?, ?)",
-            bundle_id,
-            bundle.content.len() as i64,
+            "INSERT INTO codes (id, updated_at, deploy_id, fs_path, content, content_size) VALUES (?, CURRENT_TIMESTAMP(3), ?, ?, ?, ?)",
+            code_id,
             deploy_id,
-            bundle.fs_path,
-            bundle.content,
-            "success",
+            code.fs_path,
+            code.content,
+            code.content.len() as i64,
         )
             .execute(&mut txn)
             .await
             .context("Failed to insert into bundles table")?;
-        bundles.push(Bundle {
-            id: bundle_id,
-            fs_path: bundle.fs_path.clone(),
-            code: Some(bundle.content.clone().into_bytes()),
+        codes.push(Code {
+            id: code_id,
+            fs_path: code.fs_path.clone(),
+            content: code.content.clone(),
         });
 
         tracing::debug!(
             env = env_id,
             seq = deploy_seq,
             "add bundle {}",
-            bundle.fs_path.as_str(),
+            code.fs_path.as_str(),
         );
     }
 
-    let registry_bundle = registry_code(&http_routes)?;
-    let registry_bundle_id = new_nano_id();
+    let registry_code_content = registry_code(&http_routes)?;
+    let registry_code_id = new_nano_id();
     sqlx::query!(
-        "INSERT INTO bundles (id, updated_at, bytes, deploy_id, fs_path, upload_status, code) VALUES (?, CURRENT_TIMESTAMP(3), ?, ?, ?, ?, ?)",
-        registry_bundle_id,
-        registry_bundle.len() as i64,
+        "INSERT INTO codes (id, updated_at, deploy_id, fs_path, content, content_size) VALUES (?, CURRENT_TIMESTAMP(3), ?, ?, ?, ?)",
+        registry_code_id,
         deploy_id,
         REGISTRY_FILE_NAME,
-        "success",
-        registry_bundle,
-    ).execute(&mut txn).await.context("Failed to insert registry bundle")?;
+        registry_code_content,
+        registry_code_content.len() as i64,
+    ).execute(&mut txn).await.context("Failed to insert registry code")?;
 
-    bundles.push(Bundle {
-        id: registry_bundle_id,
+    codes.push(Code {
+        id: registry_code_id,
         fs_path: REGISTRY_FILE_NAME.to_string(),
-        code: Some(registry_bundle),
+        content: registry_code_content,
     });
     // create new http_routes
     for route in http_routes.iter() {
@@ -205,15 +198,14 @@ async fn deploy_code(
         env = env_id,
         seq = deploy_seq,
         "added deployment, {} bundles, {} routes",
-        bundles.len(),
+        codes.len(),
         http_routes.len()
     );
 
     let req = AddDeploymentReq {
         env_id,
         deploy_seq,
-        bundle_repo: "db".to_string(),
-        bundles,
+        codes,
         http_routes: http_routes.clone(),
     };
     let url = add_deployment_url();
@@ -245,14 +237,19 @@ async fn list_code(
     let mut codes = vec![];
     let mut http_routes = vec![];
     if let Some(deploy_id) = deploy_id {
-        let bundles = sqlx::query!("
-        SELECT fs_path, code FROM bundles WHERE deploy_id = ? AND fs_path != '__registry.js'", 
+        let records = sqlx::query!("
+        SELECT id, fs_path, content FROM codes WHERE deploy_id = ? AND fs_path != '__registry.js'",
             deploy_id.id).fetch_all(db_pool).await.context("Failed to query bundles table")?;
-        for b in bundles.iter() {
-            let content = b.code.as_ref().unwrap();
+        for r in records.iter() {
             codes.push(Code {
-                fs_path: b.fs_path.clone(),
-                content: String::from_utf8(content.clone()).unwrap(),
+                id: r.id.clone(),
+                fs_path: r.fs_path.clone(),
+                content: String::from_utf8(r.content.clone()).map_err(|e| {
+                    ApiError::Internal(anyhow!(
+                        "Failed to convert code content to string: {}",
+                        e
+                    ))
+                })?,
             });
         }
         let routes = sqlx::query!("\
@@ -286,7 +283,7 @@ globalThis.{{unique_export}} = {{unique_export}};
 {{/each}}
 "#;
 
-fn registry_code(routes: &Vec<HttpRoute>) -> Result<Vec<u8>> {
+fn registry_code(routes: &Vec<HttpRoute>) -> Result<String> {
     #[derive(Serialize)]
     struct UniqueJsExport {
         js_entry_point: String,
@@ -312,7 +309,7 @@ fn registry_code(routes: &Vec<HttpRoute>) -> Result<Vec<u8>> {
 
     tracing::debug!("registry {}", &code);
 
-    Ok(code.into_bytes())
+    Ok(code)
 }
 
 struct ServerState {

@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use anyhow::Result;
 use tracing::info;
 
-use crate::{Code, DeployCodeReq};
+use crate::{CodeReq, DeployCodeReq};
 
 pub fn dir_to_deploy_req(dir: &Path) -> Result<DeployCodeReq> {
     let mut file_list_path_vec = vec![];
@@ -25,8 +25,9 @@ pub fn dir_to_deploy_req(dir: &Path) -> Result<DeployCodeReq> {
         file_list_path_vec.iter().zip(fs_path_str_vec.iter())
     {
         if fs_path_str.starts_with("functions/") {
-            let content = fs::read_to_string(path)?; //TODO should not blocking
-            codes.push(Code {
+            //TODO should not blocking
+            let content = fs::read_to_string(path)?;
+            codes.push(CodeReq {
                 fs_path: fs_path_str.clone(),
                 content,
             });
