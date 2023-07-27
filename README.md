@@ -1,38 +1,24 @@
 # Play with Dashboard
 
 ```
-# start control plane and data plane server
-pn dev:s
+# 1. install pnpm using npm or https://pnpm.io/installation
+npm i -g pnpm
 
-# start dashboard
-pn dev:d
-```
+# 2. prepare environment variable files
+cp .env.dashboard.example .env.dashboard
+cp .env.server.example .env.server
 
+# 3. prepare database
+# Change DATABASE_URL in .env.server to use your own database
+# and execute database migrations 
+atlas schema apply -u "mysql://root:12345678@localhost:3306/darx_control" --to file://crates/control_plane/schema.hcl
 
+# 4. start server
+pnpm run dev:s
 
-# Example of expose REST api for JS function
+# 5. start dashboard
+pnpm run dev:d
 
-# 1. Setup basic directory, run db migration
-```bash
-mkdir -p ./tmp
-
-cd crates/control_plane
-
-atlas schema apply -u "mysql://root:12345678@localhost:3306/darx_control" --to file://schema.hcl
-```
-# 2. Start darx_server.
-```bash
-cargo run --package darx_server -- --data-plane-dir=./tmp/data_plane
-```
-
-# 3. Start darx dev command
-```bash
-cargo run --package darx_client -- dev --dir=./tmp
-```
-
-# 4. Write your function in ./tmp/darx_server/functions/foo.js
-
-# 5. Invoke function with POST
-```bash
-http localhost:4001/foo name=abc age=18 Host:cljb3ovlt0002e38vwo0xi5ge.darx.sh
-```
+# 6. build server
+pnpm build:s
+``
