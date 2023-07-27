@@ -231,6 +231,10 @@ table "plugins" {
   primary_key {
     columns = [column.id]
   }
+  index "plugins_name" {
+    unique = true
+    columns = [column.name]
+  }
 }
 
 table "code_templates" {
