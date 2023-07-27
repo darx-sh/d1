@@ -4,7 +4,8 @@ tmp
 node_modules
 .next
 .turbo
-.env
+.env.server
+.env.dashboard
 *.db
 .DS_Store
 **/target/

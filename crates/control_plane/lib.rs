@@ -7,7 +7,6 @@ use actix_web::dev::Server;
 use actix_web::web::{get, post, Data, Json, Path};
 use actix_web::{App, HttpServer};
 use anyhow::{anyhow, Context, Result};
-use dotenvy::dotenv;
 use handlebars::Handlebars;
 use nanoid::nanoid;
 use serde::Serialize;
@@ -26,9 +25,6 @@ mod esm_parser;
 mod route_builder;
 
 pub async fn run_server(socket_addr: SocketAddr) -> Result<Server> {
-    #[cfg(debug_assertions)]
-    dotenv().expect("Failed to load .env file");
-
     let db_pool = sqlx::MySqlPool::connect(
         env::var("DATABASE_URL")
             .expect("DATABASE_URL should be configured")

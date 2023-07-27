@@ -5,7 +5,7 @@ import { z } from "zod";
  * built with invalid env vars.
  */
 const server = z.object({
-  DATABASE_URL: z.string().url(),
+  // DATABASE_URL: z.string().url(),
   // S3_REGION: z.string(),
   // S3_BUCKET: z.string(),
   // S3_ACCESS_KEY_ID: z.string(),
@@ -36,6 +36,7 @@ const client = z.object(
   /** @satisfies {Record<`NEXT_PUBLIC_${string}`, import('zod').ZodType>} */ (
     {
       // NEXT_PUBLIC_CLIENTVAR: z.string().min(1),
+      NEXT_PUBLIC_DARX_ENV: z.enum(["development", "test", "production"]),
       NEXT_PUBLIC_CONTROL_PLANE_URL: z.string().url(),
       NEXT_PUBLIC_DATA_PLANE_URL: z.string().url(),
     }
@@ -49,18 +50,19 @@ const client = z.object(
  * @type {Record<keyof z.infer<typeof server> | keyof z.infer<typeof client>, string | undefined>}
  */
 const processEnv = {
-  DATABASE_URL: process.env.DATABASE_URL,
+  NODE_ENV: process.env.NODE_ENV,
+  // DATABASE_URL: process.env.DATABASE_URL,
   // S3_REGION: process.env.S3_REGION,
   // S3_BUCKET: process.env.S3_BUCKET,
   // S3_ACCESS_KEY_ID: process.env.S3_ACCESS_KEY_ID,
   // S3_SECRET_ACCESS_KEY: process.env.S3_SECRET_ACCESS_KEY,
   // REDIS_URL: process.env.REDIS_URL,
-  NODE_ENV: process.env.NODE_ENV,
   // NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
   // NEXTAUTH_URL: process.env.NEXTAUTH_URL,
   // DISCORD_CLIENT_ID: process.env.DISCORD_CLIENT_ID,
   // DISCORD_CLIENT_SECRET: process.env.DISCORD_CLIENT_SECRET,
   // NEXT_PUBLIC_CLIENTVAR: process.env.NEXT_PUBLIC_CLIENTVAR,
+  NEXT_PUBLIC_DARX_ENV: process.env.NEXT_PUBLIC_DARX_ENV,
   NEXT_PUBLIC_CONTROL_PLANE_URL: process.env.NEXT_PUBLIC_CONTROL_PLANE_URL,
   NEXT_PUBLIC_DATA_PLANE_URL: process.env.NEXT_PUBLIC_DATA_PLANE_URL,
 };

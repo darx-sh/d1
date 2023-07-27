@@ -14,7 +14,6 @@ use actix_web::{
 };
 use anyhow::{Context, Result};
 use deno_core::{serde_v8, v8};
-use dotenvy::dotenv;
 use handlebars::Handlebars;
 use serde_json;
 use serde_json::json;
@@ -58,9 +57,6 @@ pub async fn run_server(
     let bundles_dir =
         BUNDLES_DIR.get_or_init(|| working_dir.join(DARX_BUNDLES_DIR));
     fs::create_dir_all(bundles_dir.as_path()).await?;
-
-    #[cfg(debug_assertions)]
-    dotenv().expect("Failed to load .env file");
 
     let db_pool = sqlx::MySqlPool::connect(
         env::var("DATABASE_URL")

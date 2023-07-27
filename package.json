@@ -4,12 +4,12 @@
   "description": "Makes your database more accessible",
   "private": true,
   "scripts": {
-    "dev": "turbo run dev --parallel",
-    "dev:dashboard": "turbo run dev --filter dashboard",
-    "dev:server": "turbo run dev --filter server",
+    "dev:dashboard": "dotenv -e .env.dashboard -- turbo run dev --filter dashboard",
+    "dev:server": "dotenv -e .env.server -- turbo run dev --filter server",
     "dev:d": "npm run dev:dashboard",
     "dev:s": "npm run dev:server",
-    "build": "turbo run build",
+    "build:d": "turbo run build --filter dashboard",
+    "build:s": "dotenv -e .env.server -- cargo build",
     "lint": "turbo lint --continue",
     "typecheck": "turbo typecheck --continue"
   },
@@ -22,6 +22,7 @@
     "pnpm": ">=8.0.0"
   },
   "devDependencies": {
-    "turbo": "^1.9.3"
+    "turbo": "^1.9.3",
+    "dotenv-cli": "latest"
   }
 }
