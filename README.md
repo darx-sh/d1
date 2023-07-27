@@ -1,8 +1,9 @@
 # Play with Dashboard
 
-```
-# 1. install pnpm using npm or https://pnpm.io/installation
+```bash
+# 1. install pnpm and install dependencies
 npm i -g pnpm
+pnpm install
 
 # 2. prepare environment variable files
 cp .env.dashboard.example .env.dashboard
@@ -21,4 +22,4 @@ pnpm run dev:d
 
 # 6. build server
 pnpm build:s
-``
+```
