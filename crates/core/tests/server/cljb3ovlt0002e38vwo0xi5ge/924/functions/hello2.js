@@ -1,1 +1,0 @@
-export default function hello2() {return "hi2";}

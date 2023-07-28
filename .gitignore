@@ -11,3 +11,4 @@ node_modules
 **/target/
 SNAPSHOT.bin
 crates/server/tests/basic_test/server/
+crates/core/tests/server
