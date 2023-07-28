@@ -11,6 +11,10 @@ path = "lib.rs"
 
 [dependencies]
 darx_db.workspace = true
+darx_isolate_runtime.workspace = true
+
+deno_core.workspace = true
+
 serde.workspace = true
 serde_json.workspace = true
 actix-web.workspace = true
@@ -19,3 +23,13 @@ anyhow.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 async-recursion.workspace = true
+sqlx.workspace = true
+nanoid.workspace = true
+handlebars.workspace = true
+swc_common.workspace = true
+swc_ecma_ast.workspace = true
+swc_ecma_parser.workspace = true
+once_cell.workspace = true
+dashmap.workspace = true
+patricia_tree.workspace = true
+arrayvec.workspace = true

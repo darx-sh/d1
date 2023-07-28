@@ -1,17 +1,66 @@
-use std::collections::HashMap;
-use std::path::{Path, PathBuf};
-
+use crate::{unique_js_export, Code, HttpRoute, REGISTRY_FILE_NAME};
 use anyhow::{bail, Context, Result};
 use dashmap::DashMap;
 use once_cell::sync::Lazy;
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 use tokio::fs;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 use tokio::time::Instant;
+use tracing::info;
 
-use darx_core::{Code, HttpRoute, REGISTRY_FILE_NAME};
+use crate::api::ApiError;
+use crate::deploy::cache::LruCache;
 use darx_isolate_runtime::DarxIsolate;
+use deno_core::{serde_v8, v8};
+use handlebars::Handlebars;
 use patricia_tree::StringPatriciaMap;
+use serde_json::json;
+use std::rc::Rc;
+use std::time::Duration;
+
+//TODO lru size should be configured
+type IsolateCache = LruCache<PathBuf, DarxIsolate, 100>;
+
+thread_local! {
+    static CACHE : Rc<RefCell<IsolateCache>> = Rc::new(RefCell::new(IsolateCache::new()));
+}
+
+pub async fn add_deployment(
+    bundles_dir: &Path,
+    env_id: &str,
+    deploy_seq: i32,
+    codes: &Vec<Code>,
+    http_routes: &Vec<HttpRoute>,
+) -> Result<()> {
+    let code_cnt = codes.len();
+    let route_cnt = http_routes.len();
+
+    let mut deployment_route = DeploymentRoute {
+        env_id: env_id.to_string(),
+        deploy_seq,
+        http_routes: Default::default(),
+    };
+
+    for r in http_routes {
+        deployment_route
+            .http_routes
+            .insert(r.http_path.clone(), r.clone());
+    }
+    add_bundle_files(env_id, deploy_seq, bundles_dir, codes).await?;
+    add_route(deployment_route);
+
+    info!(
+        env = env_id,
+        seq = deploy_seq,
+        "cached deployment, {} bundles, {} routes",
+        code_cnt,
+        route_cnt
+    );
+    Ok(())
+}
 
 #[derive(Clone, Debug)]
 pub struct DeploymentRoute {
@@ -161,20 +210,6 @@ pub async fn add_bundle_files(
     Ok(())
 }
 
-pub async fn find_bundle_dir(
-    bundles_dir: impl AsRef<Path>,
-    env_id: &str,
-    deploy_seq: i32,
-) -> Result<PathBuf> {
-    let path = bundles_dir.as_ref().join(env_id).join(deploy_seq.to_string().as_str()).canonicalize().with_context(|| {
-        format!(
-            "Failed to canonicalize deploy directory. env_id: {}, deploy_seq: {}",
-            env_id, deploy_seq
-        )
-    })?;
-    Ok(path)
-}
-
 async fn add_single_source_code(
     bundles_dir: &Path,
     env_id: &str,
@@ -305,4 +340,148 @@ async fn setup_bundle_deployment_dir(
         )
     })?;
     Ok(dir)
+}
+
+pub async fn invoke_function0(
+    bundles_dir: &Path,
+    env_id: &str,
+    deploy_seq: i32,
+    req: serde_json::Value,
+    js_entry_point: &str,
+    js_export: &str,
+    param_names: &Vec<String>,
+) -> Result<serde_json::Value, ApiError> {
+    let bundle_dir = find_bundle_dir(bundles_dir, env_id, deploy_seq)
+        .await
+        .map_err(|e| ApiError::BundleNotFound(e.to_string()))?;
+
+    let snapshot_path = bundle_dir.join(SNAPSHOT_FILE);
+    let cache = CACHE.with(Rc::clone);
+    let mut cache = cache.borrow_mut();
+    let _cached = cache.get_mut(&snapshot_path);
+    // let isolate = if cached.is_none() {
+    //     debug!("cache miss, cur size {}", cache.len());
+    //
+    //     let snapshot =
+    //         fs::read(&snapshot_path).await.map_err(ApiError::IoError)?;
+    //
+    //     let isolate = DarxIsolate::new_with_snapshot(
+    //         env_id,
+    //         deploy_seq,
+    //         bundle_dir.clone(),
+    //         snapshot.into_boxed_slice(),
+    //     )
+    //     .await;
+    //     cache.put(snapshot_path.clone(), isolate);
+    //     cache.get_mut(&snapshot_path).unwrap()
+    // } else {
+    //     cached.unwrap()
+    // };
+
+    let snapshot = fs::read(&snapshot_path).await.map_err(ApiError::IoError)?;
+
+    let mut isolate = DarxIsolate::new_with_snapshot(
+        env_id,
+        deploy_seq,
+        bundle_dir,
+        snapshot.into_boxed_slice(),
+    )
+    .await;
+
+    let script_result = isolate
+        .js_runtime
+        .execute_script(
+            "invoke_function",
+            invoking_code(
+                unique_js_export(js_entry_point, js_export),
+                param_names.clone(),
+                req,
+            )?,
+        )
+        .map_err(ApiError::Internal)?;
+
+    let script_result = isolate.js_runtime.resolve_value(script_result);
+
+    //TODO timeout from env vars/config
+    let duration = Duration::from_secs(5);
+
+    let script_result =
+        match tokio::time::timeout(duration, script_result).await {
+            Err(_) => Err(ApiError::Timeout),
+            Ok(res) => res.map_err(ApiError::Internal),
+        }?;
+
+    let mut handle_scope = isolate.js_runtime.handle_scope();
+    let script_result = v8::Local::new(&mut handle_scope, script_result);
+    let script_result = serde_v8::from_v8(&mut handle_scope, script_result)
+        .map_err(|e| ApiError::Internal(anyhow::Error::new(e)))?;
+    Ok(script_result)
+}
+
+pub async fn find_bundle_dir(
+    bundles_dir: impl AsRef<Path>,
+    env_id: &str,
+    deploy_seq: i32,
+) -> Result<PathBuf> {
+    let path = bundles_dir.as_ref().join(env_id).join(deploy_seq.to_string().as_str()).canonicalize().with_context(|| {
+        format!(
+            "Failed to canonicalize deploy directory. env_id: {}, deploy_seq: {}",
+            env_id, deploy_seq
+        )
+    })?;
+    Ok(path)
+}
+
+const INVOKING_TEMPLATE: &str = r#"
+// an object of parameters
+const paramValuesJson = '{{{param_values_json}}}';
+
+// an array of function parameter names
+const paramNamesJson = '{{{param_names_json}}}'; 
+
+const paramValues = JSON.parse(paramValuesJson);
+const paramNames = JSON.parse(paramNamesJson);
+
+const paramsArray = paramNames.map((name) => {
+    return paramValues[name];
+});
+
+{{func_name}}(...paramsArray);
+"#;
+
+fn invoking_code(
+    func_name: String,
+    param_names: Vec<String>,
+    param_values: serde_json::Value,
+) -> Result<String> {
+    let reg = Handlebars::new();
+    let code = reg.render_template(
+        INVOKING_TEMPLATE,
+        &json!({
+            "func_name": func_name,
+            "param_values_json": serde_json::to_string(&param_values).unwrap(),
+            "param_names_json": serde_json::to_string(&param_names).unwrap(),
+        }),
+    )?;
+    Ok(code)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_invoking_code_simple() -> Result<()> {
+        let code = invoking_code(
+            "foo".to_string(),
+            vec!["a".to_string(), "b".to_string(), "c".to_string()],
+            json!({
+                "a": [1, 2, 3],
+                "b": "hello",
+                "c": 3,
+            }),
+        )?;
+        println!("{}", code);
+        Ok(())
+    }
 }
