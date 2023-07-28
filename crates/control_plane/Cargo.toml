@@ -24,5 +24,3 @@ swc_common.workspace = true
 swc_ecma_ast.workspace = true
 swc_ecma_parser.workspace = true
 darx_api.workspace = true
-futures.workspace = true
-tokio.workspace = true

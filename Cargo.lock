@@ -1061,7 +1061,6 @@ dependencies = [
  "actix-web",
  "anyhow",
  "darx_api",
- "futures",
  "handlebars",
  "nanoid",
  "reqwest",
@@ -1071,7 +1070,6 @@ dependencies = [
  "swc_common",
  "swc_ecma_ast",
  "swc_ecma_parser",
- "tokio",
  "tracing",
  "tracing-actix-web",
 ]
