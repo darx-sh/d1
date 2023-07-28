@@ -50,6 +50,7 @@ table "envs" {
   column "updated_at" {
     null = false
     type = datetime(3)
+    default = sql("CURRENT_TIMESTAMP(3)")
   }
   column "name" {
     null = false
@@ -68,6 +69,7 @@ table "envs" {
     columns = [column.id]
   }
   index "envs_project_id_idx" {
+    unique = true
     columns = [column.project_id]
   }
 }

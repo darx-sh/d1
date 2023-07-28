@@ -1,7 +1,6 @@
-use std::io::stderr;
-
 use crate::FunctionSignatureV1;
 use anyhow::{anyhow, bail, Result};
+use std::io::stderr;
 use swc_common::errors::Handler;
 use swc_common::sync::Lrc;
 use swc_common::{FileName, SourceMap};

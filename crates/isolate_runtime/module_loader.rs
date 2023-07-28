@@ -1,11 +1,10 @@
-use std::path::PathBuf;
-use std::pin::Pin;
-
 use deno_core::anyhow::{anyhow, Error};
 use deno_core::{
     resolve_import, ModuleLoader, ModuleSourceFuture, ModuleSpecifier,
     ResolutionKind,
 };
+use std::path::PathBuf;
+use std::pin::Pin;
 
 pub struct TenantModuleLoader {
     // TODO not used right now, maybe we can delete it.

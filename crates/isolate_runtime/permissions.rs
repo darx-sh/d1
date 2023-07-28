@@ -1,7 +1,6 @@
-use std::path::{Path, PathBuf};
-
 use deno_core::error::AnyError;
 use deno_core::url::Url;
+use std::path::{Path, PathBuf};
 
 pub struct Permissions {
     _project_dir: PathBuf,

@@ -7,15 +7,18 @@ use handlebars::Handlebars;
 use nanoid::nanoid;
 use serde::Serialize;
 use serde_json::json;
-use sqlx::MySqlPool;
+use sqlx::{MySql, MySqlPool, Transaction};
 
-pub async fn deploy_code(
-    db_pool: &MySqlPool,
+const PLUGIN_PROJECT_ID: &str = "system";
+const PLUGIN_ENV_NAME: &str = "plugin";
+
+pub async fn deploy_code<'c>(
+    mut txn: Transaction<'c, MySql>,
     env_id: &str,
     codes: &Vec<Code>,
     tag: &Option<String>,
     desc: &Option<String>,
-) -> Result<(i32, Vec<Code>, Vec<HttpRoute>)> {
+) -> Result<(i32, Vec<Code>, Vec<HttpRoute>, Transaction<'c, MySql>)> {
     let mut http_routes = vec![];
     for code in codes.iter() {
         let functions_dir = "functions/";
@@ -38,10 +41,6 @@ pub async fn deploy_code(
         }
     }
     // create new deploy
-    let mut txn = db_pool
-        .begin()
-        .await
-        .context("Failed to start database transaction when deploy_code")?;
     let env = sqlx::query!(
         "SELECT next_deploy_seq FROM envs WHERE id = ? FOR UPDATE",
         env_id
@@ -137,9 +136,6 @@ pub async fn deploy_code(
             &route.http_path
         );
     }
-    txn.commit()
-        .await
-        .context("Failed to commit database transaction")?;
 
     tracing::info!(
         env = env_id,
@@ -148,7 +144,7 @@ pub async fn deploy_code(
         final_codes.len(),
         http_routes.len()
     );
-    Ok((deploy_seq, final_codes, http_routes))
+    Ok((deploy_seq, final_codes, http_routes, txn))
 }
 
 pub async fn list_code(
@@ -198,6 +194,53 @@ pub async fn list_code(
         }
     }
     Ok((codes, http_routes))
+}
+
+pub async fn create_plugin(
+    db_pool: &MySqlPool,
+    name: &str,
+    codes: &Vec<Code>,
+) -> Result<String> {
+    let plugin = sqlx::query!("SELECT id FROM plugins WHERE name = ?", name)
+        .fetch_optional(db_pool)
+        .await
+        .context("Failed to query plugins table")?;
+    if let Some(plugin) = plugin {
+        return Ok(plugin.id);
+    }
+
+    let mut txn = db_pool
+        .begin()
+        .await
+        .context("Failed to start database transaction when create_plugin")?;
+
+    let env_id = new_nano_id();
+    sqlx::query!(
+        "INSERT INTO envs (id, name, project_id) VALUES (?, ?, ?)",
+        env_id,
+        name,
+        PLUGIN_PROJECT_ID,
+    )
+    .execute(&mut txn)
+    .await
+    .context("Failed to insert into envs table when create_plugin")?;
+
+    let plugin_id = new_nano_id();
+    sqlx::query!(
+        "INSERT INTO plugins (id, name) VALUES (?, ?)",
+        plugin_id,
+        name
+    )
+    .execute(&mut txn)
+    .await
+    .context("Failed to insert into plugins table")?;
+
+    let (_, _, _, txn) =
+        deploy_code(txn, env_id.as_str(), codes, &None, &None).await?;
+    txn.commit()
+        .await
+        .context("Failed to commit database transaction when create_plugin")?;
+    Ok(plugin_id)
 }
 
 const REGISTRY_TEMPLATE: &str = r#"

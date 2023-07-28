@@ -1,8 +1,7 @@
-use std::net::SocketAddr;
-use std::path::PathBuf;
-
 use anyhow::Result;
 use clap::Parser;
+use std::net::SocketAddr;
+use std::path::PathBuf;
 use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::prelude::__tracing_subscriber_SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;

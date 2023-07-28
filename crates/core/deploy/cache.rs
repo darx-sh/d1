@@ -1,8 +1,7 @@
+use arrayvec::ArrayVec;
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::mem;
-
-use arrayvec::ArrayVec;
 
 #[derive(Debug)]
 struct Entry<K, V> {
