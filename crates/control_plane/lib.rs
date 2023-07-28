@@ -1,12 +1,11 @@
-use std::env;
-use std::net::SocketAddr;
-use std::sync::Arc;
-
 use actix_cors::Cors;
 use actix_web::dev::Server;
 use actix_web::web::{get, post, Data, Json, Path};
 use actix_web::{App, HttpServer};
 use anyhow::{anyhow, Context, Result};
+use std::env;
+use std::net::SocketAddr;
+use std::sync::Arc;
 use tracing_actix_web::TracingLogger;
 
 use darx_core::api::{
@@ -51,8 +50,13 @@ async fn deploy_code(
     env_id: Path<String>,
     req: Json<DeployCodeReq>,
 ) -> Result<Json<DeployCodeRsp>, ApiError> {
-    let (deploy_seq, codes, http_routes) = control::deploy_code(
-        &server_state.db_pool,
+    let txn = server_state
+        .db_pool
+        .begin()
+        .await
+        .context("Failed to start transaction")?;
+    let (deploy_seq, codes, http_routes, txn) = control::deploy_code(
+        txn,
         env_id.as_str(),
         &req.codes,
         &req.tag,
@@ -79,6 +83,10 @@ async fn deploy_code(
             rsp.text().await.unwrap()
         )));
     }
+
+    txn.commit()
+        .await
+        .context("Failed to commit transaction when deploy_code")?;
     Ok(Json(DeployCodeRsp { http_routes }))
 }
 

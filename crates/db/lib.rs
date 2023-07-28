@@ -1,12 +1,8 @@
-// mod mysql_simple;
-// mod types;
-
-use std::cell::RefCell;
-use std::rc::Rc;
-
 use anyhow::Result;
 use async_trait::async_trait;
 use serde::Deserialize;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 mod mysql_sqlx;
 

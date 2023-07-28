@@ -1,16 +1,14 @@
-use std::cell::RefCell;
-use std::rc::Rc;
-
+use crate::{Connection, ConnectionPool};
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use futures_util::TryStreamExt;
-use serde::{Serialize, Serializer};
 use serde::ser::SerializeMap;
+use serde::{Serialize, Serializer};
 use serde_json::Value;
-use sqlx::{Column, Either, MySql, Row, TypeInfo};
 use sqlx::mysql::MySqlRow;
-
-use crate::{Connection, ConnectionPool};
+use sqlx::{Column, Either, MySql, Row, TypeInfo};
+use std::cell::RefCell;
+use std::rc::Rc;
 
 pub struct MySqlPool {
     pool: sqlx::mysql::MySqlPool,
