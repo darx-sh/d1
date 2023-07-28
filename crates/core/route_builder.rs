@@ -8,7 +8,7 @@ use crate::{FunctionSignatureV1, HttpRoute};
 /// - (foo.js, bar)           -> foo.bar
 /// - (foo/foo.js, default)   -> foo/foo
 /// - (foo/foo.js, bar)       -> foo/foo.bar
-pub fn build_route(
+pub(crate) fn build_route(
     prefix: Option<&str>,
     entry_point: &str,
     func_sig: &FunctionSignatureV1,

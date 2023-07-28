@@ -28,6 +28,18 @@ thread_local! {
     static CACHE : Rc<RefCell<IsolateCache>> = Rc::new(RefCell::new(IsolateCache::new()));
 }
 
+#[derive(Clone, Debug)]
+pub(crate) struct DeploymentRoute {
+    pub env_id: String,
+    pub deploy_seq: i32,
+    pub http_routes: StringPatriciaMap<HttpRoute>,
+}
+
+static GLOBAL_ROUTER: Lazy<DashMap<String, Vec<DeploymentRoute>>> =
+    Lazy::new(DashMap::new);
+
+pub(crate) const SNAPSHOT_FILE: &str = "SNAPSHOT.bin";
+
 pub async fn add_deployment(
     bundles_dir: &Path,
     env_id: &str,
@@ -61,18 +73,6 @@ pub async fn add_deployment(
     );
     Ok(())
 }
-
-#[derive(Clone, Debug)]
-pub struct DeploymentRoute {
-    pub env_id: String,
-    pub deploy_seq: i32,
-    pub http_routes: StringPatriciaMap<HttpRoute>,
-}
-
-static GLOBAL_ROUTER: Lazy<DashMap<String, Vec<DeploymentRoute>>> =
-    Lazy::new(DashMap::new);
-
-pub(crate) const SNAPSHOT_FILE: &str = "SNAPSHOT.bin";
 
 pub async fn init_deployments(
     bundles_dir: &Path,
@@ -183,14 +183,90 @@ pub fn match_route(
     }
 }
 
-pub fn add_route(route: DeploymentRoute) {
+pub async fn invoke_function(
+    bundles_dir: &Path,
+    env_id: &str,
+    deploy_seq: i32,
+    req: serde_json::Value,
+    js_entry_point: &str,
+    js_export: &str,
+    param_names: &Vec<String>,
+) -> Result<serde_json::Value, ApiError> {
+    let bundle_dir = find_bundle_dir(bundles_dir, env_id, deploy_seq)
+        .await
+        .map_err(|e| ApiError::BundleNotFound(e.to_string()))?;
+
+    let snapshot_path = bundle_dir.join(SNAPSHOT_FILE);
+    let cache = CACHE.with(Rc::clone);
+    let mut cache = cache.borrow_mut();
+    let _cached = cache.get_mut(&snapshot_path);
+    // let isolate = if cached.is_none() {
+    //     debug!("cache miss, cur size {}", cache.len());
+    //
+    //     let snapshot =
+    //         fs::read(&snapshot_path).await.map_err(ApiError::IoError)?;
+    //
+    //     let isolate = DarxIsolate::new_with_snapshot(
+    //         env_id,
+    //         deploy_seq,
+    //         bundle_dir.clone(),
+    //         snapshot.into_boxed_slice(),
+    //     )
+    //     .await;
+    //     cache.put(snapshot_path.clone(), isolate);
+    //     cache.get_mut(&snapshot_path).unwrap()
+    // } else {
+    //     cached.unwrap()
+    // };
+
+    let snapshot = fs::read(&snapshot_path).await.map_err(ApiError::IoError)?;
+
+    let mut isolate = DarxIsolate::new_with_snapshot(
+        env_id,
+        deploy_seq,
+        bundle_dir,
+        snapshot.into_boxed_slice(),
+    )
+    .await;
+
+    let script_result = isolate
+        .js_runtime
+        .execute_script(
+            "invoke_function",
+            invoking_code(
+                unique_js_export(js_entry_point, js_export),
+                param_names.clone(),
+                req,
+            )?,
+        )
+        .map_err(ApiError::Internal)?;
+
+    let script_result = isolate.js_runtime.resolve_value(script_result);
+
+    //TODO timeout from env vars/config
+    let duration = Duration::from_secs(5);
+
+    let script_result =
+        match tokio::time::timeout(duration, script_result).await {
+            Err(_) => Err(ApiError::Timeout),
+            Ok(res) => res.map_err(ApiError::Internal),
+        }?;
+
+    let mut handle_scope = isolate.js_runtime.handle_scope();
+    let script_result = v8::Local::new(&mut handle_scope, script_result);
+    let script_result = serde_v8::from_v8(&mut handle_scope, script_result)
+        .map_err(|e| ApiError::Internal(anyhow::Error::new(e)))?;
+    Ok(script_result)
+}
+
+fn add_route(route: DeploymentRoute) {
     let env_id = route.env_id.clone();
     let mut entry = GLOBAL_ROUTER.entry(env_id).or_insert_with(|| Vec::new());
     entry.insert(0, route.clone());
     entry.sort_by(|a, b| b.deploy_seq.cmp(&a.deploy_seq));
 }
 
-pub async fn add_bundle_files(
+async fn add_bundle_files(
     env_id: &str,
     deploy_seq: i32,
     bundles_dir: impl AsRef<Path>,
@@ -342,83 +418,7 @@ async fn setup_bundle_deployment_dir(
     Ok(dir)
 }
 
-pub async fn invoke_function0(
-    bundles_dir: &Path,
-    env_id: &str,
-    deploy_seq: i32,
-    req: serde_json::Value,
-    js_entry_point: &str,
-    js_export: &str,
-    param_names: &Vec<String>,
-) -> Result<serde_json::Value, ApiError> {
-    let bundle_dir = find_bundle_dir(bundles_dir, env_id, deploy_seq)
-        .await
-        .map_err(|e| ApiError::BundleNotFound(e.to_string()))?;
-
-    let snapshot_path = bundle_dir.join(SNAPSHOT_FILE);
-    let cache = CACHE.with(Rc::clone);
-    let mut cache = cache.borrow_mut();
-    let _cached = cache.get_mut(&snapshot_path);
-    // let isolate = if cached.is_none() {
-    //     debug!("cache miss, cur size {}", cache.len());
-    //
-    //     let snapshot =
-    //         fs::read(&snapshot_path).await.map_err(ApiError::IoError)?;
-    //
-    //     let isolate = DarxIsolate::new_with_snapshot(
-    //         env_id,
-    //         deploy_seq,
-    //         bundle_dir.clone(),
-    //         snapshot.into_boxed_slice(),
-    //     )
-    //     .await;
-    //     cache.put(snapshot_path.clone(), isolate);
-    //     cache.get_mut(&snapshot_path).unwrap()
-    // } else {
-    //     cached.unwrap()
-    // };
-
-    let snapshot = fs::read(&snapshot_path).await.map_err(ApiError::IoError)?;
-
-    let mut isolate = DarxIsolate::new_with_snapshot(
-        env_id,
-        deploy_seq,
-        bundle_dir,
-        snapshot.into_boxed_slice(),
-    )
-    .await;
-
-    let script_result = isolate
-        .js_runtime
-        .execute_script(
-            "invoke_function",
-            invoking_code(
-                unique_js_export(js_entry_point, js_export),
-                param_names.clone(),
-                req,
-            )?,
-        )
-        .map_err(ApiError::Internal)?;
-
-    let script_result = isolate.js_runtime.resolve_value(script_result);
-
-    //TODO timeout from env vars/config
-    let duration = Duration::from_secs(5);
-
-    let script_result =
-        match tokio::time::timeout(duration, script_result).await {
-            Err(_) => Err(ApiError::Timeout),
-            Ok(res) => res.map_err(ApiError::Internal),
-        }?;
-
-    let mut handle_scope = isolate.js_runtime.handle_scope();
-    let script_result = v8::Local::new(&mut handle_scope, script_result);
-    let script_result = serde_v8::from_v8(&mut handle_scope, script_result)
-        .map_err(|e| ApiError::Internal(anyhow::Error::new(e)))?;
-    Ok(script_result)
-}
-
-pub async fn find_bundle_dir(
+async fn find_bundle_dir(
     bundles_dir: impl AsRef<Path>,
     env_id: &str,
     deploy_seq: i32,

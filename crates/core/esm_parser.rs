@@ -9,7 +9,7 @@ use swc_ecma_ast::{Decl, DefaultDecl, Function, ModuleDecl, ModuleItem, Pat};
 use swc_ecma_parser::parse_file_as_module;
 
 // todo: handle Javascript syntax error
-pub fn parse_module_export(
+pub(crate) fn parse_module_export(
     file_name: &str,
     source: &str,
 ) -> Result<Vec<FunctionSignatureV1>> {

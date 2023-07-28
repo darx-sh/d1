@@ -101,7 +101,7 @@ async fn invoke_function(
                 host, &env_id
             )),
         )?;
-    let ret = data::invoke_function0(
+    let ret = data::invoke_function(
         &server_state.bundles_dir,
         &env_id,
         deploy_seq,
