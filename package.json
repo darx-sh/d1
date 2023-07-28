@@ -10,6 +10,7 @@
     "dev:s": "npm run dev:server",
     "build:d": "dotenv -e .env.dashboard -- turbo run build --filter dashboard",
     "build:s": "dotenv -e .env.server -- cargo build",
+    "test:s": "dotenv -e .env.server -- cargo test",
     "lint": "turbo lint --continue",
     "typecheck": "turbo typecheck --continue"
   },

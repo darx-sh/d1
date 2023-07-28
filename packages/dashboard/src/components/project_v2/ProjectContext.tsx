@@ -200,7 +200,6 @@ function projectReducer(
       if (idx >= 0) {
         state.directory.httpRoutes[idx]!.curParams = param;
       }
-      console.log(`UpdatePostParam: param = ${param}, idx = ${idx}`);
       return state;
     }
     default:

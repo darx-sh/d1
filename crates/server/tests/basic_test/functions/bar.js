@@ -1,3 +1,3 @@
-export function Hi(p) {
-    return "Hi " + p.msg + " from bar";
+export function Hi(msg) {
+    return "Hi " + msg + " from bar";
 }

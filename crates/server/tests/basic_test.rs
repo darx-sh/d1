@@ -37,12 +37,14 @@ async fn test_main_process() {
     let code_path = project_dir.join("tests/basic_test");
     let server_data_path = project_dir.join("tests/basic_test/server");
 
-    tokio::fs::remove_dir_all(&server_data_path).await.unwrap();
+    _ = tokio::fs::remove_dir_all(&server_data_path).await;
     tokio::fs::create_dir(&server_data_path).await.unwrap();
 
     let handle = run_server(server_data_path).await;
 
-    let req = darx_api::deploy::dir_to_deploy_req(code_path.as_path()).unwrap();
+    let req = darx_api::deploy::dir_to_deploy_req(code_path.as_path())
+        .await
+        .unwrap();
     info!("req: {:#?}", req);
     let client = reqwest::Client::new();
 
@@ -59,7 +61,7 @@ async fn test_main_process() {
 
     let resp = client
         .post(format!("http://{}/invoke/foo.Hi", DATA))
-        .header("HOST", format!("{}.darx.sh", ENV_ID))
+        .header("Darx-Dev-Host", format!("{}.darx.sh", ENV_ID))
         .json(&req)
         .send()
         .await
@@ -73,7 +75,7 @@ async fn test_main_process() {
 
     let resp = client
         .post(format!("http://{}/invoke/bar.Hi", DATA))
-        .header("HOST", format!("{}.darx.sh", ENV_ID))
+        .header("Darx-Dev-Host", format!("{}.darx.sh", ENV_ID))
         .json(&req)
         .send()
         .await
