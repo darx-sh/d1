@@ -1,7 +1,7 @@
 use std::io::stderr;
 
 use anyhow::{anyhow, bail, Result};
-use darx_api::FunctionSignatureV1;
+use darx_core::FunctionSignatureV1;
 use swc_common::errors::Handler;
 use swc_common::sync::Lrc;
 use swc_common::{FileName, SourceMap};

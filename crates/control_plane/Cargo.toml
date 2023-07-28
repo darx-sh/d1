@@ -23,4 +23,4 @@ serde_json.workspace = true
 swc_common.workspace = true
 swc_ecma_ast.workspace = true
 swc_ecma_parser.workspace = true
-darx_api.workspace = true
+darx_core.workspace = true

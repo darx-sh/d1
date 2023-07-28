@@ -42,7 +42,7 @@ async fn test_main_process() {
 
     let handle = run_server(server_data_path).await;
 
-    let req = darx_api::deploy::dir_to_deploy_req(code_path.as_path())
+    let req = darx_core::deploy::dir_to_deploy_req(code_path.as_path())
         .await
         .unwrap();
     info!("req: {:#?}", req);

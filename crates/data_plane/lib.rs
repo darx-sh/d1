@@ -21,7 +21,7 @@ use tokio::fs;
 use tracing::info;
 use tracing_actix_web::TracingLogger;
 
-use darx_api::{unique_js_export, AddDeploymentReq, ApiError};
+use darx_core::{unique_js_export, AddDeploymentReq, ApiError};
 use darx_isolate_runtime::DarxIsolate;
 
 use crate::cache::LruCache;

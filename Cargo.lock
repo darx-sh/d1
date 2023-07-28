@@ -1023,27 +1023,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "darx_api"
-version = "0.1.0"
-dependencies = [
- "actix-web",
- "anyhow",
- "async-recursion",
- "darx_db",
- "serde",
- "serde_json",
- "thiserror",
- "tokio",
- "tracing",
-]
-
-[[package]]
 name = "darx_client"
 version = "0.0.1"
 dependencies = [
  "anyhow",
  "clap 4.3.12",
- "darx_api",
+ "darx_core",
  "futures",
  "notify",
  "notify-debouncer-mini",
@@ -1060,7 +1045,7 @@ dependencies = [
  "actix-cors",
  "actix-web",
  "anyhow",
- "darx_api",
+ "darx_core",
  "handlebars",
  "nanoid",
  "reqwest",
@@ -1075,6 +1060,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "darx_core"
+version = "0.1.0"
+dependencies = [
+ "actix-web",
+ "anyhow",
+ "async-recursion",
+ "darx_db",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "darx_data_plane"
 version = "0.1.0"
 dependencies = [
@@ -1082,7 +1082,7 @@ dependencies = [
  "actix-web",
  "anyhow",
  "arrayvec",
- "darx_api",
+ "darx_core",
  "darx_db",
  "darx_isolate_runtime",
  "darx_utils",
@@ -1148,8 +1148,8 @@ dependencies = [
  "actix-web",
  "anyhow",
  "clap 4.3.12",
- "darx_api",
  "darx_control_plane",
+ "darx_core",
  "darx_data_plane",
  "darx_utils",
  "futures",

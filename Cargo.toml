@@ -4,7 +4,7 @@ members = [
     "crates/client",
     "crates/server",
     "crates/utils",
-    "crates/api",
+    "crates/core",
     "crates/control_plane",
     "crates/data_plane",
 ]
@@ -17,7 +17,7 @@ darx_server = { path = "./crates/server" }
 darx_isolate_runtime = { path = "./crates/isolate_runtime" }
 darx_db = { path = "./crates/db" }
 darx_utils = { path = "./crates/utils" }
-darx_api = {path = "./crates/api" }
+darx_core = {path = "./crates/core" }
 darx_control_plane = {path = "./crates/control_plane" }
 darx_data_plane = {path = "./crates/data_plane"}
 

@@ -8,7 +8,7 @@ name = "darx"
 path = "main.rs"
 
 [dependencies]
-darx_api.workspace = true
+darx_core.workspace = true
 anyhow.workspace = true
 clap.workspace = true
 tokio.workspace = true

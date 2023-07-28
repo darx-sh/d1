@@ -13,7 +13,7 @@ use serde::Serialize;
 use serde_json::json;
 use tracing_actix_web::TracingLogger;
 
-use darx_api::{
+use darx_core::{
     add_deployment_url, unique_js_export, AddDeploymentReq, ApiError, Code,
     DeployCodeReq, DeployCodeRsp, HttpRoute, ListCodeRsp, REGISTRY_FILE_NAME,
 };
@@ -318,7 +318,7 @@ fn new_nano_id() -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use darx_api::FunctionSignatureV1;
+    use darx_core::FunctionSignatureV1;
 
     #[test]
     fn test_registry_code() -> Result<()> {
