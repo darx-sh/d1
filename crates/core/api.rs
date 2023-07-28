@@ -1,17 +1,16 @@
-use std::env;
-
+use crate::{Code, HttpRoute};
 use actix_web::http::header::ContentType;
 use actix_web::http::StatusCode;
 use actix_web::web::Json;
 use actix_web::{HttpResponse, ResponseError};
+use async_recursion::async_recursion;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use std::env;
+use std::path::{Path, PathBuf};
 use thiserror::Error;
-
-/// Re-export darx_db types.
-pub use darx_db::DBType;
-
-pub mod deploy;
+use tokio::fs;
+use tracing::info;
 
 pub fn add_deployment_url() -> String {
     format!(
@@ -28,18 +27,12 @@ pub fn add_deployment_url() -> String {
 pub struct DeployCodeReq {
     pub tag: Option<String>,
     pub desc: Option<String>,
-    pub codes: Vec<CodeReq>,
+    pub codes: Vec<Code>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DeployCodeRsp {
     pub http_routes: Vec<HttpRoute>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct CodeReq {
-    pub fs_path: String,
-    pub content: String,
 }
 
 ///
@@ -62,43 +55,12 @@ pub struct AddDeploymentReq {
     pub http_routes: Vec<HttpRoute>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Code {
-    pub id: String,
-    pub fs_path: String,
-    pub content: String,
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ApiResponse<T> {
+    result: T,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct HttpRoute {
-    pub http_path: String,
-    pub method: String,
-    /// `js_entry_point` is used to find the js file.
-    pub js_entry_point: String,
-    pub js_export: String,
-
-    pub func_sig_version: i32,
-    pub func_sig: FunctionSignatureV1,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct FunctionSignatureV1 {
-    pub export_name: String,
-    pub param_names: Vec<String>,
-}
-
-/// [`unique_js_export`] returns a unique function name
-pub fn unique_js_export(js_entry_point: &str, js_export: &str) -> String {
-    let js_entry_point =
-        js_entry_point.strip_suffix(".js").unwrap_or(js_entry_point);
-    let js_entry_point =
-        js_entry_point.strip_suffix(".ts").unwrap_or(js_entry_point);
-    let js_entry_point = js_entry_point
-        .strip_suffix(".mjs")
-        .unwrap_or(js_entry_point);
-    let new_entry = js_entry_point.split("/").collect::<Vec<_>>().join("_");
-    format!("{}_{}", new_entry, js_export)
-}
+pub type JsonApiResponse<T> = Json<ApiResponse<T>>;
 
 #[derive(Error, Debug)]
 pub enum ApiError {
@@ -191,22 +153,62 @@ impl ResponseError for ApiError {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ApiResponse<T> {
-    result: T,
+pub async fn dir_to_deploy_req(dir: &Path) -> anyhow::Result<DeployCodeReq> {
+    let mut file_list_path_vec = vec![];
+    collect_js_file_list(&mut file_list_path_vec, dir).await?;
+    let fs_path_str_vec = file_list_path_vec
+        .iter()
+        .map(|path| {
+            path.strip_prefix(dir)
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .to_string()
+        })
+        .collect::<Vec<_>>();
+    let mut codes = vec![];
+
+    for (path, fs_path_str) in
+        file_list_path_vec.iter().zip(fs_path_str_vec.iter())
+    {
+        if fs_path_str.starts_with("functions/") {
+            let content = fs::read_to_string(path).await?;
+            codes.push(Code {
+                fs_path: fs_path_str.clone(),
+                content,
+            });
+            info!("upload: {}", fs_path_str);
+        } else {
+            info!(
+                "ignore code outside of functions directory: {}",
+                fs_path_str
+            );
+        }
+    }
+    let req = DeployCodeReq {
+        tag: None,
+        desc: None,
+        codes,
+    };
+
+    Ok(req)
 }
 
-pub type JsonApiResponse<T> = Json<ApiResponse<T>>;
-
-pub const REGISTRY_FILE_NAME: &str = "__registry.js";
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_unique_js_export() {
-        assert_eq!(unique_js_export("foo.js", "bar"), "foo_bar");
-        assert_eq!(unique_js_export("foo/foo.js", "bar"), "foo_foo_bar");
+#[async_recursion]
+async fn collect_js_file_list(
+    file_list: &mut Vec<PathBuf>,
+    cur_dir: &Path,
+) -> anyhow::Result<()> {
+    let mut entries = fs::read_dir(cur_dir).await?;
+    while let Some(entry) = entries.next_entry().await? {
+        let entry_path = entry.path();
+        if entry_path.is_dir() {
+            collect_js_file_list(file_list, entry_path.as_path()).await?;
+        } else if let Some(ext) = entry_path.extension() {
+            if ext == "ts" || ext == "js" {
+                file_list.push(entry_path);
+            }
+        }
     }
+    Ok(())
 }

@@ -15,7 +15,7 @@ tokio.workspace = true
 tracing-subscriber.workspace = true
 futures.workspace = true
 
-darx_api.workspace = true
+darx_core.workspace = true
 darx_data_plane.workspace = true
 darx_control_plane.workspace = true
 darx_utils.workspace = true

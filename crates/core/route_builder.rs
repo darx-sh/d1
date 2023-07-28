@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result};
 
-use darx_api::{FunctionSignatureV1, HttpRoute};
+use crate::{FunctionSignatureV1, HttpRoute};
 
 /// Build http path from entry point and export.
 /// For a pair of (entry_point, export), here are some examples:
