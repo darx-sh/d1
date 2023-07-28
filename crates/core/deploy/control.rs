@@ -12,6 +12,12 @@ use sqlx::{MySql, MySqlPool, Transaction};
 const PLUGIN_PROJECT_ID: &str = "system";
 const PLUGIN_ENV_NAME: &str = "plugin";
 
+/// The "schema" plugin name.
+const SYS_PLUGIN_SCHEMA: &str = "schema";
+
+/// The "table" plugin name.
+const SYS_PLUGIN_TABLE: &str = "table";
+
 pub async fn deploy_code<'c>(
     mut txn: Transaction<'c, MySql>,
     env_id: &str,
