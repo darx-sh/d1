@@ -88,7 +88,7 @@ async fn deploy_code(
     let mut txn = db_pool
         .begin()
         .await
-        .context("Failed to start database transaction")?;
+        .context("Failed to start database transaction when deploy_code")?;
     let env = sqlx::query!(
         "SELECT next_deploy_seq FROM envs WHERE id = ? FOR UPDATE",
         env_id
@@ -357,7 +357,7 @@ globalThis.foo_default = foo_default;
 import { foo as foo_foo } from "./foo.js";
 globalThis.foo_foo = foo_foo;
 "#,
-            String::from_utf8(code)?
+            code
         );
         Ok(())
     }

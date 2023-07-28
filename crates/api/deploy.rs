@@ -1,14 +1,14 @@
-use std::fs;
 use std::path::{Path, PathBuf};
-
-use anyhow::Result;
-use tracing::info;
+use tokio::fs;
 
 use crate::{CodeReq, DeployCodeReq};
+use anyhow::Result;
+use async_recursion::async_recursion;
+use tracing::info;
 
-pub fn dir_to_deploy_req(dir: &Path) -> Result<DeployCodeReq> {
+pub async fn dir_to_deploy_req(dir: &Path) -> Result<DeployCodeReq> {
     let mut file_list_path_vec = vec![];
-    collect_js_file_list(&mut file_list_path_vec, dir)?; //TODO should not blocking
+    collect_js_file_list(&mut file_list_path_vec, dir).await?;
     let fs_path_str_vec = file_list_path_vec
         .iter()
         .map(|path| {
@@ -25,8 +25,7 @@ pub fn dir_to_deploy_req(dir: &Path) -> Result<DeployCodeReq> {
         file_list_path_vec.iter().zip(fs_path_str_vec.iter())
     {
         if fs_path_str.starts_with("functions/") {
-            //TODO should not blocking
-            let content = fs::read_to_string(path)?;
+            let content = fs::read_to_string(path).await?;
             codes.push(CodeReq {
                 fs_path: fs_path_str.clone(),
                 content,
@@ -48,16 +47,16 @@ pub fn dir_to_deploy_req(dir: &Path) -> Result<DeployCodeReq> {
     Ok(req)
 }
 
-fn collect_js_file_list(
+#[async_recursion]
+pub async fn collect_js_file_list(
     file_list: &mut Vec<PathBuf>,
     cur_dir: &Path,
 ) -> Result<()> {
-    let entries = fs::read_dir(cur_dir)?;
-    for entry in entries {
-        let entry_path = entry?.path();
-
+    let mut entries = fs::read_dir(cur_dir).await?;
+    while let Some(entry) = entries.next_entry().await? {
+        let entry_path = entry.path();
         if entry_path.is_dir() {
-            collect_js_file_list(file_list, entry_path.as_path())?;
+            collect_js_file_list(file_list, entry_path.as_path()).await?;
         } else if let Some(ext) = entry_path.extension() {
             if ext == "ts" || ext == "js" {
                 file_list.push(entry_path);

@@ -223,10 +223,15 @@ table "plugins" {
   column "updated_at" {
     null = false
     type = datetime(3)
+    default = sql("CURRENT_TIMESTAMP(3)")
   }
   column "name" {
-      null = false
-      type = varchar(191)
+    null = false
+    type = varchar(191)
+  }
+  column "env_id" {
+    null = false
+    type = varchar(191)
   }
   primary_key {
     columns = [column.id]
@@ -235,48 +240,12 @@ table "plugins" {
     unique = true
     columns = [column.name]
   }
+  index "plugins_env_id" {
+    unique = true
+    columns = [column.env_id]
+  }
 }
 
-table "code_templates" {
-  schema  = schema.darx_control
-  collate = "utf8mb4_unicode_ci"
-  column "id" {
-    null = false
-    type = varchar(191)
-  }
-  column "created_at" {
-    null    = false
-    type    = datetime(3)
-    default = sql("CURRENT_TIMESTAMP(3)")
-  }
-  column "updated_at" {
-    null = false
-    type = datetime(3)
-  }
-  column "fs_path" {
-    null = false
-    type = text
-  }
-  column "content" {
-    null = false
-    # 16 MB
-    type = mediumblob
-  }
-  column "content_size" {
-    null = false
-    type = int
-  }
-  column "plugin_id" {
-      null = false
-      type = varchar(191)
-  }
-  primary_key {
-    columns = [column.id]
-  }
-  index "code_templates_plugin_id_idx" {
-    columns = [column.plugin_id]
-  }
-}
 
 table "plugin_installs" {
   schema  = schema.darx_control
@@ -293,6 +262,7 @@ table "plugin_installs" {
   column "updated_at" {
     null = false
     type = datetime(3)
+    default = sql("CURRENT_TIMESTAMP(3)")
   }
   column "env_id" {
     null = false
@@ -306,6 +276,7 @@ table "plugin_installs" {
     columns = [column.id]
   }
   index "plugin_installs_env_id_plugin_id_idx" {
+    unique = true
     columns = [column.env_id, column.plugin_id]
   }
 }

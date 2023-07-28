@@ -94,7 +94,7 @@ pub async fn init_deployments(
 
     for ((env_id, deploy_seq), v) in &map {
         for b in v {
-            add_single_bundle_file(
+            add_single_source_code(
                 bundles_dir,
                 env_id,
                 *deploy_seq,
@@ -150,7 +150,7 @@ pub async fn add_bundle_files(
 ) -> Result<()> {
     // setup bundle files
     for bundle in bundles.iter() {
-        add_single_bundle_file(
+        add_single_source_code(
             bundles_dir.as_ref(),
             env_id,
             deploy_seq,
@@ -176,16 +176,16 @@ pub async fn find_bundle_dir(
     Ok(path)
 }
 
-async fn add_single_bundle_file(
+async fn add_single_source_code(
     bundles_dir: &Path,
     env_id: &str,
     deploy_seq: i32,
-    bundle: &Code,
+    code: &Code,
 ) -> Result<()> {
     let bundle_dir =
         setup_bundle_deployment_dir(bundles_dir.as_ref(), env_id, deploy_seq)
             .await?;
-    let bundle_file = bundle_dir.join(bundle.fs_path.as_str());
+    let bundle_file = bundle_dir.join(code.fs_path.as_str());
 
     if let Some(parent) = bundle_file.parent() {
         if !parent.exists() {
@@ -194,7 +194,7 @@ async fn add_single_bundle_file(
     }
 
     let mut file = File::create(bundle_file.as_path()).await?;
-    file.write_all(bundle.content.as_ref()).await?;
+    file.write_all(code.content.as_ref()).await?;
     Ok(())
 }
 
