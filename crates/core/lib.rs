@@ -33,7 +33,10 @@ pub struct FunctionSignatureV1 {
 }
 
 /// [`unique_js_export`] returns a unique function name
-pub fn unique_js_export(js_entry_point: &str, js_export: &str) -> String {
+pub(crate) fn unique_js_export(
+    js_entry_point: &str,
+    js_export: &str,
+) -> String {
     let js_entry_point =
         js_entry_point.strip_suffix(".js").unwrap_or(js_entry_point);
     let js_entry_point =
@@ -45,7 +48,7 @@ pub fn unique_js_export(js_entry_point: &str, js_export: &str) -> String {
     format!("{}_{}", new_entry, js_export)
 }
 
-pub const REGISTRY_FILE_NAME: &str = "__registry.js";
+pub(crate) const REGISTRY_FILE_NAME: &str = "__registry.js";
 
 #[cfg(test)]
 mod tests {
