@@ -135,7 +135,6 @@ async fn deploy_code(
             .await
             .context("Failed to insert into bundles table")?;
         codes.push(Code {
-            id: code_id,
             fs_path: code.fs_path.clone(),
             content: code.content.clone(),
         });
@@ -160,7 +159,6 @@ async fn deploy_code(
     ).execute(&mut txn).await.context("Failed to insert registry code")?;
 
     codes.push(Code {
-        id: registry_code_id,
         fs_path: REGISTRY_FILE_NAME.to_string(),
         content: registry_code_content,
     });
@@ -238,7 +236,6 @@ async fn list_code(
             deploy_id.id).fetch_all(db_pool).await.context("Failed to query bundles table")?;
         for r in records.iter() {
             codes.push(Code {
-                id: r.id.clone(),
                 fs_path: r.fs_path.clone(),
                 content: String::from_utf8(r.content.clone()).map_err(|e| {
                     ApiError::Internal(anyhow!(

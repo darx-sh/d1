@@ -28,7 +28,7 @@ pub fn add_deployment_url() -> String {
 pub struct DeployCodeReq {
     pub tag: Option<String>,
     pub desc: Option<String>,
-    pub codes: Vec<CodeReq>,
+    pub codes: Vec<Code>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -37,7 +37,7 @@ pub struct DeployCodeRsp {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct CodeReq {
+pub struct Code {
     pub fs_path: String,
     pub content: String,
 }
@@ -60,13 +60,6 @@ pub struct AddDeploymentReq {
     pub deploy_seq: i32,
     pub codes: Vec<Code>,
     pub http_routes: Vec<HttpRoute>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Code {
-    pub id: String,
-    pub fs_path: String,
-    pub content: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

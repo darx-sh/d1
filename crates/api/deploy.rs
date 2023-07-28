@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 use tokio::fs;
 
-use crate::{CodeReq, DeployCodeReq};
+use crate::{Code, DeployCodeReq};
 use anyhow::Result;
 use async_recursion::async_recursion;
 use tracing::info;
@@ -26,7 +26,7 @@ pub async fn dir_to_deploy_req(dir: &Path) -> Result<DeployCodeReq> {
     {
         if fs_path_str.starts_with("functions/") {
             let content = fs::read_to_string(path).await?;
-            codes.push(CodeReq {
+            codes.push(Code {
                 fs_path: fs_path_str.clone(),
                 content,
             });

@@ -86,7 +86,6 @@ pub async fn init_deployments(
         map.entry((code.env_id.as_str(), code.deploy_seq))
             .or_default()
             .push(Code {
-                id: code.id.clone(),
                 fs_path: code.fs_path.clone(),
                 content: String::from_utf8(code.content.clone())?,
             });
