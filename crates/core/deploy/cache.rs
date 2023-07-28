@@ -12,7 +12,7 @@ struct Entry<K, V> {
     value: V,
 }
 
-pub struct LruCache<K, V, const CAP: usize> {
+pub(crate) struct LruCache<K, V, const CAP: usize> {
     locations: HashMap<K, usize>,
     head: Option<usize>,
     tail: Option<usize>,
