@@ -1,6 +1,6 @@
 use crate::api::ApiError;
 use crate::deploy::cache::LruCache;
-use crate::{unique_js_export, Code, HttpRoute, REGISTRY_FILE_NAME};
+use crate::{plugin, unique_js_export, Code, HttpRoute, REGISTRY_FILE_NAME};
 use anyhow::{bail, Context, Result};
 use darx_isolate_runtime::DarxIsolate;
 use dashmap::DashMap;
@@ -37,10 +37,12 @@ pub(crate) struct DeploymentRoute {
 static GLOBAL_ROUTER: Lazy<DashMap<String, Vec<DeploymentRoute>>> =
     Lazy::new(DashMap::new);
 
+static PLUGIN_REGISTRY: Lazy<DashMap<String, String>> = Lazy::new(DashMap::new);
+
 pub(crate) const SNAPSHOT_FILE: &str = "SNAPSHOT.bin";
 
 pub async fn add_deployment(
-    bundles_dir: &Path,
+    envs_dir: &Path,
     env_id: &str,
     deploy_seq: i32,
     codes: &Vec<Code>,
@@ -60,13 +62,13 @@ pub async fn add_deployment(
             .http_routes
             .insert(r.http_path.clone(), r.clone());
     }
-    add_bundle_files(env_id, deploy_seq, bundles_dir, codes).await?;
+    add_code_files(env_id, deploy_seq, envs_dir, codes).await?;
     add_route(deployment_route);
 
     info!(
         env = env_id,
         seq = deploy_seq,
-        "cached deployment, {} bundles, {} routes",
+        "cached deployment, {} codes, {} routes",
         code_cnt,
         route_cnt
     );
@@ -74,9 +76,17 @@ pub async fn add_deployment(
 }
 
 pub async fn init_deployments(
-    bundles_dir: &Path,
+    envs_dir: &Path,
     pool: &sqlx::MySqlPool,
 ) -> Result<()> {
+    let plugins = sqlx::query!("SELECT env_id, name FROM plugins")
+        .fetch_all(pool)
+        .await
+        .context("Failed to load plugins from db")?;
+    for plugin in plugins.iter() {
+        PLUGIN_REGISTRY.insert(plugin.name.clone(), plugin.env_id.clone());
+    }
+
     let deployments = sqlx::query!(
         "\
     SELECT \
@@ -93,7 +103,7 @@ pub async fn init_deployments(
     )
     .fetch_all(pool)
     .await
-    .context("Failed to load bundles from db")?;
+    .context("Failed to load deploys from db")?;
 
     for deploy in deployments.iter() {
         let http_route = HttpRoute {
@@ -125,7 +135,7 @@ pub async fn init_deployments(
     )
     .fetch_all(pool)
     .await
-    .context("Failed to load bundles from db")?;
+    .context("Failed to load codes from db")?;
 
     let mut map: HashMap<(&str, i32), Vec<Code>> =
         HashMap::with_capacity(codes.len());
@@ -142,7 +152,7 @@ pub async fn init_deployments(
     for ((env_id, deploy_seq), v) in &map {
         for b in v {
             add_single_source_code(
-                bundles_dir,
+                envs_dir,
                 env_id,
                 *deploy_seq,
                 b,
@@ -150,30 +160,49 @@ pub async fn init_deployments(
                 .await
                 .with_context( || {
                     format!(
-                        "Failed to add bundle file on startup. env_id: {}, deploy_seq: {}",
+                        "Failed to add code file on startup. env_id: {}, deploy_seq: {}",
                         env_id, deploy_seq,
                     )
                 })?;
         }
 
-        add_snapshot(bundles_dir, env_id, *deploy_seq).await?;
+        add_snapshot(envs_dir, env_id, *deploy_seq).await?;
     }
     Ok(())
 }
 
+/// [`match_route`] returns (env_id, deploy_seq, http_route).
+/// The returned env_id might not be the same as the input env_id,
+/// this only happens when the [`func_url`] starts with [`_plugins`] which
+/// tells the router to load the plugin from the plugin's env directory.
 pub fn match_route(
-    environment_id: &str,
+    env_id: &str,
     func_url: &str,
     method: &str,
-) -> Option<(i32, HttpRoute)> {
-    if let Some(entry) = GLOBAL_ROUTER.get(environment_id) {
+) -> Option<(String, i32, HttpRoute)> {
+    let (env_id, func_url) = if func_url.starts_with("_plugins/") {
+        let res = plugin::parse_plugin_url(func_url);
+        if res.is_err() {
+            return None;
+        }
+        let (plugin_name, func_url) = res.unwrap();
+        if let Some(env_id) = lookup_plugin(plugin_name.as_str()) {
+            (env_id, func_url)
+        } else {
+            return None;
+        }
+    } else {
+        (env_id.to_string(), func_url.to_string())
+    };
+
+    if let Some(entry) = GLOBAL_ROUTER.get(env_id.as_str()) {
         //TODO multi-version support
         let cur_deploy = &entry[0];
 
-        if let Some(r) = cur_deploy.http_routes.get(func_url) {
-            debug_assert!(r.http_path == func_url);
+        if let Some(r) = cur_deploy.http_routes.get(func_url.as_str()) {
+            debug_assert!(r.http_path == func_url.as_str());
             debug_assert!(r.method == method);
-            Some((cur_deploy.deploy_seq, r.clone()))
+            Some((env_id.to_string(), cur_deploy.deploy_seq, r.clone()))
         } else {
             None
         }
@@ -183,7 +212,7 @@ pub fn match_route(
 }
 
 pub async fn invoke_function(
-    bundles_dir: &Path,
+    envs_dir: &Path,
     env_id: &str,
     deploy_seq: i32,
     req: serde_json::Value,
@@ -191,11 +220,11 @@ pub async fn invoke_function(
     js_export: &str,
     param_names: &Vec<String>,
 ) -> Result<serde_json::Value, ApiError> {
-    let bundle_dir = find_bundle_dir(bundles_dir, env_id, deploy_seq)
+    let deploy_dir = find_deploy_dir(envs_dir, env_id, deploy_seq)
         .await
-        .map_err(|e| ApiError::BundleNotFound(e.to_string()))?;
+        .map_err(|e| ApiError::DeployNotFound(e.to_string()))?;
 
-    let snapshot_path = bundle_dir.join(SNAPSHOT_FILE);
+    let snapshot_path = deploy_dir.join(SNAPSHOT_FILE);
     let cache = CACHE.with(Rc::clone);
     let mut cache = cache.borrow_mut();
     let _cached = cache.get_mut(&snapshot_path);
@@ -223,7 +252,7 @@ pub async fn invoke_function(
     let mut isolate = DarxIsolate::new_with_snapshot(
         env_id,
         deploy_seq,
-        bundle_dir,
+        deploy_dir,
         snapshot.into_boxed_slice(),
     )
     .await;
@@ -265,58 +294,56 @@ fn add_route(route: DeploymentRoute) {
     entry.sort_by(|a, b| b.deploy_seq.cmp(&a.deploy_seq));
 }
 
-async fn add_bundle_files(
+async fn add_code_files(
     env_id: &str,
     deploy_seq: i32,
-    bundles_dir: impl AsRef<Path>,
-    bundles: &Vec<Code>,
+    code_root_dir: impl AsRef<Path>,
+    codes: &Vec<Code>,
 ) -> Result<()> {
     // setup bundle files
-    for bundle in bundles.iter() {
+    for code in codes.iter() {
         add_single_source_code(
-            bundles_dir.as_ref(),
+            code_root_dir.as_ref(),
             env_id,
             deploy_seq,
-            bundle,
+            code,
         )
         .await?;
     }
-    add_snapshot(bundles_dir.as_ref(), env_id, deploy_seq).await?;
+    add_snapshot(code_root_dir.as_ref(), env_id, deploy_seq).await?;
     Ok(())
 }
 
 async fn add_single_source_code(
-    bundles_dir: &Path,
+    envs_dir: &Path,
     env_id: &str,
     deploy_seq: i32,
     code: &Code,
 ) -> Result<()> {
-    let bundle_dir =
-        setup_bundle_deployment_dir(bundles_dir.as_ref(), env_id, deploy_seq)
-            .await?;
-    let bundle_file = bundle_dir.join(code.fs_path.as_str());
+    let deploy_dir =
+        setup_deploy_dir(envs_dir.as_ref(), env_id, deploy_seq).await?;
+    let code_file = deploy_dir.join(code.fs_path.as_str());
 
-    if let Some(parent) = bundle_file.parent() {
+    if let Some(parent) = code_file.parent() {
         if !parent.exists() {
             fs::create_dir_all(parent).await?;
         }
     }
 
-    let mut file = File::create(bundle_file.as_path()).await?;
+    let mut file = File::create(code_file.as_path()).await?;
     file.write_all(code.content.as_ref()).await?;
     Ok(())
 }
 
 async fn add_snapshot(
-    bundles_dir: &Path,
+    envs_dir: &Path,
     env_id: &str,
     deploy_seq: i32,
 ) -> Result<()> {
-    let bundle_dir =
-        setup_bundle_deployment_dir(bundles_dir.as_ref(), env_id, deploy_seq)
-            .await?;
-    let mut js_runtime = DarxIsolate::prepare_snapshot(&bundle_dir).await?;
-    let registry_file = bundle_dir.join(REGISTRY_FILE_NAME);
+    let deploy_dir =
+        setup_deploy_dir(envs_dir.as_ref(), env_id, deploy_seq).await?;
+    let mut js_runtime = DarxIsolate::prepare_snapshot(&deploy_dir).await?;
+    let registry_file = deploy_dir.join(REGISTRY_FILE_NAME);
     if !registry_file.exists() {
         tracing::error!(
             env = env_id,
@@ -329,7 +356,7 @@ async fn add_snapshot(
 
     let module_id = js_runtime
         .load_side_module(
-            &deno_core::resolve_path(REGISTRY_FILE_NAME, &bundle_dir)?,
+            &deno_core::resolve_path(REGISTRY_FILE_NAME, &deploy_dir)?,
             None,
         )
         .await?;
@@ -352,7 +379,7 @@ async fn add_snapshot(
 
     mark = Instant::now();
 
-    let snapshot_path = bundle_dir.join(SNAPSHOT_FILE);
+    let snapshot_path = deploy_dir.join(SNAPSHOT_FILE);
 
     fs::write(&snapshot_path, snapshot_slice).await.unwrap();
 
@@ -390,12 +417,12 @@ fn add_single_http_route(env_id: &str, deploy_seq: i32, route: HttpRoute) {
     entry.sort_by(|a, b| b.deploy_seq.cmp(&a.deploy_seq));
 }
 
-async fn setup_bundle_deployment_dir(
-    bundles_dir: &Path,
+async fn setup_deploy_dir(
+    envs_dir: &Path,
     env_id: &str,
     deploy_seq: i32,
 ) -> Result<PathBuf> {
-    let env_dir = bundles_dir.join(env_id);
+    let env_dir = envs_dir.join(env_id);
     if !env_dir.exists() {
         fs::create_dir_all(env_dir.as_path())
             .await
@@ -417,12 +444,12 @@ async fn setup_bundle_deployment_dir(
     Ok(dir)
 }
 
-async fn find_bundle_dir(
-    bundles_dir: impl AsRef<Path>,
+async fn find_deploy_dir(
+    envs_dir: impl AsRef<Path>,
     env_id: &str,
     deploy_seq: i32,
 ) -> Result<PathBuf> {
-    let path = bundles_dir.as_ref().join(env_id).join(deploy_seq.to_string().as_str()).canonicalize().with_context(|| {
+    let path = envs_dir.as_ref().join(env_id).join(deploy_seq.to_string().as_str()).canonicalize().with_context(|| {
         format!(
             "Failed to canonicalize deploy directory. env_id: {}, deploy_seq: {}",
             env_id, deploy_seq
@@ -463,6 +490,11 @@ fn invoking_code(
         }),
     )?;
     Ok(code)
+}
+
+fn lookup_plugin(name: &str) -> Option<String> {
+    let env_id = PLUGIN_REGISTRY.get(name);
+    env_id.map(|s| s.to_string())
 }
 
 #[cfg(test)]

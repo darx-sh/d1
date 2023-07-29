@@ -10,9 +10,10 @@ use tracing_actix_web::TracingLogger;
 
 use darx_core::api::{
     add_deployment_url, AddDeploymentReq, ApiError, DeployCodeReq,
-    DeployCodeRsp, ListCodeRsp,
+    DeployCodeRsp, ListApiRsp, ListCodeRsp,
 };
 use darx_core::deploy::control;
+use darx_core::plugin::deploy_system_plugins;
 
 pub async fn run_server(socket_addr: SocketAddr) -> Result<Server> {
     let db_pool = sqlx::MySqlPool::connect(
@@ -22,6 +23,8 @@ pub async fn run_server(socket_addr: SocketAddr) -> Result<Server> {
     )
     .await
     .context("Failed to connect database")?;
+
+    deploy_system_plugins(&db_pool).await?;
 
     let server_state = Arc::new(ServerState { db_pool });
 
@@ -40,6 +43,7 @@ pub async fn run_server(socket_addr: SocketAddr) -> Result<Server> {
             .route("/", get().to(|| async { "control plane healthy." }))
             .route("/deploy_code/{env_id}", post().to(deploy_code))
             .route("/list_code/{env_id}", get().to(list_code))
+            .route("list_api/{env_id}", get().to(list_api))
     })
     .bind(&socket_addr)?
     .run())
@@ -98,6 +102,15 @@ async fn list_code(
     let (codes, http_routes) =
         control::list_code(db_pool, env_id.as_str()).await?;
     Ok(Json(ListCodeRsp { codes, http_routes }))
+}
+
+async fn list_api(
+    server_state: Data<Arc<ServerState>>,
+    env_id: Path<String>,
+) -> Result<Json<ListApiRsp>, ApiError> {
+    let db_pool = &server_state.db_pool;
+    let http_routes = control::list_api(db_pool, env_id.as_str()).await?;
+    Ok(Json(ListApiRsp { http_routes }))
 }
 
 struct ServerState {

@@ -8,16 +8,16 @@ use darx_utils::test_mysql_db_url;
 pub fn isolate_inputs() -> (String, i32, PathBuf) {
     let env_id = "cljb3ovlt0002e38vwo0xi5ge";
     let deploy_seq: i32 = 99;
-    let bundle_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+    let deploy_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join(format!("tests/data/{}/{}", env_id, deploy_seq));
-    (env_id.to_string(), deploy_seq, bundle_path)
+    (env_id.to_string(), deploy_seq, deploy_path)
 }
 
 #[tokio::test]
 async fn test_run() {
-    let (env_id, deploy_seq, bundle_path) = isolate_inputs();
+    let (env_id, deploy_seq, deploy_path) = isolate_inputs();
     let mut darx_runtime =
-        DarxIsolate::new(env_id.as_str(), deploy_seq, bundle_path.as_path());
+        DarxIsolate::new(env_id.as_str(), deploy_seq, deploy_path.as_path());
 
     darx_runtime
         .load_and_eval_module_file("foo.js")
@@ -31,10 +31,10 @@ async fn test_run() {
 
 #[tokio::test]
 async fn test_private() {
-    let (env_id, deploy_seq, bundle_path) = isolate_inputs();
+    let (env_id, deploy_seq, deploy_path) = isolate_inputs();
 
     let mut darx_runtime =
-        DarxIsolate::new(env_id.as_str(), deploy_seq, bundle_path.as_path());
+        DarxIsolate::new(env_id.as_str(), deploy_seq, deploy_path.as_path());
     let r = darx_runtime
         .load_and_eval_module_file("load_private.js")
         .await;
@@ -54,9 +54,9 @@ async fn test_db_query() -> Result<()> {
     .execute(&pool)
     .await?;
 
-    let (env_id, deploy_seq, bundle_path) = isolate_inputs();
+    let (env_id, deploy_seq, deploy_path) = isolate_inputs();
     let mut darx_runtime =
-        DarxIsolate::new(env_id.as_str(), deploy_seq, bundle_path.as_path());
+        DarxIsolate::new(env_id.as_str(), deploy_seq, deploy_path.as_path());
     darx_runtime
         .load_and_eval_module_file("run_query.js")
         .await?;

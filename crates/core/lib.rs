@@ -6,6 +6,7 @@ pub use darx_db::DBType;
 pub mod api;
 pub mod deploy;
 mod esm_parser;
+pub mod plugin;
 mod route_builder;
 
 #[derive(Debug, Serialize, Deserialize)]
