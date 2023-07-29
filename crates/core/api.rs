@@ -45,6 +45,14 @@ pub struct ListCodeRsp {
 }
 
 ///
+/// list api
+///
+#[derive(Serialize, Deserialize)]
+pub struct ListApiRsp {
+    pub http_routes: Vec<HttpRoute>,
+}
+
+///
 /// add_deployment
 ///
 #[derive(Debug, Serialize, Deserialize)]
@@ -70,8 +78,8 @@ pub enum ApiError {
     IoError(#[from] std::io::Error),
     #[error("Domain {0} not found")]
     DomainNotFound(String),
-    #[error("Bundle {0} not found")]
-    BundleNotFound(String),
+    #[error("Deploy {0} not found")]
+    DeployNotFound(String),
     #[error("Function {0} not found")]
     FunctionNotFound(String),
     #[error("Function parameter error: {0}")]
@@ -82,6 +90,8 @@ pub enum ApiError {
     Internal(anyhow::Error),
     #[error("Environment {0} not found")]
     EnvNotFound(String),
+    #[error("Invalid plugin url: {0}")]
+    InvalidPluginUrl(String),
     #[error("function execution timeout")]
     Timeout,
 }
@@ -111,7 +121,7 @@ impl ResponseError for ApiError {
                     .body(self.to_string())
             }
 
-            ApiError::BundleNotFound(_) => {
+            ApiError::DeployNotFound(_) => {
                 HttpResponse::build(StatusCode::NOT_FOUND)
                     .insert_header(ContentType::plaintext())
                     .body(self.to_string())
@@ -141,6 +151,10 @@ impl ResponseError for ApiError {
             }
 
             ApiError::EnvNotFound(_) => {
+                HttpResponse::build(StatusCode::NOT_FOUND)
+                    .json(json!({"error": self.to_string()}))
+            }
+            ApiError::InvalidPluginUrl(_) => {
                 HttpResponse::build(StatusCode::NOT_FOUND)
                     .json(json!({"error": self.to_string()}))
             }

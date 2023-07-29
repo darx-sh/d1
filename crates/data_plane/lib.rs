@@ -16,10 +16,10 @@ use tokio::fs;
 use tracing::info;
 use tracing_actix_web::TracingLogger;
 
-const DARX_BUNDLES_DIR: &str = "./darx_bundles";
+const DARX_ENVS_DIR: &str = "./darx_envs";
 
 struct ServerState {
-    bundles_dir: PathBuf,
+    envs_dir: PathBuf,
 }
 
 pub async fn run_server(
@@ -32,8 +32,8 @@ pub async fn run_server(
     let working_dir = fs::canonicalize(working_dir)
         .await
         .context("Failed to canonicalize working dir")?;
-    let bundles_dir = working_dir.join(DARX_BUNDLES_DIR);
-    fs::create_dir_all(bundles_dir.as_path()).await?;
+    let envs_dir = working_dir.join(DARX_ENVS_DIR);
+    fs::create_dir_all(envs_dir.as_path()).await?;
 
     let db_pool = sqlx::MySqlPool::connect(
         env::var("DATABASE_URL")
@@ -43,13 +43,13 @@ pub async fn run_server(
     .await
     .context("Failed to connect database")?;
 
-    data::init_deployments(bundles_dir.as_path(), &db_pool)
+    data::init_deployments(envs_dir.as_path(), &db_pool)
         .await
         .context("Failed to init deployments on startup")?;
 
     info!("listen on {}", socket_addr);
 
-    let server_state = Arc::new(ServerState { bundles_dir });
+    let server_state = Arc::new(ServerState { envs_dir });
     Ok(HttpServer::new(move || {
         let cors = Cors::default()
             .allow_any_method()
@@ -94,7 +94,7 @@ async fn invoke_function(
     let env_id = extract_env_id(host.as_str())?;
     let func_url = func_url.into_inner();
 
-    let (deploy_seq, route) =
+    let (env_id, deploy_seq, route) =
         data::match_route(env_id.as_str(), func_url.as_str(), "POST").ok_or(
             ApiError::FunctionNotFound(format!(
                 "host: {}, env_id: {}",
@@ -102,7 +102,7 @@ async fn invoke_function(
             )),
         )?;
     let ret = data::invoke_function(
-        &server_state.bundles_dir,
+        &server_state.envs_dir,
         &env_id,
         deploy_seq,
         req,
@@ -119,7 +119,7 @@ async fn add_deployment(
     Json(req): Json<AddDeploymentReq>,
 ) -> Result<HttpResponseBuilder, ApiError> {
     data::add_deployment(
-        server_state.bundles_dir.as_path(),
+        server_state.envs_dir.as_path(),
         req.env_id.as_str(),
         req.deploy_seq,
         &req.codes,

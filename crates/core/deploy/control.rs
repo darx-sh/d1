@@ -1,5 +1,6 @@
 use crate::api::ApiError;
 use crate::esm_parser::parse_module_export;
+use crate::plugin::plugin_http_path;
 use crate::route_builder::build_route;
 use crate::{unique_js_export, Code, HttpRoute, REGISTRY_FILE_NAME};
 use anyhow::{anyhow, Context, Result};
@@ -8,15 +9,6 @@ use nanoid::nanoid;
 use serde::Serialize;
 use serde_json::json;
 use sqlx::{MySql, MySqlPool, Transaction};
-
-const PLUGIN_PROJECT_ID: &str = "system";
-const PLUGIN_ENV_NAME: &str = "plugin";
-
-/// The "schema" plugin name.
-const SYS_PLUGIN_SCHEMA: &str = "schema";
-
-/// The "table" plugin name.
-const SYS_PLUGIN_TABLE: &str = "table";
 
 pub async fn deploy_code<'c>(
     mut txn: Transaction<'c, MySql>,
@@ -91,7 +83,7 @@ pub async fn deploy_code<'c>(
         )
             .execute(&mut txn)
             .await
-            .context("Failed to insert into bundles table")?;
+            .context("Failed to insert into codes table")?;
         final_codes.push(Code {
             fs_path: code.fs_path.clone(),
             content: code.content.clone(),
@@ -100,7 +92,7 @@ pub async fn deploy_code<'c>(
         tracing::debug!(
             env = env_id,
             seq = deploy_seq,
-            "add bundle {}",
+            "add code {}",
             code.fs_path.as_str(),
         );
     }
@@ -146,7 +138,7 @@ pub async fn deploy_code<'c>(
     tracing::info!(
         env = env_id,
         seq = deploy_seq,
-        "added deployment, {} bundles, {} routes",
+        "added deployment, {} codes, {} routes",
         final_codes.len(),
         http_routes.len()
     );
@@ -166,7 +158,7 @@ pub async fn list_code(
     if let Some(deploy_id) = deploy_id {
         let records = sqlx::query!("
         SELECT id, fs_path, content FROM codes WHERE deploy_id = ? AND fs_path != '__registry.js'",
-            deploy_id.id).fetch_all(db_pool).await.context("Failed to query bundles table")?;
+            deploy_id.id).fetch_all(db_pool).await.context("Failed to query codes table")?;
         for r in records.iter() {
             codes.push(Code {
                 fs_path: r.fs_path.clone(),
@@ -202,51 +194,110 @@ pub async fn list_code(
     Ok((codes, http_routes))
 }
 
-pub async fn create_plugin(
+pub async fn deploy_plugin(
     db_pool: &MySqlPool,
+    project_id: &str,
+    env_id: &str,
     name: &str,
     codes: &Vec<Code>,
 ) -> Result<String> {
-    let plugin = sqlx::query!("SELECT id FROM plugins WHERE name = ?", name)
-        .fetch_optional(db_pool)
-        .await
-        .context("Failed to query plugins table")?;
-    if let Some(plugin) = plugin {
-        return Ok(plugin.id);
-    }
-
     let mut txn = db_pool
         .begin()
         .await
         .context("Failed to start database transaction when create_plugin")?;
 
-    let env_id = new_nano_id();
-    sqlx::query!(
-        "INSERT INTO envs (id, name, project_id) VALUES (?, ?, ?)",
-        env_id,
-        name,
-        PLUGIN_PROJECT_ID,
-    )
-    .execute(&mut txn)
-    .await
-    .context("Failed to insert into envs table when create_plugin")?;
+    let plugin = sqlx::query!("SELECT id FROM plugins WHERE name = ?", name)
+        .fetch_optional(&mut txn)
+        .await
+        .context("Failed to query plugins table")?;
 
-    let plugin_id = new_nano_id();
-    sqlx::query!(
-        "INSERT INTO plugins (id, name) VALUES (?, ?)",
-        plugin_id,
-        name
-    )
-    .execute(&mut txn)
-    .await
-    .context("Failed to insert into plugins table")?;
+    let plugin_id = if let Some(plugin) = plugin {
+        plugin.id
+    } else {
+        let plugin_id = new_nano_id();
+        sqlx::query!(
+            "INSERT INTO plugins (id, name, env_id) VALUES (?, ?, ?)",
+            plugin_id,
+            name,
+            env_id,
+        )
+        .execute(&mut txn)
+        .await
+        .context("Failed to insert into plugins table")?;
 
-    let (_, _, _, txn) =
-        deploy_code(txn, env_id.as_str(), codes, &None, &None).await?;
+        sqlx::query!(
+            "INSERT INTO envs (id, name, project_id) VALUES (?, ?, ?)",
+            env_id,
+            name,
+            project_id,
+        )
+        .execute(&mut txn)
+        .await
+        .context("Failed to insert into envs table when create_plugin")?;
+        plugin_id
+    };
+
+    let (_, _, _, txn) = deploy_code(txn, env_id, codes, &None, &None).await?;
     txn.commit()
         .await
         .context("Failed to commit database transaction when create_plugin")?;
     Ok(plugin_id)
+}
+
+pub async fn list_api(
+    db_pool: &MySqlPool,
+    env_id: &str,
+) -> Result<Vec<HttpRoute>> {
+    let mut http_routes = api_for_env(db_pool, env_id).await?;
+
+    let plugins = sqlx::query!("SELECT name, env_id FROM plugins")
+        .fetch_all(db_pool)
+        .await
+        .context("Failed to query plugins table")?;
+    for p in plugins.iter() {
+        let routes = api_for_env(db_pool, &p.env_id).await?;
+        for r in routes {
+            http_routes.push(HttpRoute {
+                http_path: plugin_http_path(&p.name, &r.http_path),
+                ..r
+            });
+        }
+    }
+    Ok(http_routes)
+}
+
+async fn api_for_env(
+    db_pool: &MySqlPool,
+    env_id: &str,
+) -> Result<Vec<HttpRoute>> {
+    let mut http_routes = vec![];
+    let deploy_id = sqlx::query!(
+        "SELECT id FROM deploys WHERE env_id = ? ORDER BY deploy_seq DESC LIMIT 1",
+        env_id
+    ).fetch_optional(db_pool).await.context("Failed to query deploys table")?;
+    if let Some(deploy_id) = deploy_id {
+        let routes = sqlx::query!("\
+        SELECT http_path, method, js_entry_point, js_export, func_sig_version, func_sig FROM http_routes WHERE deploy_id = ?",
+            deploy_id.id).fetch_all(db_pool).await.context("Failed to query http_routes table")?;
+        for r in routes.iter() {
+            http_routes.push(HttpRoute {
+                http_path: r.http_path.clone(),
+                method: r.method.clone(),
+                js_entry_point: r.js_entry_point.clone(),
+                js_export: r.js_export.clone(),
+                func_sig_version: r.func_sig_version,
+                func_sig: serde_json::from_value(r.func_sig.clone()).map_err(
+                    |e| {
+                        ApiError::Internal(anyhow!(
+                            "Failed to parse func_sig: {}",
+                            e
+                        ))
+                    },
+                )?,
+            });
+        }
+    }
+    Ok(http_routes)
 }
 
 const REGISTRY_TEMPLATE: &str = r#"

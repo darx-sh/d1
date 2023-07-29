@@ -12,3 +12,4 @@ node_modules
 SNAPSHOT.bin
 crates/server/tests/basic_test/server/
 crates/core/tests/server
+crates/core/tests/darx_envs
