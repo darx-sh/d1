@@ -456,7 +456,12 @@ fn invoking_code(
 ) -> Result<String> {
     let vals: Vec<String> = param_names
         .into_iter()
-        .map(|p| param_values.get(&p).unwrap().to_string())
+        .map(|p| {
+            param_values
+                .get(&p)
+                .unwrap_or(&serde_json::Value::Null)
+                .to_string()
+        })
         .collect();
     Ok(format!("{}({})", func_name, vals.join(", ")))
 }

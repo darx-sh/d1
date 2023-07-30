@@ -1,3 +1,3 @@
-export function Hi(arr, obj, num) {
-    return "Hi " + arr[0] + " " + obj.msg + " " + num + " from bar";
+export function Hi(arr, obj, num, nu) {
+    return "Hi " + arr[0] + " " + obj.msg + " " + num + " " + nu + " from bar";
 }

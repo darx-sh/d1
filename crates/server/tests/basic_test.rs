@@ -89,7 +89,7 @@ async fn test_main_process() {
         .text()
         .await
         .unwrap();
-    assert_eq!(resp, "\"Hi 1 obj 1 from bar\"");
+    assert_eq!(resp, "\"Hi 1 obj 1 null from bar\"");
 
     handle.abort();
     let _ = handle.await;
