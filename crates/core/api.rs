@@ -1,3 +1,4 @@
+use crate::env_vars::var::Var;
 use crate::tenants::DxColumnType;
 use crate::{Code, HttpRoute};
 use actix_web::http::header::ContentType;
@@ -29,6 +30,7 @@ pub struct DeployCodeReq {
   pub tag: Option<String>,
   pub desc: Option<String>,
   pub codes: Vec<Code>,
+  pub vars: Vec<Var>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -204,7 +206,10 @@ impl ResponseError for ApiError {
   }
 }
 
-pub async fn dir_to_deploy_req(dir: &Path) -> anyhow::Result<DeployCodeReq> {
+pub async fn dir_to_deploy_req(
+  dir: &Path,
+  vars: Vec<Var>,
+) -> anyhow::Result<DeployCodeReq> {
   let mut file_list_path_vec = vec![];
   collect_js_file_list(&mut file_list_path_vec, dir).await?;
   let fs_path_str_vec = file_list_path_vec
@@ -241,6 +246,7 @@ pub async fn dir_to_deploy_req(dir: &Path) -> anyhow::Result<DeployCodeReq> {
     tag: None,
     desc: None,
     codes,
+    vars,
   };
 
   Ok(req)

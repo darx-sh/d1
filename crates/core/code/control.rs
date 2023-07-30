@@ -1,6 +1,6 @@
 use crate::api::ApiError;
 use crate::code::esm_parser::parse_module_export;
-use crate::env_vars::var::VarKind;
+use crate::env_vars::var::{Var, VarKind};
 use crate::env_vars::var_list::VarList;
 use crate::plugin::plugin_http_path;
 use crate::route_builder::build_route;
@@ -11,11 +11,14 @@ use handlebars::Handlebars;
 use serde::Serialize;
 use serde_json::json;
 use sqlx::{MySql, MySqlPool, Transaction};
+use std::collections::BTreeMap;
+use std::mem::swap;
 
 pub async fn deploy_code<'c>(
   mut txn: Transaction<'c, MySql>,
   env_id: &str,
   codes: &Vec<Code>,
+  vars: &Vec<Var>,
   tag: &Option<String>,
   desc: &Option<String>,
 ) -> Result<(i64, Vec<Code>, Vec<HttpRoute>, Transaction<'c, MySql>)> {
@@ -73,7 +76,17 @@ pub async fn deploy_code<'c>(
   let var_list = VarList::find(&mut *txn, env_id, VarKind::Env)
     .await
     .context("Failed to find env vars")?;
-  let var_list = var_list.env_to_deploy(&deploy_id);
+  let mut var_list = var_list.env_to_deploy(&deploy_id);
+  let mut map: BTreeMap<&str, &str> =
+    var_list.vars().iter().map(|e| (e.key(), e.val())).collect();
+
+  for var in vars {
+    map.insert(var.key(), var.val());
+  }
+  let mut final_vars: Vec<Var> =
+    map.into_iter().map(|(k, v)| Var::new(k, v)).collect();
+  swap(var_list.mut_vars(), &mut final_vars);
+
   var_list
     .save(&mut *txn)
     .await
@@ -106,7 +119,7 @@ pub async fn deploy_code<'c>(
     );
   }
 
-  let registry_code_content = registry_code(&http_routes)?;
+  let registry_code_content = registry_code(var_list.vars(), &http_routes)?;
   let registry_code_id = new_nano_id();
   sqlx::query!(
         "INSERT INTO codes (id, updated_at, deploy_id, fs_path, content, content_size) VALUES (?, CURRENT_TIMESTAMP(3), ?, ?, ?, ?)",
@@ -244,7 +257,9 @@ pub async fn deploy_plugin(
     plugin_id
   };
 
-  let (_, _, _, txn) = deploy_code(txn, env_id, codes, &None, &None).await?;
+  let vars = vec![];
+  let (_, _, _, txn) =
+    deploy_code(txn, env_id, codes, &vars, &None, &None).await?;
   txn
     .commit()
     .await
@@ -311,9 +326,14 @@ const REGISTRY_TEMPLATE: &str = r#"
 import { {{js_export}} as {{ unique_export }} } from "./{{js_entry_point}}";
 globalThis.{{unique_export}} = {{unique_export}};
 {{/each}}
+
+globalThis.vars = {};
+{{#each vars}}
+globalThis.vars.{{key}} = "{{val}}";
+{{/each}}
 "#;
 
-fn registry_code(routes: &Vec<HttpRoute>) -> Result<String> {
+fn registry_code(vars: &Vec<Var>, routes: &Vec<HttpRoute>) -> Result<String> {
   #[derive(Serialize)]
   struct UniqueJsExport {
     js_entry_point: String,
@@ -332,8 +352,10 @@ fn registry_code(routes: &Vec<HttpRoute>) -> Result<String> {
     })
   }
   let reg = Handlebars::new();
-  let code = reg
-    .render_template(REGISTRY_TEMPLATE, &json!({ "routes": unique_imports }))?;
+  let code = reg.render_template(
+    REGISTRY_TEMPLATE,
+    &json!({ "routes": unique_imports, "vars": vars }),
+  )?;
 
   tracing::debug!("registry {}", &code);
 
@@ -371,13 +393,21 @@ mod tests {
         },
       },
     ];
-    let code = registry_code(&routes)?;
+    let vars = vec![
+      Var::new("key1".to_string(), "val1".to_string()),
+      Var::new("key2".to_string(), "val2".to_string()),
+    ];
+    let code = registry_code(&vars, &routes)?;
     assert_eq!(
       r#"
 import { default as foo_default } from "./foo.js";
 globalThis.foo_default = foo_default;
 import { foo as foo_foo } from "./foo.js";
 globalThis.foo_foo = foo_foo;
+
+globalThis.vars = {};
+globalThis.vars.key1 = "val1";
+globalThis.vars.key2 = "val2";
 "#,
       code
     );

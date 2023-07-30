@@ -62,9 +62,15 @@ async fn deploy_code(
     .begin()
     .await
     .context("Failed to start transaction")?;
-  let (deploy_seq, codes, http_routes, txn) =
-    control::deploy_code(txn, env_id.as_str(), &req.codes, &req.tag, &req.desc)
-      .await?;
+  let (deploy_seq, codes, http_routes, txn) = control::deploy_code(
+    txn,
+    env_id.as_str(),
+    &req.codes,
+    &req.vars,
+    &req.tag,
+    &req.desc,
+  )
+  .await?;
 
   let req = AddDeploymentReq {
     env_id: env_id.to_string(),

@@ -10,12 +10,11 @@ use darx_core::api::{
 };
 use darx_core::tenants;
 use darx_core::{api::AddDeploymentReq, api::ApiError};
-use darx_db::{MySqlTenantConnection, TenantConnPool};
+use darx_db::MySqlTenantConnection;
 use serde_json;
 use sqlx::MySqlPool;
 use std::env;
 use std::net::SocketAddr;
-use std::ops::{Deref, DerefMut};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::fs;

@@ -1,13 +1,12 @@
+use crate::EnvId;
 use darx_db::{get_tenant_pool, TenantConnPool};
 use deno_core::error::AnyError;
 use deno_core::{op, ResourceId};
 use deno_core::{OpState, Resource};
-use sea_query::{Iden, MysqlQueryBuilder, Query, SelectStatement};
+// use sea_query::{Iden, MysqlQueryBuilder, Query, SelectStatement};
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::rc::Rc;
-
-use crate::{DeploySeq, EnvId};
 
 deno_core::extension!(
   darx_db_ops,

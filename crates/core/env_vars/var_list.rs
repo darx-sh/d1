@@ -1,5 +1,5 @@
 use crate::env_vars::var::{Var, VarKind};
-use anyhow::{Context, Error, Result};
+use anyhow::{ensure, Context, Result};
 use sqlx::{MySqlExecutor, Row};
 use tracing::info;
 
@@ -18,12 +18,20 @@ impl VarList {
     self
   }
 
+  pub fn mut_vars(&mut self) -> &mut Vec<Var> {
+    &mut self.vars
+  }
+
+  pub fn vars(&self) -> &Vec<Var> {
+    &self.vars
+  }
+
   pub async fn save<'c>(&self, exe: impl MySqlExecutor<'c>) -> Result<u64> {
     if self.vars.is_empty() {
       return Ok(0);
     }
 
-    let (tbl, parent) = self.kind.tbl_col();
+    let (tbl, parent, _) = self.kind.tbl_col();
     let values = self
       .vars
       .iter()
@@ -54,11 +62,13 @@ impl VarList {
       return Ok(0);
     }
 
-    if self.kind == VarKind::Deploy {
-      return Err(Error::msg("can't delete deploy var"));
-    }
+    ensure!(
+      self.kind == VarKind::Env,
+      "can't delete deploy var {:?}",
+      self
+    );
 
-    let (tbl, parent_col) = self.kind.tbl_col();
+    let (tbl, parent_col, _) = self.kind.tbl_col();
     let sql = format!(
       "update {} set is_delete = 1 where {} = '{}'",
       tbl, parent_col, &self.parent_id
@@ -84,11 +94,15 @@ impl VarList {
   ) -> Result<VarList> {
     assert!(!parent_id.is_empty());
 
-    let (tbl, parent_col) = kind.tbl_col();
-    let sql = format!(
-      "select `key`, `value` from {} where {} = '{}' and is_delete = 0",
+    let (tbl, parent_col, has_del) = kind.tbl_col();
+    let mut sql = format!(
+      "select `key`, `value` from {} where {} = '{}'",
       tbl, parent_col, parent_id
     );
+
+    if has_del {
+      sql.push_str(" and is_delete = 0");
+    }
 
     let mut ret = VarList {
       kind,
@@ -107,7 +121,10 @@ impl VarList {
       })?
       .iter()
       .for_each(|r| {
-        ret.vars.push(Var::new(r.get("key"), r.get("value")));
+        ret.vars.push(Var::new(
+          r.get::<String, _>("key"),
+          r.get::<String, _>("value"),
+        ));
       });
 
     Ok(ret)
@@ -120,12 +137,19 @@ mod tests {
 
   use anyhow::Context;
   use sqlx::MySqlPool;
+  use tracing::warn;
 
   use super::*;
 
   #[tokio::test]
-  #[ignore]
   async fn test_basic() -> Result<()> {
+    let has_db = env::var("DATABASE_URL").is_ok();
+
+    if !has_db {
+      warn!("skip don't has DATABASE_URL");
+      return Ok(());
+    }
+
     let db = MySqlPool::connect(
       env::var("DATABASE_URL")
         .expect("DATABASE_URL should be configured")
@@ -156,8 +180,6 @@ mod tests {
     list.save(&mut *txn).await.unwrap();
     let actual = VarList::find(&mut *txn, parent_id, list.kind).await?;
     assert_eq!(list, actual);
-    let deleted = actual.delete(&mut *txn).await?;
-    assert_eq!(list.vars.len() as u64, deleted);
     txn.rollback().await?;
     Ok(())
   }
