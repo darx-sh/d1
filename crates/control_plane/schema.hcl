@@ -286,7 +286,68 @@ table "plugin_installs" {
 table "env_vars" {
   schema  = schema.darx_control
   collate = "utf8mb4_unicode_ci"
+
   column "id" {
+    null = false
+    type = bigint
+    auto_increment = true
+  }
+
+  column "env_id" {
+    null = false
+    type = varchar(191)
+  }
+
+  column "key" {
+    null = false
+    type = varchar(191)
+  }
+
+  column "value" {
+    null = false
+    type = varchar(191)
+  }
+
+  column "created_at" {
+    null    = false
+    type    = datetime(3)
+    default = sql("CURRENT_TIMESTAMP(3)")
+  }
+
+  column "updated_at" {
+    null = false
+    type = datetime(3)
+    default = sql("CURRENT_TIMESTAMP(3)")
+    on_update = sql("CURRENT_TIMESTAMP(3)")
+  }
+
+  primary_key  {
+      columns = [column.id]
+  }
+
+  index "uk_env_key" {
+    unique = true
+    columns = [column.env_id, column.key]
+  }
+}
+
+table "deploy_vars" {
+  schema  = schema.darx_control
+  collate = "utf8mb4_unicode_ci"
+  column "id" {
+    null = false
+    type = bigint
+    auto_increment = true
+  }
+  column "deploy_id" {
+    null = false
+    type = varchar(191)
+  }
+  column "key" {
+    null = false
+    type = varchar(191)
+  }
+  column "value" {
     null = false
     type = varchar(191)
   }
@@ -298,23 +359,13 @@ table "env_vars" {
   column "updated_at" {
     null = false
     type = datetime(3)
-  }
-  column "key" {
-    null = false
-    type = varchar(191)
-  }
-  column "value" {
-    null = false
-    type = varchar(191)
-  }
-  column "deploy_id" {
-    null = false
-    type = varchar(191)
+    default = sql("CURRENT_TIMESTAMP(3)")
+    on_update = sql("CURRENT_TIMESTAMP(3)")
   }
   primary_key {
     columns = [column.id]
   }
-  index "env_vars_deploy_id_idx" {
+  index "idx_deploy_id" {
     columns = [column.deploy_id]
   }
 }
