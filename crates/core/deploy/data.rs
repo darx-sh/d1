@@ -22,10 +22,10 @@ use crate::deploy::cache::LruCache;
 use crate::{plugin, unique_js_export, Code, HttpRoute, REGISTRY_FILE_NAME};
 
 //TODO lru size should be configured
-type IsolateCache = LruCache<PathBuf, DarxIsolate, 100>;
+type SnapshotCache = LruCache<PathBuf, Box<[u8]>, 100>;
 
 thread_local! {
-    static CACHE : Rc<RefCell<IsolateCache>> = Rc::new(RefCell::new(IsolateCache::new()));
+    static CACHE : Rc<RefCell<SnapshotCache >> = Rc::new(RefCell::new(SnapshotCache::new()));
 }
 
 #[derive(Clone, Debug)]
@@ -229,24 +229,25 @@ pub async fn invoke_function(
     let cache = CACHE.with(Rc::clone);
     let mut cache = cache.borrow_mut();
     let cached = cache.get_mut(&snapshot_path);
-    let isolate = if cached.is_none() {
+    let snapshot = if cached.is_none() {
         debug!("cache miss, cur size {}", cache.len());
 
         let snapshot =
             fs::read(&snapshot_path).await.map_err(ApiError::IoError)?;
 
-        let isolate = DarxIsolate::new_with_snapshot(
-            env_id,
-            deploy_seq,
-            &deploy_dir,
-            snapshot.into_boxed_slice(),
-        )
-        .await;
-        cache.put(snapshot_path.clone(), isolate);
-        cache.get_mut(&snapshot_path).unwrap()
+        cache.put(snapshot_path.clone(), snapshot.into_boxed_slice());
+        cache.get(&snapshot_path).unwrap().clone()
     } else {
-        cached.unwrap()
+        cached.unwrap().clone()
     };
+
+    let mut isolate = DarxIsolate::new_with_snapshot(
+        env_id,
+        deploy_seq,
+        &deploy_dir,
+        snapshot,
+    )
+    .await;
 
     let script_result = isolate
         .js_runtime
