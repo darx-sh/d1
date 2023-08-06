@@ -321,13 +321,19 @@ table "env_vars" {
     on_update = sql("CURRENT_TIMESTAMP(3)")
   }
 
+  column "is_delete" {
+    null = false
+    type = bool
+    default = false
+  }
+
   primary_key  {
       columns = [column.id]
   }
 
   index "uk_env_key" {
     unique = true
-    columns = [column.env_id, column.key]
+    columns = [column.env_id, column.key, column.is_delete]
   }
 }
 

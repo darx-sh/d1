@@ -1,6 +1,6 @@
 use crate::env::var::{Var, VarKind};
-use anyhow::{Context, Result};
-use sqlx::{Executor, MySql, Row, Transaction};
+use anyhow::{Context, Error, Result};
+use sqlx::{MySqlExecutor, Row};
 use tracing::info;
 
 #[derive(Debug, PartialEq)]
@@ -18,10 +18,7 @@ impl VarList {
     self
   }
 
-  pub async fn save<'c>(
-    &self,
-    txn: &mut Transaction<'c, MySql>,
-  ) -> Result<u64> {
+  pub async fn save<'c>(&self, exe: impl MySqlExecutor<'c>) -> Result<u64> {
     if self.vars.is_empty() {
       return Ok(0);
     }
@@ -39,7 +36,7 @@ impl VarList {
       "insert into `{}` (`{}`, `key`, `value`) values {}",
       tbl, parent, values
     );
-    let r = txn
+    let r = exe
       .execute(sql.as_str())
       .await
       .map(|r| r.rows_affected())
@@ -52,21 +49,22 @@ impl VarList {
     r
   }
 
-  pub async fn delete<'c>(
-    self,
-    txn: &mut Transaction<'c, MySql>,
-  ) -> Result<u64> {
+  pub async fn delete<'c>(self, exe: impl MySqlExecutor<'c>) -> Result<u64> {
     if self.vars.is_empty() {
       return Ok(0);
     }
 
+    if self.kind == VarKind::Deploy {
+      return Err(Error::msg("can't delete deploy var"));
+    }
+
     let (tbl, parent_col) = self.kind.tbl_col();
     let sql = format!(
-      "delete from {} where {} = '{}'",
+      "update {} set is_delete = 1 where {} = '{}'",
       tbl, parent_col, &self.parent_id
     );
 
-    let r = txn
+    let r = exe
       .execute(sql.as_str())
       .await
       .map(|r| r.rows_affected())
@@ -80,7 +78,7 @@ impl VarList {
   }
 
   pub async fn find<'c>(
-    txn: &mut Transaction<'c, MySql>,
+    exe: impl MySqlExecutor<'c>,
     parent_id: &str,
     kind: VarKind,
   ) -> Result<VarList> {
@@ -88,7 +86,7 @@ impl VarList {
 
     let (tbl, parent_col) = kind.tbl_col();
     let sql = format!(
-      "select `key`, `value` from {} where {} = '{}'",
+      "select `key`, `value` from {} where {} = '{}' and is_delete = 0",
       tbl, parent_col, parent_id
     );
 
@@ -98,7 +96,7 @@ impl VarList {
       vars: vec![],
     };
 
-    txn
+    exe
       .fetch_all(sql.as_str())
       .await
       .with_context(|| {
@@ -147,17 +145,17 @@ mod tests {
     };
 
     let mut txn = db.begin().await.unwrap();
-    list.save(&mut txn).await.unwrap();
-    let actual = VarList::find(&mut txn, parent_id, list.kind).await?;
+    list.save(&mut *txn).await.unwrap();
+    let actual = VarList::find(&mut *txn, parent_id, list.kind).await?;
     assert_eq!(list, actual);
-    let deleted = actual.delete(&mut txn).await?;
+    let deleted = actual.delete(&mut *txn).await?;
     assert_eq!(list.vars.len() as u64, deleted);
 
     list.kind = VarKind::Deploy;
-    list.save(&mut txn).await.unwrap();
-    let actual = VarList::find(&mut txn, parent_id, list.kind).await?;
+    list.save(&mut *txn).await.unwrap();
+    let actual = VarList::find(&mut *txn, parent_id, list.kind).await?;
     assert_eq!(list, actual);
-    let deleted = actual.delete(&mut txn).await?;
+    let deleted = actual.delete(&mut *txn).await?;
     assert_eq!(list.vars.len() as u64, deleted);
     txn.rollback().await?;
     Ok(())

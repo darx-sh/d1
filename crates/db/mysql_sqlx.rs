@@ -75,7 +75,7 @@ impl Connection for MySqlConn {
     }
 
     let mut result_set = ResultSet::default();
-    let mut stream = query.fetch_many(&mut self.conn);
+    let mut stream = query.fetch_many(&mut *self.conn);
     while let Some(r) = stream
       .try_next()
       .await

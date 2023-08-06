@@ -4,6 +4,21 @@ pub enum VarKind {
   Deploy,
 }
 
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum SystemKey {
+  Test,
+  Invalid,
+}
+
+impl From<String> for SystemKey {
+  fn from(s: String) -> Self {
+    match s.as_str() {
+      "test_key" => SystemKey::Test,
+      _ => SystemKey::Invalid,
+    }
+  }
+}
+
 impl VarKind {
   pub(super) fn tbl_col(&self) -> (&str, &str) {
     match self {

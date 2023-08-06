@@ -19,7 +19,6 @@ deno_tls.workspace = true
 
 serde.workspace = true
 serde_json.workspace = true
-sqlx.workspace = true
 anyhow.workspace = true
 tracing.workspace = true
 
@@ -30,6 +29,7 @@ darx_db.workspace = true
 darx_utils.workspace = true
 tokio.workspace = true
 criterion.workspace = true
+sqlx.workspace = true
 
 [[bench]]
 name = "create_isolate"
