@@ -8,42 +8,42 @@ mod mysql_sqlx;
 
 #[async_trait]
 pub trait ConnectionPool: Send + Sync {
-    async fn get_conn(&self) -> Result<Rc<RefCell<dyn Connection>>>;
+  async fn get_conn(&self) -> Result<Rc<RefCell<dyn Connection>>>;
 }
 
 #[async_trait]
 pub trait Connection {
-    async fn execute(
-        &mut self,
-        query: &str,
-        params: Vec<serde_json::Value>,
-    ) -> Result<serde_json::Value>;
+  async fn execute(
+    &mut self,
+    query: &str,
+    params: Vec<serde_json::Value>,
+  ) -> Result<serde_json::Value>;
 }
 
 pub async fn get_conn(
-    _env_id: &str,
-    _deploy_seq: i32,
+  _env_id: &str,
+  _deploy_seq: i32,
 ) -> Result<Rc<RefCell<dyn Connection>>> {
-    // todo: use per project_id cache for connection pool.
-    // let pool = mysql_simple::MySqlPool::new(
-    //     "mysql://root:12345678@localhost:3306/test",
-    // );
-    // let conn = pool.get_conn().await?;
-    let pool =
-        mysql_sqlx::MySqlPool::new("mysql://root:12345678@localhost:3306/test")
-            .await?;
-    let conn = pool.get_conn().await?;
-    Ok(conn)
+  // todo: use per project_id cache for connection pool.
+  // let pool = mysql_simple::MySqlPool::new(
+  //     "mysql://root:12345678@localhost:3306/test",
+  // );
+  // let conn = pool.get_conn().await?;
+  let pool =
+    mysql_sqlx::MySqlPool::new("mysql://root:12345678@localhost:3306/test")
+      .await?;
+  let conn = pool.get_conn().await?;
+  Ok(conn)
 }
 
 #[derive(Deserialize)]
 pub enum DBType {
-    MySQL,
-    Sqlite,
+  MySQL,
+  Sqlite,
 }
 
 pub fn get_db_type(_project_id: &str) -> Result<DBType> {
-    Ok(DBType::MySQL)
+  Ok(DBType::MySQL)
 }
 
 // #[derive(Deserialize)]
