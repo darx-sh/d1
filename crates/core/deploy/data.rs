@@ -1,30 +1,31 @@
-use crate::api::ApiError;
-use crate::deploy::cache::LruCache;
-use crate::{plugin, unique_js_export, Code, HttpRoute, REGISTRY_FILE_NAME};
-use anyhow::{bail, Context, Result};
-use darx_isolate_runtime::DarxIsolate;
-use dashmap::DashMap;
-use deno_core::{serde_v8, v8};
-use handlebars::Handlebars;
-use once_cell::sync::Lazy;
-use patricia_tree::StringPatriciaMap;
-use serde_json::json;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::time::Duration;
+
+use anyhow::{bail, Context, Result};
+use dashmap::DashMap;
+use deno_core::{serde_v8, v8};
+use once_cell::sync::Lazy;
+use patricia_tree::StringPatriciaMap;
 use tokio::fs;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 use tokio::time::Instant;
-use tracing::info;
+use tracing::{debug, info};
+
+use darx_isolate_runtime::DarxIsolate;
+
+use crate::api::ApiError;
+use crate::deploy::cache::LruCache;
+use crate::{plugin, unique_js_export, Code, HttpRoute, REGISTRY_FILE_NAME};
 
 //TODO lru size should be configured
-type IsolateCache = LruCache<PathBuf, DarxIsolate, 100>;
+type SnapshotCache = LruCache<PathBuf, Box<[u8]>, 100>;
 
 thread_local! {
-    static CACHE : Rc<RefCell<IsolateCache>> = Rc::new(RefCell::new(IsolateCache::new()));
+    static CACHE : Rc<RefCell<SnapshotCache >> = Rc::new(RefCell::new(SnapshotCache::new()));
 }
 
 #[derive(Clone, Debug)]
@@ -227,33 +228,24 @@ pub async fn invoke_function(
     let snapshot_path = deploy_dir.join(SNAPSHOT_FILE);
     let cache = CACHE.with(Rc::clone);
     let mut cache = cache.borrow_mut();
-    let _cached = cache.get_mut(&snapshot_path);
-    // let isolate = if cached.is_none() {
-    //     debug!("cache miss, cur size {}", cache.len());
-    //
-    //     let snapshot =
-    //         fs::read(&snapshot_path).await.map_err(ApiError::IoError)?;
-    //
-    //     let isolate = DarxIsolate::new_with_snapshot(
-    //         env_id,
-    //         deploy_seq,
-    //         bundle_dir.clone(),
-    //         snapshot.into_boxed_slice(),
-    //     )
-    //     .await;
-    //     cache.put(snapshot_path.clone(), isolate);
-    //     cache.get_mut(&snapshot_path).unwrap()
-    // } else {
-    //     cached.unwrap()
-    // };
+    let cached = cache.get_mut(&snapshot_path);
+    let snapshot = if cached.is_none() {
+        debug!("cache miss, cur size {}", cache.len());
 
-    let snapshot = fs::read(&snapshot_path).await.map_err(ApiError::IoError)?;
+        let snapshot =
+            fs::read(&snapshot_path).await.map_err(ApiError::IoError)?;
+
+        cache.put(snapshot_path.clone(), snapshot.into_boxed_slice());
+        cache.get(&snapshot_path).unwrap().clone()
+    } else {
+        cached.unwrap().clone()
+    };
 
     let mut isolate = DarxIsolate::new_with_snapshot(
         env_id,
         deploy_seq,
-        deploy_dir,
-        snapshot.into_boxed_slice(),
+        &deploy_dir,
+        snapshot,
     )
     .await;
 
@@ -369,7 +361,7 @@ async fn add_snapshot(
     let snapshot = js_runtime.snapshot();
     let snapshot_slice: &[u8] = &snapshot;
 
-    tracing::info!(
+    info!(
         env = env_id,
         seq = deploy_seq,
         "Snapshot size: {}, took {:#?}",
@@ -383,7 +375,7 @@ async fn add_snapshot(
 
     fs::write(&snapshot_path, snapshot_slice).await.unwrap();
 
-    tracing::info!(
+    info!(
         env = env_id,
         seq = deploy_seq,
         "Snapshot written, took: {:#?} ({})",
@@ -458,38 +450,21 @@ async fn find_deploy_dir(
     Ok(path)
 }
 
-const INVOKING_TEMPLATE: &str = r#"
-// an object of parameters
-const paramValuesJson = '{{{param_values_json}}}';
-
-// an array of function parameter names
-const paramNamesJson = '{{{param_names_json}}}'; 
-
-const paramValues = JSON.parse(paramValuesJson);
-const paramNames = JSON.parse(paramNamesJson);
-
-const paramsArray = paramNames.map((name) => {
-    return paramValues[name];
-});
-
-{{func_name}}(...paramsArray);
-"#;
-
 fn invoking_code(
     func_name: String,
     param_names: Vec<String>,
     param_values: serde_json::Value,
 ) -> Result<String> {
-    let reg = Handlebars::new();
-    let code = reg.render_template(
-        INVOKING_TEMPLATE,
-        &json!({
-            "func_name": func_name,
-            "param_values_json": serde_json::to_string(&param_values).unwrap(),
-            "param_names_json": serde_json::to_string(&param_names).unwrap(),
-        }),
-    )?;
-    Ok(code)
+    let vals: Vec<String> = param_names
+        .into_iter()
+        .map(|p| {
+            param_values
+                .get(&p)
+                .unwrap_or(&serde_json::Value::Null)
+                .to_string()
+        })
+        .collect();
+    Ok(format!("{}({})", func_name, vals.join(", ")))
 }
 
 fn lookup_plugin(name: &str) -> Option<String> {
@@ -499,6 +474,8 @@ fn lookup_plugin(name: &str) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
+    use serde_json::json;
+
     use super::*;
 
     #[test]

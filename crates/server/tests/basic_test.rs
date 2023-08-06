@@ -1,4 +1,5 @@
 use anyhow::Result;
+use dotenv::dotenv;
 use serde_json::json;
 use std::env;
 use std::path::PathBuf;
@@ -18,6 +19,7 @@ const CONTROL: &str = "127.0.0.1:3457";
 #[actix_web::test]
 async fn test_main_process() {
     env::set_var("DATA_PLANE_URL", format!("http://{}", DATA));
+    dotenv().ok();
 
     let registry = tracing_subscriber::registry();
     registry
@@ -73,6 +75,8 @@ async fn test_main_process() {
         .unwrap();
     assert_eq!(resp, "\"Hi 123 from foo\"");
 
+    let req = json!({"arr": [1,2,3], "obj":{"msg":"obj"}, "num": 1});
+
     let resp = client
         .post(format!("http://{}/invoke/bar.Hi", DATA))
         .header("Darx-Dev-Host", format!("{}.darx.sh", ENV_ID))
@@ -85,7 +89,7 @@ async fn test_main_process() {
         .text()
         .await
         .unwrap();
-    assert_eq!(resp, "\"Hi 123 from bar\"");
+    assert_eq!(resp, "\"Hi 1 obj 1 null from bar\"");
 
     handle.abort();
     let _ = handle.await;
