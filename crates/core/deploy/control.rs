@@ -1,4 +1,6 @@
 use crate::api::ApiError;
+use crate::env::var::VarKind;
+use crate::env::var_list::VarList;
 use crate::esm_parser::parse_module_export;
 use crate::plugin::plugin_http_path;
 use crate::route_builder::build_route;
@@ -67,6 +69,15 @@ pub async fn deploy_code<'c>(
         .execute(&mut txn)
         .await
         .context("Failed to insert into deploys table")?;
+
+  let var_list = VarList::find(&mut txn, env_id, VarKind::Env)
+    .await
+    .context("Failed to find env vars")?;
+  let var_list = var_list.env_to_deploy(&deploy_id);
+  var_list
+    .save(&mut txn)
+    .await
+    .context("Fail to save deploy vars")?;
 
   let mut final_codes = vec![];
   for code in codes.iter() {

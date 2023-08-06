@@ -1,6 +1,6 @@
 use crate::env::var::{Var, VarKind};
 use anyhow::{Context, Result};
-use sqlx::{Executor, MySqlPool, Row};
+use sqlx::{Executor, MySql, Row, Transaction};
 use tracing::info;
 
 #[derive(Debug, PartialEq)]
@@ -11,7 +11,17 @@ pub struct VarList {
 }
 
 impl VarList {
-  pub async fn save(&self, db_pool: &MySqlPool) -> Result<u64> {
+  pub fn env_to_deploy(mut self, deploy_id: &str) -> Self {
+    assert_eq!(self.kind, VarKind::Env);
+    self.kind = VarKind::Deploy;
+    self.parent_id = deploy_id.to_string();
+    self
+  }
+
+  pub async fn save<'c>(
+    &self,
+    txn: &mut Transaction<'c, MySql>,
+  ) -> Result<u64> {
     if self.vars.is_empty() {
       return Ok(0);
     }
@@ -29,7 +39,7 @@ impl VarList {
       "insert into `{}` (`{}`, `key`, `value`) values {}",
       tbl, parent, values
     );
-    let r = db_pool
+    let r = txn
       .execute(sql.as_str())
       .await
       .map(|r| r.rows_affected())
@@ -42,7 +52,10 @@ impl VarList {
     r
   }
 
-  pub async fn delete(self, db_pool: &MySqlPool) -> Result<u64> {
+  pub async fn delete<'c>(
+    self,
+    txn: &mut Transaction<'c, MySql>,
+  ) -> Result<u64> {
     if self.vars.is_empty() {
       return Ok(0);
     }
@@ -53,7 +66,7 @@ impl VarList {
       tbl, parent_col, &self.parent_id
     );
 
-    let r = db_pool
+    let r = txn
       .execute(sql.as_str())
       .await
       .map(|r| r.rows_affected())
@@ -66,12 +79,12 @@ impl VarList {
     r
   }
 
-  pub async fn find(
-    db_pool: &MySqlPool,
+  pub async fn find<'c>(
+    txn: &mut Transaction<'c, MySql>,
     parent_id: &str,
     kind: VarKind,
   ) -> Result<VarList> {
-    assert_ne!(parent_id.is_empty());
+    assert!(!parent_id.is_empty());
 
     let (tbl, parent_col) = kind.tbl_col();
     let sql = format!(
@@ -85,7 +98,7 @@ impl VarList {
       vars: vec![],
     };
 
-    db_pool
+    txn
       .fetch_all(sql.as_str())
       .await
       .with_context(|| {
@@ -108,6 +121,7 @@ mod tests {
   use std::env;
 
   use anyhow::Context;
+  use sqlx::MySqlPool;
 
   use super::*;
 
@@ -132,18 +146,20 @@ mod tests {
       ],
     };
 
-    list.save(&db).await.unwrap();
-    let actual = VarList::find(&db, parent_id, list.kind).await?;
+    let mut txn = db.begin().await.unwrap();
+    list.save(&mut txn).await.unwrap();
+    let actual = VarList::find(&mut txn, parent_id, list.kind).await?;
     assert_eq!(list, actual);
-    let deleted = actual.delete(&db).await?;
+    let deleted = actual.delete(&mut txn).await?;
     assert_eq!(list.vars.len() as u64, deleted);
 
     list.kind = VarKind::Deploy;
-    list.save(&db).await.unwrap();
-    let actual = VarList::find(&db, parent_id, list.kind).await?;
+    list.save(&mut txn).await.unwrap();
+    let actual = VarList::find(&mut txn, parent_id, list.kind).await?;
     assert_eq!(list, actual);
-    let deleted = actual.delete(&db).await?;
+    let deleted = actual.delete(&mut txn).await?;
     assert_eq!(list.vars.len() as u64, deleted);
+    txn.rollback().await?;
     Ok(())
   }
 }
