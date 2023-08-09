@@ -58,7 +58,7 @@ pub struct ListApiRsp {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AddDeploymentReq {
   pub env_id: String,
-  pub deploy_seq: i32,
+  pub deploy_seq: i64,
   pub codes: Vec<Code>,
   pub http_routes: Vec<HttpRoute>,
 }

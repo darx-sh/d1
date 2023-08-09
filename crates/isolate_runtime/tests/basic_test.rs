@@ -5,9 +5,9 @@ use anyhow::Result;
 use darx_isolate_runtime::DarxIsolate;
 use darx_utils::test_mysql_db_url;
 
-pub fn isolate_inputs() -> (String, i32, PathBuf) {
+pub fn isolate_inputs() -> (String, i64, PathBuf) {
   let env_id = "cljb3ovlt0002e38vwo0xi5ge";
-  let deploy_seq: i32 = 99;
+  let deploy_seq = 99;
   let deploy_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
     .join(format!("tests/data/{}/{}", env_id, deploy_seq));
   (env_id.to_string(), deploy_seq, deploy_path)

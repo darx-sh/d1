@@ -18,7 +18,7 @@ pub async fn deploy_code<'c>(
   codes: &Vec<Code>,
   tag: &Option<String>,
   desc: &Option<String>,
-) -> Result<(i32, Vec<Code>, Vec<HttpRoute>, Transaction<'c, MySql>)> {
+) -> Result<(i64, Vec<Code>, Vec<HttpRoute>, Transaction<'c, MySql>)> {
   let mut http_routes = vec![];
   for code in codes.iter() {
     let functions_dir = "functions/";

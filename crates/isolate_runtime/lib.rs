@@ -23,12 +23,12 @@ struct ProjectId(String);
 struct EnvId(String);
 
 #[derive(Clone)]
-struct DeploySeq(i32);
+struct DeploySeq(i64);
 
 impl DarxIsolate {
   pub fn new(
     env_id: &str,
-    deploy_seq: i32,
+    deploy_seq: i64,
     deploy_dir: impl AsRef<Path>,
   ) -> Self {
     let mut js_runtime = deno_core::JsRuntime::new(deno_core::RuntimeOptions {
@@ -56,7 +56,7 @@ impl DarxIsolate {
 
   pub async fn new_with_snapshot(
     env_id: &str,
-    deploy_seq: i32,
+    deploy_seq: i64,
     deploy_dir: impl AsRef<Path>,
     snapshot: Box<[u8]>,
   ) -> Self {
