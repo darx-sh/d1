@@ -7,6 +7,7 @@ pub mod api;
 pub mod deploy;
 mod esm_parser;
 pub mod plugin;
+mod project;
 mod route_builder;
 
 #[derive(Debug, Serialize, Deserialize)]

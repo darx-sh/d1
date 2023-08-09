@@ -62,7 +62,7 @@ table "envs" {
   }
   column "next_deploy_seq" {
     null    = false
-    type    = int
+    type    = bigint
     default = 0
   }
   primary_key {
@@ -71,6 +71,63 @@ table "envs" {
   index "envs_project_id_idx" {
     unique = true
     columns = [column.project_id]
+  }
+}
+
+# use a separate table for dbs since some env may not have any dbs,
+# for example a plugin.
+table "env_dbs" {
+  schema  = schema.darx_control
+  collate = "utf8mb4_unicode_ci"
+  column "id" {
+    null           = false
+    type           = bigint
+    auto_increment = true
+  }
+  column "env_id" {
+    null = false
+    type = varchar(191)
+  }
+  column "db_type" {
+    null = false
+    type = varchar(191)
+  }
+  column "db_host" {
+    null = false
+    type = varchar(191)
+  }
+  column "db_port" {
+    null = false
+    type = int
+  }
+  # todo: encrypt this
+  column "db_user" {
+    null = false
+    type = varchar(191)
+  }
+  # todo: encrypt this
+  column "db_password" {
+    null = false
+    type = varchar(191)
+  }
+  column "db_name" {
+    null = false
+    type = varchar(191)
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  index "env_dbs_db_user_idx" {
+    unique  = true
+    columns = [column.db_user]
+  }
+  index "env_dbs_db_name_idx" {
+    unique  = true
+    columns = [column.db_name]
+  }
+  index "env_dbs_env_id_idx" {
+    unique  = true
+    columns = [column.env_id]
   }
 }
 
