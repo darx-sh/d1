@@ -1,4 +1,6 @@
 use crate::api::ApiError;
+use crate::env::var::VarKind;
+use crate::env::var_list::VarList;
 use crate::esm_parser::parse_module_export;
 use crate::plugin::plugin_http_path;
 use crate::route_builder::build_route;
@@ -41,7 +43,7 @@ pub async fn deploy_code<'c>(
     "SELECT next_deploy_seq FROM envs WHERE id = ? FOR UPDATE",
     env_id
   )
-  .fetch_optional(&mut txn)
+  .fetch_optional(&mut *txn)
   .await
   .context("Failed to find env")?
   .ok_or(ApiError::EnvNotFound(env_id.to_string()))?;
@@ -50,7 +52,7 @@ pub async fn deploy_code<'c>(
     "UPDATE envs SET next_deploy_seq = next_deploy_seq + 1 WHERE id = ?",
     env_id
   )
-  .execute(&mut txn)
+  .execute(&mut *txn)
   .await
   .context("Failed to update envs table")?;
 
@@ -64,9 +66,18 @@ pub async fn deploy_code<'c>(
         env_id,
         deploy_seq,
     )
-        .execute(&mut txn)
+        .execute(&mut *txn)
         .await
         .context("Failed to insert into deploys table")?;
+
+  let var_list = VarList::find(&mut *txn, env_id, VarKind::Env)
+    .await
+    .context("Failed to find env vars")?;
+  let var_list = var_list.env_to_deploy(&deploy_id);
+  var_list
+    .save(&mut *txn)
+    .await
+    .context("Fail to save deploy vars")?;
 
   let mut final_codes = vec![];
   for code in codes.iter() {
@@ -79,7 +90,7 @@ pub async fn deploy_code<'c>(
             code.content,
             code.content.len() as i64,
         )
-            .execute(&mut txn)
+            .execute(&mut *txn)
             .await
             .context("Failed to insert into codes table")?;
     final_codes.push(Code {
@@ -104,7 +115,7 @@ pub async fn deploy_code<'c>(
         REGISTRY_FILE_NAME,
         registry_code_content,
         registry_code_content.len() as i64,
-    ).execute(&mut txn).await.context("Failed to insert registry code")?;
+    ).execute(&mut *txn).await.context("Failed to insert registry code")?;
 
   final_codes.push(Code {
     fs_path: REGISTRY_FILE_NAME.to_string(),
@@ -123,7 +134,7 @@ pub async fn deploy_code<'c>(
             route.http_path,
             route.func_sig_version,
             serde_json::to_string(&route.func_sig).context("Failed to serialize func_sig")?,
-        ).execute(&mut txn).await.context("Failed to insert into http_routes table")?;
+        ).execute(&mut *txn).await.context("Failed to insert into http_routes table")?;
 
     tracing::debug!(
       env = env_id,
@@ -203,7 +214,7 @@ pub async fn deploy_plugin(
     .context("Failed to start database transaction when create_plugin")?;
 
   let plugin = sqlx::query!("SELECT id FROM plugins WHERE name = ?", name)
-    .fetch_optional(&mut txn)
+    .fetch_optional(&mut *txn)
     .await
     .context("Failed to query plugins table")?;
 
@@ -217,7 +228,7 @@ pub async fn deploy_plugin(
       name,
       env_id,
     )
-    .execute(&mut txn)
+    .execute(&mut *txn)
     .await
     .context("Failed to insert into plugins table")?;
 
@@ -227,7 +238,7 @@ pub async fn deploy_plugin(
       name,
       project_id,
     )
-    .execute(&mut txn)
+    .execute(&mut *txn)
     .await
     .context("Failed to insert into envs table when create_plugin")?;
     plugin_id
