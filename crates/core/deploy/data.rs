@@ -31,7 +31,7 @@ thread_local! {
 #[derive(Clone, Debug)]
 pub(crate) struct DeploymentRoute {
   pub env_id: String,
-  pub deploy_seq: i32,
+  pub deploy_seq: i64,
   pub http_routes: StringPatriciaMap<HttpRoute>,
 }
 
@@ -45,7 +45,7 @@ pub(crate) const SNAPSHOT_FILE: &str = "SNAPSHOT.bin";
 pub async fn add_deployment(
   envs_dir: &Path,
   env_id: &str,
-  deploy_seq: i32,
+  deploy_seq: i64,
   codes: &Vec<Code>,
   http_routes: &Vec<HttpRoute>,
 ) -> Result<()> {
@@ -138,7 +138,7 @@ pub async fn init_deployments(
   .await
   .context("Failed to load codes from db")?;
 
-  let mut map: HashMap<(&str, i32), Vec<Code>> =
+  let mut map: HashMap<(&str, i64), Vec<Code>> =
     HashMap::with_capacity(codes.len());
 
   for code in codes.iter() {
@@ -176,7 +176,7 @@ pub fn match_route(
   env_id: &str,
   func_url: &str,
   method: &str,
-) -> Option<(String, i32, HttpRoute)> {
+) -> Option<(String, i64, HttpRoute)> {
   let (env_id, func_url) = if func_url.starts_with("_plugins/") {
     let res = plugin::parse_plugin_url(func_url);
     if res.is_err() {
@@ -211,7 +211,7 @@ pub fn match_route(
 pub async fn invoke_function(
   envs_dir: &Path,
   env_id: &str,
-  deploy_seq: i32,
+  deploy_seq: i64,
   req: serde_json::Value,
   js_entry_point: &str,
   js_export: &str,
@@ -279,7 +279,7 @@ fn add_route(route: DeploymentRoute) {
 
 async fn add_code_files(
   env_id: &str,
-  deploy_seq: i32,
+  deploy_seq: i64,
   code_root_dir: impl AsRef<Path>,
   codes: &Vec<Code>,
 ) -> Result<()> {
@@ -295,7 +295,7 @@ async fn add_code_files(
 async fn add_single_source_code(
   envs_dir: &Path,
   env_id: &str,
-  deploy_seq: i32,
+  deploy_seq: i64,
   code: &Code,
 ) -> Result<()> {
   let deploy_dir =
@@ -316,7 +316,7 @@ async fn add_single_source_code(
 async fn add_snapshot(
   envs_dir: &Path,
   env_id: &str,
-  deploy_seq: i32,
+  deploy_seq: i64,
 ) -> Result<()> {
   let deploy_dir =
     setup_deploy_dir(envs_dir.as_ref(), env_id, deploy_seq).await?;
@@ -372,7 +372,7 @@ async fn add_snapshot(
   Ok(())
 }
 
-fn add_single_http_route(env_id: &str, deploy_seq: i32, route: HttpRoute) {
+fn add_single_http_route(env_id: &str, deploy_seq: i64, route: HttpRoute) {
   let mut entry = GLOBAL_ROUTER
     .entry(env_id.to_string())
     .or_insert_with(|| Vec::new());
@@ -398,7 +398,7 @@ fn add_single_http_route(env_id: &str, deploy_seq: i32, route: HttpRoute) {
 async fn setup_deploy_dir(
   envs_dir: &Path,
   env_id: &str,
-  deploy_seq: i32,
+  deploy_seq: i64,
 ) -> Result<PathBuf> {
   let env_dir = envs_dir.join(env_id);
   if !env_dir.exists() {
@@ -425,7 +425,7 @@ async fn setup_deploy_dir(
 async fn find_deploy_dir(
   envs_dir: impl AsRef<Path>,
   env_id: &str,
-  deploy_seq: i32,
+  deploy_seq: i64,
 ) -> Result<PathBuf> {
   let path = envs_dir
     .as_ref()

@@ -161,7 +161,7 @@ table "deploys" {
   }
   column "deploy_seq" {
     null    = false
-    type    = int
+    type    = bigint
     default = 0
   }
   primary_key {
