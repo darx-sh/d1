@@ -10,6 +10,7 @@ mod esm_parser;
 pub mod plugin;
 mod project;
 mod route_builder;
+mod sql;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Code {

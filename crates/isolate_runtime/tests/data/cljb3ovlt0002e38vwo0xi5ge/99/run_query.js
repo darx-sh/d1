@@ -12,3 +12,6 @@ console.log("count result: ", r2);
 
 let r3 = await db.execute("SELECT * from test WHERE name = ?", "foo");
 console.log("select result: ", r3);
+
+
+// select().columns("id", "name").from("test").build();
