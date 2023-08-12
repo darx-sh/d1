@@ -1,9 +1,9 @@
 use anyhow::{Context, Result};
-use darx_core::deploy::control::{deploy_code, list_api};
-use darx_core::deploy::tenants::{
+use darx_core::code::control::{deploy_code, list_api};
+use darx_core::plugin::{deploy_system_plugins, SYS_PLUGIN_SCHEMA_ENV_ID};
+use darx_core::tenants::{
   add_deployment, init_deployments, invoke_function, match_route,
 };
-use darx_core::plugin::{deploy_system_plugins, SYS_PLUGIN_SCHEMA_ENV_ID};
 use darx_core::Code;
 use serde_json::json;
 use serial_test::serial;

@@ -12,7 +12,7 @@ use darx_core::api::{
   add_deployment_url, AddDeploymentReq, ApiError, DeployCodeReq, DeployCodeRsp,
   ListApiRsp, ListCodeRsp, NewProjectReq, NewProjectRsp,
 };
-use darx_core::deploy::control;
+use darx_core::code::control;
 use darx_core::plugin::deploy_system_plugins;
 
 pub async fn run_server(socket_addr: SocketAddr) -> Result<Server> {

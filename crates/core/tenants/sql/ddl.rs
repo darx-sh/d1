@@ -1,52 +1,53 @@
 use crate::api::{
   AddColumnReq, CreateTableReq, DropColumnReq, DropTableReq, RenameColumnReq,
 };
-use crate::sql::{DxColumnType, DxFieldType, DxIdent};
+use crate::tenants::sql::{DxColumnType, DxFieldType, DxIdent};
 use anyhow::Result;
 use sea_query::{ColumnDef, MysqlQueryBuilder, Table};
+use sqlx::MySqlExecutor;
 
-pub async fn create_table(
-  pool: &sqlx::MySqlPool,
+pub async fn create_table<'c>(
+  exe: impl MySqlExecutor<'c>,
   req: &CreateTableReq,
 ) -> Result<()> {
   let sql = create_table_sql(req)?;
-  sqlx::query(&sql).execute(pool).await?;
+  sqlx::query(&sql).execute(exe).await?;
   Ok(())
 }
 
-pub async fn drop_table(
-  pool: &sqlx::MySqlPool,
+pub async fn drop_table<'c>(
+  exe: impl MySqlExecutor<'c>,
   req: &DropTableReq,
 ) -> Result<()> {
   let sql = drop_table_sql(req)?;
-  sqlx::query(&sql).execute(pool).await?;
+  sqlx::query(&sql).execute(exe).await?;
   Ok(())
 }
 
-pub async fn add_column(
-  pool: &sqlx::MySqlPool,
+pub async fn add_column<'c>(
+  exe: impl MySqlExecutor<'c>,
   req: &AddColumnReq,
 ) -> Result<()> {
   let sql = add_column_sql(req)?;
-  sqlx::query(&sql).execute(pool).await?;
+  sqlx::query(&sql).execute(exe).await?;
   Ok(())
 }
 
-pub async fn drop_column(
-  pool: &sqlx::MySqlPool,
+pub async fn drop_column<'c>(
+  exe: impl MySqlExecutor<'c>,
   req: &DropColumnReq,
 ) -> Result<()> {
   let sql = drop_column_sql(req)?;
-  sqlx::query(&sql).execute(pool).await?;
+  sqlx::query(&sql).execute(exe).await?;
   Ok(())
 }
 
-pub async fn rename_column(
-  pool: &sqlx::MySqlPool,
+pub async fn rename_column<'c>(
+  exe: impl MySqlExecutor<'c>,
   req: &RenameColumnReq,
 ) -> Result<()> {
   let sql = rename_column_sql(req)?;
-  sqlx::query(&sql).execute(pool).await?;
+  sqlx::query(&sql).execute(exe).await?;
   Ok(())
 }
 
