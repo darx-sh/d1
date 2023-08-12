@@ -10,6 +10,7 @@ name = "darx_core"
 path = "lib.rs"
 
 [dependencies]
+darx_utils.workspace = true
 darx_db.workspace = true
 darx_isolate_runtime.workspace = true
 
