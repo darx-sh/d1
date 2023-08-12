@@ -2,7 +2,7 @@ use sea_query::Iden;
 use serde::Deserialize;
 use std::fmt::Write;
 
-mod ddl;
+pub mod ddl;
 
 pub enum DxDatum {
   Bool(bool),

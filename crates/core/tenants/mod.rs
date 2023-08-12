@@ -5,4 +5,8 @@ mod sql;
 pub use deploy::{
   add_deployment, init_deployments, invoke_function, match_route,
 };
-pub use sql::DxColumnType;
+
+pub use sql::{
+  ddl::{add_column, create_table, drop_column, drop_table, rename_column},
+  DxColumnType,
+};

@@ -67,6 +67,12 @@ pub fn add_tenant_db_info(env_id: &str, db_info: TenantDBInfo) {
 
 pub struct MySqlTenantConnection(MySqlPool);
 
+impl MySqlTenantConnection {
+  pub fn inner(&self) -> &MySqlPool {
+    &(self.0)
+  }
+}
+
 impl Deref for MySqlTenantConnection {
   type Target = MySqlPool;
 
