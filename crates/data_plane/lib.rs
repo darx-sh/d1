@@ -5,7 +5,7 @@ use actix_web::{
   App, HttpRequest, HttpResponse, HttpResponseBuilder, HttpServer,
 };
 use anyhow::{Context, Result};
-use darx_core::deploy::data;
+use darx_core::deploy::tenants;
 use darx_core::{api::AddDeploymentReq, api::ApiError};
 use serde_json;
 use std::env;
@@ -43,7 +43,7 @@ pub async fn run_server(
   .await
   .context("Failed to connect database")?;
 
-  data::init_deployments(envs_dir.as_path(), &db_pool)
+  tenants::init_deployments(envs_dir.as_path(), &db_pool)
     .await
     .context("Failed to init deployments on startup")?;
 
@@ -100,13 +100,13 @@ async fn invoke_function(
   let func_url = func_url.into_inner();
 
   let (env_id, deploy_seq, route) =
-    data::match_route(env_id.as_str(), func_url.as_str(), "POST").ok_or(
+    tenants::match_route(env_id.as_str(), func_url.as_str(), "POST").ok_or(
       ApiError::FunctionNotFound(format!(
         "host: {}, env_id: {}",
         host, &env_id
       )),
     )?;
-  let ret = data::invoke_function(
+  let ret = tenants::invoke_function(
     &server_state.envs_dir,
     &env_id,
     deploy_seq,
@@ -123,7 +123,7 @@ async fn add_deployment(
   server_state: Data<Arc<ServerState>>,
   Json(req): Json<AddDeploymentReq>,
 ) -> Result<HttpResponseBuilder, ApiError> {
-  data::add_deployment(
+  tenants::add_deployment(
     server_state.envs_dir.as_path(),
     req.env_id.as_str(),
     req.deploy_seq,

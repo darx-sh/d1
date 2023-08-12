@@ -3,9 +3,9 @@ use async_trait::async_trait;
 use serde::Deserialize;
 
 mod control;
-mod tenant;
+mod tenants;
 
-pub use tenant::{
+pub use tenants::{
   add_tenant_db_info, get_tenant_pool, test_tenant_db_info, TenantDBInfo,
 };
 

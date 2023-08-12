@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 pub mod api;
 pub mod deploy;
-pub mod env;
+pub mod env_vars;
 mod esm_parser;
 pub mod plugin;
 mod project;

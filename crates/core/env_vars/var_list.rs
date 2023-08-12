@@ -1,4 +1,4 @@
-use crate::env::var::{Var, VarKind};
+use crate::env_vars::var::{Var, VarKind};
 use anyhow::{Context, Error, Result};
 use sqlx::{MySqlExecutor, Row};
 use tracing::info;

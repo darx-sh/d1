@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use darx_core::deploy::control::{deploy_code, list_api};
-use darx_core::deploy::data::{
+use darx_core::deploy::tenants::{
   add_deployment, init_deployments, invoke_function, match_route,
 };
 use darx_core::plugin::{deploy_system_plugins, SYS_PLUGIN_SCHEMA_ENV_ID};
