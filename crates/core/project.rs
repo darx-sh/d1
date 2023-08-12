@@ -1,6 +1,6 @@
-use crate::deploy::control::new_nano_id;
 use anyhow::{Context, Result};
 use darx_db::{setup_tenant_db, TenantDBInfo};
+use darx_utils::new_nano_id;
 use sqlx::{Executor, MySqlConnection, MySqlPool};
 use std::env;
 use std::ops::DerefMut;

@@ -6,8 +6,8 @@ use crate::plugin::plugin_http_path;
 use crate::route_builder::build_route;
 use crate::{unique_js_export, Code, HttpRoute, REGISTRY_FILE_NAME};
 use anyhow::{anyhow, Context, Result};
+use darx_utils::new_nano_id;
 use handlebars::Handlebars;
-use nanoid::nanoid;
 use serde::Serialize;
 use serde_json::json;
 use sqlx::{MySql, MySqlPool, Transaction};
@@ -338,12 +338,6 @@ fn registry_code(routes: &Vec<HttpRoute>) -> Result<String> {
   tracing::debug!("registry {}", &code);
 
   Ok(code)
-}
-
-pub(crate) fn new_nano_id() -> String {
-  let alphabet = "0123456789abcdefghijklmnopqrstuvwxyz";
-  let chars = alphabet.chars().collect::<Vec<_>>();
-  nanoid!(12, &chars)
 }
 
 #[cfg(test)]

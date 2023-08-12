@@ -1056,6 +1056,7 @@ dependencies = [
  "async-recursion",
  "darx_db",
  "darx_isolate_runtime",
+ "darx_utils",
  "dashmap",
  "deno_core",
  "handlebars",
