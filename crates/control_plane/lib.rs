@@ -10,7 +10,7 @@ use tracing_actix_web::TracingLogger;
 
 use darx_core::api::{
   add_deployment_url, AddDeploymentReq, ApiError, DeployCodeReq, DeployCodeRsp,
-  ListApiRsp, ListCodeRsp,
+  ListApiRsp, ListCodeRsp, NewProjectReq, NewProjectRsp,
 };
 use darx_core::deploy::control;
 use darx_core::plugin::deploy_system_plugins;
@@ -44,7 +44,8 @@ pub async fn run_server(socket_addr: SocketAddr) -> Result<Server> {
         .route("/", get().to(|| async { "control plane healthy." }))
         .route("/deploy_code/{env_id}", post().to(deploy_code))
         .route("/list_code/{env_id}", get().to(list_code))
-        .route("list_api/{env_id}", get().to(list_api))
+        .route("/list_api/{env_id}", get().to(list_api))
+        .route("/new_project", post().to(new_project))
     })
     .bind(&socket_addr)?
     .run(),
@@ -109,6 +110,20 @@ async fn list_api(
   let db_pool = &server_state.db_pool;
   let http_routes = control::list_api(db_pool, env_id.as_str()).await?;
   Ok(Json(ListApiRsp { http_routes }))
+}
+
+async fn new_project(
+  server_state: Data<Arc<ServerState>>,
+  req: Json<NewProjectReq>,
+) -> Result<Json<NewProjectRsp>, ApiError> {
+  let db_pool = &server_state.db_pool;
+  let (project_id, env_id) = darx_core::new_project(
+    db_pool,
+    req.org_id.as_str(),
+    req.project_name.as_str(),
+  )
+  .await?;
+  Ok(Json(NewProjectRsp { project_id, env_id }))
 }
 
 struct ServerState {

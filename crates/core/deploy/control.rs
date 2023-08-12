@@ -340,7 +340,7 @@ fn registry_code(routes: &Vec<HttpRoute>) -> Result<String> {
   Ok(code)
 }
 
-fn new_nano_id() -> String {
+pub(crate) fn new_nano_id() -> String {
   let alphabet = "0123456789abcdefghijklmnopqrstuvwxyz";
   let chars = alphabet.chars().collect::<Vec<_>>();
   nanoid!(12, &chars)

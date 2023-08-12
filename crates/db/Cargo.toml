@@ -9,6 +9,8 @@ name = "darx_db"
 path = "lib.rs"
 
 [dependencies]
+darx_utils.workspace = true
+
 anyhow.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -17,4 +19,6 @@ rusqlite.workspace = true
 sqlx.workspace = true
 futures.workspace = true
 futures-util.workspace = true
-darx_utils.workspace = true
+once_cell.workspace = true
+dashmap.workspace = true
+

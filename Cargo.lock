@@ -1110,8 +1110,10 @@ dependencies = [
  "anyhow",
  "async-trait",
  "darx_utils",
+ "dashmap",
  "futures",
  "futures-util",
+ "once_cell",
  "rusqlite",
  "serde",
  "serde_json",
@@ -1166,6 +1168,9 @@ dependencies = [
 [[package]]
 name = "darx_utils"
 version = "0.0.1"
+dependencies = [
+ "nanoid",
+]
 
 [[package]]
 name = "dashmap"

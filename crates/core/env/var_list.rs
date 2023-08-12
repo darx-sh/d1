@@ -124,6 +124,7 @@ mod tests {
   use super::*;
 
   #[tokio::test]
+  #[ignore]
   async fn test_basic() -> Result<()> {
     let db = MySqlPool::connect(
       env::var("DATABASE_URL")

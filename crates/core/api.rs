@@ -53,6 +53,18 @@ pub struct ListApiRsp {
   pub http_routes: Vec<HttpRoute>,
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct NewProjectReq {
+  pub org_id: String,
+  pub project_name: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct NewProjectRsp {
+  pub project_id: String,
+  pub env_id: String,
+}
+
 ///
 /// add_deployment: control plane --> data plane
 ///
@@ -72,6 +84,11 @@ pub struct CreateTableReq {
   pub table_name: String,
   pub columns: Vec<DxColumnType>,
   //   todo primary key, index...
+}
+
+#[derive(Deserialize)]
+pub struct DropTableReq {
+  pub table_name: String,
 }
 
 #[derive(Deserialize)]

@@ -32,6 +32,7 @@ tokio.workspace = true
 criterion.workspace = true
 sqlx.workspace = true
 
+
 [[bench]]
 name = "create_isolate"
 harness = false

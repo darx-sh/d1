@@ -1,8 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-/// Re-export darx_db types.
-pub use darx_db::DBType;
-
 pub mod api;
 pub mod deploy;
 pub mod env;
@@ -11,6 +8,8 @@ pub mod plugin;
 mod project;
 mod route_builder;
 mod sql;
+
+pub use project::new_project;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Code {

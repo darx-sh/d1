@@ -1,12 +1,10 @@
-use darx_db::get_conn;
-use darx_db::Connection;
+use darx_db::{get_tenant_pool, TenantConnPool};
 use deno_core::error::AnyError;
 use deno_core::{op, ResourceId};
 use deno_core::{OpState, Resource};
 use sea_query::{Iden, MysqlQueryBuilder, Query, SelectStatement};
 use std::borrow::Cow;
 use std::cell::RefCell;
-
 use std::rc::Rc;
 
 use crate::{DeploySeq, EnvId};
@@ -25,7 +23,7 @@ deno_core::extension!(
   esm = ["js/01_db.js"]
 );
 
-struct ConnResource(Rc<RefCell<dyn Connection>>);
+struct ConnResource(Box<dyn TenantConnPool>);
 
 impl Resource for ConnResource {
   fn name(&self) -> Cow<str> {
@@ -38,9 +36,8 @@ pub async fn op_use_db(
   op_state: Rc<RefCell<OpState>>,
 ) -> Result<ResourceId, AnyError> {
   let env_id = op_state.borrow().borrow::<EnvId>().clone();
-  let deploy_seq = op_state.borrow().borrow::<DeploySeq>().clone();
 
-  let r = get_conn(env_id.0.as_str(), deploy_seq.0).await;
+  let r = get_tenant_pool(env_id.0.as_str()).await;
   match r {
     Err(e) => {
       tracing::error!("useDB error: {}", e);
@@ -64,7 +61,7 @@ pub async fn op_db_execute(
     .borrow_mut()
     .resource_table
     .get::<ConnResource>(rid)?;
-  let mut conn = conn_resource.0.borrow_mut();
+  let conn = &conn_resource.0;
   conn.execute(query.as_str(), params).await
 }
 
