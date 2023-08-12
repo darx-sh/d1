@@ -63,6 +63,11 @@ pub async fn run_server(
         .route("/", get().to(|| async { "data plane healthy." }))
         .route("/invoke/{func_url}", post().to(invoke_function))
         .route("/add_deployment", post().to(add_deployment))
+      // .route("/create_table", post().to(create_table))
+      // .route("/drop_table", post().to(drop_table))
+      // .route("/add_column", post().to(add_column))
+      // .route("/drop_column", post().to(drop_column))
+      // .route("/rename_column", post().to(rename_column))
     })
     .bind(&socket_addr)?
     .run(),

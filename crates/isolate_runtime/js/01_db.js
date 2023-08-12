@@ -11,6 +11,36 @@ class DBConn {
   }
 }
 
+class SelectStatement {
+  constructor(rid) {
+    this.rid = rid;
+  }
+
+  columns(...fields) {
+    ops.op_select_columns(this.rid, fields);
+    return this;
+  }
+
+  from(tableName) {
+    ops.op_select_from(this.rid, tableName);
+    return this;
+  }
+
+  build() {
+    return ops.op_select_build(this.rid);
+  }
+
+  async execute(conn) {
+    const {sql, values} = this.build();
+    return conn.execute(sql, values);
+  }
+}
+
+function select() {
+  const rid = core.ops.op_select_statement();
+  return new SelectStatement(rid);
+}
+
 async function useDB() {
   // returns a db connection
   const rid = await core.opAsync("op_use_db");
@@ -18,3 +48,4 @@ async function useDB() {
 }
 
 globalThis.useDB = useDB;
+globalThis.select = select;

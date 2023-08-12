@@ -1,3 +1,4 @@
+use crate::sql::DxColumnType;
 use crate::{Code, HttpRoute};
 use actix_web::http::header::ContentType;
 use actix_web::http::StatusCode;
@@ -52,8 +53,20 @@ pub struct ListApiRsp {
   pub http_routes: Vec<HttpRoute>,
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct NewProjectReq {
+  pub org_id: String,
+  pub project_name: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct NewProjectRsp {
+  pub project_id: String,
+  pub env_id: String,
+}
+
 ///
-/// add_deployment
+/// add_deployment: control plane --> data plane
 ///
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AddDeploymentReq {
@@ -61,6 +74,40 @@ pub struct AddDeploymentReq {
   pub deploy_seq: i64,
   pub codes: Vec<Code>,
   pub http_routes: Vec<HttpRoute>,
+}
+
+///
+/// schema: client --> data plane
+///
+#[derive(Deserialize)]
+pub struct CreateTableReq {
+  pub table_name: String,
+  pub columns: Vec<DxColumnType>,
+  //   todo primary key, index...
+}
+
+#[derive(Deserialize)]
+pub struct DropTableReq {
+  pub table_name: String,
+}
+
+#[derive(Deserialize)]
+pub struct AddColumnReq {
+  pub table_name: String,
+  pub column: DxColumnType,
+}
+
+#[derive(Deserialize)]
+pub struct DropColumnReq {
+  pub table_name: String,
+  pub column_name: String,
+}
+
+#[derive(Deserialize)]
+pub struct RenameColumnReq {
+  pub table_name: String,
+  pub old_column_name: String,
+  pub new_column_name: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

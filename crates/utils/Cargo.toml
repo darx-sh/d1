@@ -8,3 +8,4 @@ name = "darx_utils"
 path = "lib.rs"
 
 [dependencies]
+nanoid.workspace = true

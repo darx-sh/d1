@@ -18,9 +18,8 @@ darx_isolate_runtime = { path = "./crates/isolate_runtime" }
 darx_db = { path = "./crates/db" }
 darx_utils = { path = "./crates/utils" }
 darx_core = {path = "./crates/core" }
-darx_control_plane = {path = "./crates/control_plane" }
-darx_data_plane = {path = "./crates/data_plane"}
-
+darx_control_plane = { path = "./crates/control_plane" }
+darx_data_plane = { path = "./crates/data_plane"}
 
 # Deno related crates from v1.32.3
 # https://github.com/denoland/deno/blob/v1.32.3/Cargo.toml
@@ -71,6 +70,7 @@ arrayvec = "0.7.4"
 patricia_tree = "0.6.1"
 async-recursion = "1"
 serial_test = "2"
+sea-query = "0"
 
 [profile.dev.package.sqlx-macros]
 opt-level = 3

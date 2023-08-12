@@ -21,6 +21,7 @@ serde.workspace = true
 serde_json.workspace = true
 anyhow.workspace = true
 tracing.workspace = true
+sea-query.workspace = true
 
 darx_db.workspace = true
 
@@ -30,6 +31,7 @@ darx_utils.workspace = true
 tokio.workspace = true
 criterion.workspace = true
 sqlx.workspace = true
+
 
 [[bench]]
 name = "create_isolate"

@@ -14,7 +14,7 @@ const TEST_ENV_ID: &str = "cljb3ovlt0002e38vwo0xi5ge";
 
 #[serial]
 #[tokio::test]
-async fn test_basic() -> Result<()> {
+async fn test_deploy_code() -> Result<()> {
   let db_pool = sqlx::MySqlPool::connect(
     env::var("DATABASE_URL")
       .expect("DATABASE_URL should be configured")
@@ -95,7 +95,7 @@ async fn test_basic() -> Result<()> {
 
 #[tokio::test]
 #[serial]
-async fn test_plugin() -> Result<()> {
+async fn test_deploy_plugin() -> Result<()> {
   let db_pool = sqlx::MySqlPool::connect(
     env::var("DATABASE_URL")
       .expect("DATABASE_URL should be configured")
