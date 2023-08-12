@@ -6,8 +6,8 @@ mod control;
 mod tenants;
 
 pub use tenants::{
-  add_tenant_db_info, get_tenant_pool, test_tenant_db_info,
-  MySqlTenantConnection, TenantDBInfo,
+  add_tenant_db_info, get_tenant_pool, test_tenant_db_info, MySqlTenantPool,
+  TenantDBInfo,
 };
 
 pub use control::{drop_tenant_db, setup_tenant_db};

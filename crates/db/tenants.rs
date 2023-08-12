@@ -40,7 +40,7 @@ static GLOBAL_DB_INFO: Lazy<DashMap<String, TenantDBInfo>> =
 
 pub async fn get_tenant_pool(env_id: &str) -> Result<Box<dyn TenantConnPool>> {
   if let Some(pool) = GLOBAL_POOL.get(env_id) {
-    Ok(Box::new(MySqlTenantConnection(pool.value().clone())))
+    Ok(Box::new(MySqlTenantPool(pool.value().clone())))
   } else {
     let db_info = GLOBAL_DB_INFO
       .get(env_id)
@@ -57,7 +57,7 @@ pub async fn get_tenant_pool(env_id: &str) -> Result<Box<dyn TenantConnPool>> {
     let pool = GLOBAL_POOL
       .entry(env_id.to_string())
       .or_insert_with(|| new_pool.clone());
-    Ok(Box::new(MySqlTenantConnection(pool.value().clone())))
+    Ok(Box::new(MySqlTenantPool(pool.value().clone())))
   }
 }
 
@@ -65,15 +65,17 @@ pub fn add_tenant_db_info(env_id: &str, db_info: TenantDBInfo) {
   GLOBAL_DB_INFO.insert(env_id.to_string(), db_info);
 }
 
-pub struct MySqlTenantConnection(MySqlPool);
+/// [`MySqlTenantPool`] represents a single tenant's connection pool.
+/// It is just a simple [`MySqlPool`].
+pub struct MySqlTenantPool(MySqlPool);
 
-impl MySqlTenantConnection {
+impl MySqlTenantPool {
   pub fn inner(&self) -> &MySqlPool {
     &(self.0)
   }
 }
 
-impl Deref for MySqlTenantConnection {
+impl Deref for MySqlTenantPool {
   type Target = MySqlPool;
 
   fn deref(&self) -> &Self::Target {
@@ -81,14 +83,14 @@ impl Deref for MySqlTenantConnection {
   }
 }
 
-impl DerefMut for MySqlTenantConnection {
+impl DerefMut for MySqlTenantPool {
   fn deref_mut(&mut self) -> &mut Self::Target {
     &mut self.0
   }
 }
 
 #[async_trait]
-impl TenantConnPool for MySqlTenantConnection {
+impl TenantConnPool for MySqlTenantPool {
   async fn js_execute(&self, sql: &str, params: Vec<Value>) -> Result<Value> {
     let mut query = sqlx::query(sql);
     for p in params.iter() {
