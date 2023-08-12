@@ -1,6 +1,6 @@
 use crate::api::ApiError;
-use crate::env::var::VarKind;
-use crate::env::var_list::VarList;
+use crate::env_vars::var::VarKind;
+use crate::env_vars::var_list::VarList;
 use crate::esm_parser::parse_module_export;
 use crate::plugin::plugin_http_path;
 use crate::route_builder::build_route;
