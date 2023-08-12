@@ -5,8 +5,10 @@ use actix_web::{
   App, HttpRequest, HttpResponse, HttpResponseBuilder, HttpServer,
 };
 use anyhow::{Context, Result};
-use darx_core::deploy::tenants;
+use darx_core::api::CreateTableReq;
+use darx_core::tenants;
 use darx_core::{api::AddDeploymentReq, api::ApiError};
+use darx_db::{MySqlTenantConnection, TenantConnPool};
 use serde_json;
 use std::env;
 use std::net::SocketAddr;
@@ -63,7 +65,7 @@ pub async fn run_server(
         .route("/", get().to(|| async { "data plane healthy." }))
         .route("/invoke/{func_url}", post().to(invoke_function))
         .route("/add_deployment", post().to(add_deployment))
-      // .route("/create_table", post().to(create_table))
+        .route("/create_table", post().to(create_table))
       // .route("/drop_table", post().to(drop_table))
       // .route("/add_column", post().to(add_column))
       // .route("/drop_column", post().to(drop_column))
@@ -81,22 +83,8 @@ async fn invoke_function(
   http_req: HttpRequest,
   Json(req): Json<serde_json::Value>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
-  let darx_env = env::var("DARX_ENV").expect("DARX_ENV should be configured");
-  let host = if darx_env != "production" {
-    // dev environment use a special Darx-Dev-Host header to specify the host.
-    http_req
-      .headers()
-      .get("Darx-Dev-Host")
-      .map_or("".to_string(), |v| {
-        v.to_str()
-          .context("Darx-Dev-Host contains non visible ascii characters")
-          .unwrap()
-          .to_string()
-      })
-  } else {
-    conn.host().to_string()
-  };
-  let env_id = extract_env_id(host.as_str())?;
+  let host = conn.host();
+  let env_id = try_extract_env_id(host, &http_req)?;
   let func_url = func_url.into_inner();
 
   let (env_id, deploy_seq, route) =
@@ -134,7 +122,44 @@ async fn add_deployment(
   Ok(HttpResponse::Ok())
 }
 
-fn extract_env_id(domain: &str) -> Result<String> {
+async fn create_table(
+  server_state: Data<Arc<ServerState>>,
+  conn: ConnectionInfo,
+  http_req: HttpRequest,
+  Json(req): Json<CreateTableReq>,
+) -> Result<HttpResponseBuilder, ApiError> {
+  let host = conn.host();
+  let env_id = try_extract_env_id(host, &http_req)?;
+  let pool = darx_db::get_tenant_pool(env_id.as_str()).await?;
+  let conn = pool
+    .as_any()
+    .downcast_ref::<MySqlTenantConnection>()
+    .unwrap();
+
+  todo!()
+}
+
+fn try_extract_env_id(host: &str, http_req: &HttpRequest) -> Result<String> {
+  let darx_env = env::var("DARX_ENV").expect("DARX_ENV should be configured");
+  let host = if darx_env != "production" {
+    // dev environment use a special Darx-Dev-Host header to specify the host.
+    http_req
+      .headers()
+      .get("Darx-Dev-Host")
+      .map_or("".to_string(), |v| {
+        v.to_str()
+          .context("Darx-Dev-Host contains non visible ascii characters")
+          .unwrap()
+          .to_string()
+      })
+  } else {
+    host.to_string()
+  };
+  let env_id = env_id_from_domain(host.as_str())?;
+  Ok(env_id)
+}
+
+fn env_id_from_domain(domain: &str) -> Result<String> {
   let mut parts = domain.split('.');
   let env_id = parts.next().ok_or_else(|| {
     ApiError::DomainNotFound(format!("invalid domain: {}", domain))

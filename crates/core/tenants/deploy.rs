@@ -18,7 +18,7 @@ use tracing::{debug, info};
 use darx_isolate_runtime::DarxIsolate;
 
 use crate::api::ApiError;
-use crate::deploy::cache::LruCache;
+use crate::tenants::cache::LruCache;
 use crate::{plugin, unique_js_export, Code, HttpRoute, REGISTRY_FILE_NAME};
 
 //TODO lru size should be configured

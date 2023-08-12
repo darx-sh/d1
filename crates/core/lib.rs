@@ -1,13 +1,12 @@
 use serde::{Deserialize, Serialize};
 
 pub mod api;
-pub mod deploy;
+pub mod code;
 pub mod env_vars;
-mod esm_parser;
 pub mod plugin;
 mod project;
 mod route_builder;
-mod sql;
+pub mod tenants;
 
 pub use project::new_project;
 

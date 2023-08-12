@@ -74,7 +74,7 @@ async fn test_db_query() -> Result<()> {
   add_tenant_db_info(env_id.as_str(), db_info);
   let pool = get_tenant_pool(env_id.as_str()).await?;
   pool
-    .execute(
+    .js_execute(
       "CREATE TABLE IF NOT EXISTS test (
             id INT NOT NULL AUTO_INCREMENT,
             name VARCHAR(255) NOT NULL,

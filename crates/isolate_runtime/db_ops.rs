@@ -62,7 +62,7 @@ pub async fn op_db_execute(
     .resource_table
     .get::<ConnResource>(rid)?;
   let conn = &conn_resource.0;
-  conn.execute(query.as_str(), params).await
+  conn.js_execute(query.as_str(), params).await
 }
 
 // struct SelectStatementResource(RefCell<SelectStatement>);

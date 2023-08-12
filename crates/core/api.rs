@@ -1,4 +1,4 @@
-use crate::sql::DxColumnType;
+use crate::tenants::DxColumnType;
 use crate::{Code, HttpRoute};
 use actix_web::http::header::ContentType;
 use actix_web::http::StatusCode;

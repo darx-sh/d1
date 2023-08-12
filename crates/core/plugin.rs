@@ -1,5 +1,5 @@
 use crate::api::ApiError;
-use crate::deploy::control::deploy_plugin;
+use crate::code::control::deploy_plugin;
 use crate::Code;
 use anyhow::Result;
 use sqlx::MySqlPool;

@@ -22,7 +22,7 @@ pub async fn setup_tenant_db(
     .context("Failed to insert into env_dbs table")?;
 
   let user_sql = format!(
-    "CREATE USER '{}'@'%' IDENTIFIED BY '{}'",
+    "CREATE USER IF NOT EXISTS '{}'@'%' IDENTIFIED BY '{}'",
     db_info.user, db_info.password
   );
   conn
@@ -30,7 +30,7 @@ pub async fn setup_tenant_db(
     .await
     .context("Failed to create tenant user")?;
 
-  let db_sql = format!("CREATE DATABASE `{}`", db_info.database);
+  let db_sql = format!("CREATE DATABASE IF NOT EXISTS `{}`", db_info.database);
   conn
     .execute(db_sql.as_str())
     .await

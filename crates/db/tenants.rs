@@ -12,6 +12,7 @@ use sqlx::mysql::MySqlConnectOptions;
 use sqlx::mysql::MySqlRow;
 use sqlx::MySqlPool;
 use sqlx::{Column, Either, Row, TypeInfo};
+use std::any::Any;
 use std::ops::{Deref, DerefMut};
 
 pub struct TenantDBInfo {
@@ -82,7 +83,7 @@ impl DerefMut for MySqlTenantConnection {
 
 #[async_trait]
 impl TenantConnPool for MySqlTenantConnection {
-  async fn execute(&self, sql: &str, params: Vec<Value>) -> Result<Value> {
+  async fn js_execute(&self, sql: &str, params: Vec<Value>) -> Result<Value> {
     let mut query = sqlx::query(sql);
     for p in params.iter() {
       match p {
@@ -136,6 +137,10 @@ impl TenantConnPool for MySqlTenantConnection {
       }
     }
     Ok(serde_json::to_value(result_set)?)
+  }
+
+  fn as_any(&self) -> &dyn Any {
+    self
   }
 }
 
