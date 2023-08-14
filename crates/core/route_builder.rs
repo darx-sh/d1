@@ -1,5 +1,5 @@
 use crate::{FunctionSignatureV1, HttpRoute};
-use anyhow::{anyhow, Result};
+use anyhow::{bail, Result};
 
 /// Build http path from entry point and export.
 /// For a pair of (entry_point, export), here are some examples:
@@ -19,7 +19,7 @@ pub(crate) fn build_route(
   } else if entry_point.ends_with(".mjs") {
     entry_point.strip_suffix(".mjs").unwrap()
   } else {
-    return Err(anyhow!("Invalid entry point: {}", entry_point));
+    bail!("Invalid entry point: {}", entry_point);
   };
   let path = if let Some(prefix) = prefix {
     path.strip_prefix(prefix).unwrap_or(path)

@@ -43,8 +43,9 @@ async fn test_main_process() {
   tokio::fs::create_dir(&server_data_path).await.unwrap();
 
   let handle = run_server(server_data_path).await;
+  let vars = vec![darx_core::env_vars::Var::new("key", "value")];
 
-  let req = darx_core::api::dir_to_deploy_req(code_path.as_path())
+  let req = darx_core::api::dir_to_deploy_req(code_path.as_path(), vars)
     .await
     .unwrap();
   info!("req: {:#?}", req);
@@ -73,7 +74,10 @@ async fn test_main_process() {
     .text()
     .await
     .unwrap();
-  assert_eq!(resp, "\"Hi 123 from foo\"");
+  assert_eq!(
+    resp,
+    "\"Hi 123 from foo, env key = value, test_key = test_value\""
+  );
 
   let req = json!({"arr": [1,2,3], "obj":{"msg":"obj"}, "num": 1});
 

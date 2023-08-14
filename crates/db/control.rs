@@ -1,6 +1,5 @@
 use crate::TenantDBInfo;
 use anyhow::{Context, Result};
-use darx_utils::new_nano_id;
 use sqlx::{Executor, MySqlConnection};
 
 pub async fn setup_tenant_db(

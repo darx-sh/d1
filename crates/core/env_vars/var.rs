@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum VarKind {
   Env,
@@ -20,23 +22,26 @@ impl From<String> for SystemKey {
 }
 
 impl VarKind {
-  pub(super) fn tbl_col(&self) -> (&str, &str) {
+  pub(super) fn tbl_col(&self) -> (&str, &str, bool) {
     match self {
-      VarKind::Env => ("env_vars", "env_id"),
-      VarKind::Deploy => ("deploy_vars", "deploy_id"),
+      VarKind::Env => ("env_vars", "env_id", true),
+      VarKind::Deploy => ("deploy_vars", "deploy_id", false),
     }
   }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct Var {
   key: String,
   val: String,
 }
 
 impl Var {
-  pub fn new(key: String, val: String) -> Var {
-    Var { key, val }
+  pub fn new<T: Into<String>>(key: T, val: T) -> Var {
+    Var {
+      key: key.into(),
+      val: val.into(),
+    }
   }
   pub fn key(&self) -> &str {
     return &self.key;
