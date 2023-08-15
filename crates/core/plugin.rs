@@ -11,29 +11,12 @@ const SYS_PLUGIN_SCHEMA_NAME: &str = "schema";
 
 pub async fn deploy_system_plugins(db_pool: &MySqlPool) -> Result<()> {
   // schema plugin
-  let create_table = include_str!("plugin_data/schema/create_table.js");
-  let alter_table = include_str!("plugin_data/schema/alter_table.js");
-  let drop_table = include_str!("plugin_data/schema/drop_table.js");
-  let rename_table = include_str!("plugin_data/schema/rename_table.js");
+  let ddl = include_str!("plugin_data/schema/ddl.js");
 
-  let schema_codes = vec![
-    Code {
-      fs_path: "functions/create_table.js".to_string(),
-      content: create_table.to_string(),
-    },
-    Code {
-      fs_path: "functions/alter_table.js".to_string(),
-      content: alter_table.to_string(),
-    },
-    Code {
-      fs_path: "functions/drop_table.js".to_string(),
-      content: drop_table.to_string(),
-    },
-    Code {
-      fs_path: "functions/rename_table.js".to_string(),
-      content: rename_table.to_string(),
-    },
-  ];
+  let schema_codes = vec![Code {
+    fs_path: "functions/ddl.js".to_string(),
+    content: ddl.to_string(),
+  }];
 
   deploy_plugin(
     db_pool,

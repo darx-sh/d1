@@ -2,7 +2,7 @@ use crate::tenants::{DxIdent, PaginationTableReq};
 use anyhow::Result;
 use sea_query::{Asterisk, Expr, MysqlQueryBuilder, Order, Query};
 
-fn paginationTableSql(
+fn pagination_table_sql(
   req: &PaginationTableReq,
 ) -> Result<(String, sea_query::Values)> {
   let mut query = Query::select();
@@ -36,7 +36,7 @@ mod tests {
       prev_created_at: None,
       limit: 100,
     };
-    let (sql, values) = paginationTableSql(&req).unwrap();
+    let (sql, values) = pagination_table_sql(&req).unwrap();
     assert_eq!(
       sql,
       "SELECT * FROM `test` ORDER BY `created_at` DESC LIMIT ?"

@@ -133,26 +133,21 @@ async fn test_deploy_plugin() -> Result<()> {
   init_deployments(envs_dir.as_path(), &db_pool).await?;
 
   let (env_id, seq, r) =
-    match_route(TEST_ENV_ID, "_plugins/schema/create_table", "POST")
+    match_route(TEST_ENV_ID, "_plugins/schema/ddl", "POST")
       .expect("should match schema plugin url");
   assert_eq!(env_id, SYS_PLUGIN_SCHEMA_ENV_ID);
-  assert_eq!(r.http_path, "create_table");
-  assert_eq!(r.js_entry_point, "functions/create_table.js");
+  assert_eq!(r.http_path, "ddl");
+  assert_eq!(r.js_entry_point, "functions/ddl.js");
   assert_eq!(r.js_export, "default");
 
   let http_routes = list_api(&db_pool, TEST_ENV_ID).await?;
-  assert_eq!(http_routes.len(), 6);
+  assert_eq!(http_routes.len(), 3);
   assert_eq!(
     http_routes
       .iter()
-      .filter(|r| {
-        r.http_path == "_plugins/schema/create_table"
-          || r.http_path == "_plugins/schema/drop_table"
-          || r.http_path == "_plugins/schema/rename_table"
-          || r.http_path == "_plugins/schema/alter_table"
-      })
+      .filter(|r| { r.http_path == "_plugins/schema/ddl" })
       .count(),
-    4
+    1
   );
   Ok(())
 }
