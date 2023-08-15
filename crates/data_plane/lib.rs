@@ -1,18 +1,13 @@
 use actix_cors::Cors;
 use actix_web::dev::{ConnectionInfo, Server};
-use actix_web::web::{get, post, scope, Data, Json, Path};
+use actix_web::web::{get, post, Data, Json, Path};
 use actix_web::{
   App, HttpRequest, HttpResponse, HttpResponseBuilder, HttpServer,
 };
 use anyhow::{Context, Result};
-use darx_core::api::{
-  AddColumnReq, CreateTableReq, DropColumnReq, DropTableReq, RenameColumnReq,
-};
 use darx_core::tenants;
 use darx_core::{api::AddDeploymentReq, api::ApiError};
-use darx_db::MySqlTenantPool;
 use serde_json;
-use sqlx::MySqlPool;
 use std::env;
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -68,14 +63,14 @@ pub async fn run_server(
         .route("/", get().to(|| async { "data plane healthy." }))
         .route("/invoke/{func_url}", post().to(invoke_function))
         .route("/add_deployment", post().to(add_deployment))
-        .service(
-          scope("/schema")
-            .route("/create_table", post().to(create_table))
-            .route("/drop_table", post().to(drop_table))
-            .route("/add_column", post().to(add_column))
-            .route("/drop_column", post().to(drop_column))
-            .route("/rename_column", post().to(rename_column)),
-        )
+      // .service(
+      //   scope("/schema")
+      //     .route("/create_table", post().to(create_table))
+      //     .route("/drop_table", post().to(drop_table))
+      //     .route("/add_column", post().to(add_column))
+      //     .route("/drop_column", post().to(drop_column))
+      //     .route("/rename_column", post().to(rename_column)),
+      // )
     })
     .bind(&socket_addr)?
     .run(),
@@ -128,66 +123,66 @@ async fn add_deployment(
   Ok(HttpResponse::Ok())
 }
 
-async fn create_table(
-  conn: ConnectionInfo,
-  http_req: HttpRequest,
-  Json(req): Json<CreateTableReq>,
-) -> Result<HttpResponseBuilder, ApiError> {
-  let pool = get_tenant_conn_pool(&conn, &http_req).await?;
-  tenants::create_table(&pool, &req).await?;
-  Ok(HttpResponse::Ok())
-}
-
-async fn drop_table(
-  conn: ConnectionInfo,
-  http_req: HttpRequest,
-  Json(req): Json<DropTableReq>,
-) -> Result<HttpResponseBuilder, ApiError> {
-  let pool = get_tenant_conn_pool(&conn, &http_req).await?;
-  tenants::drop_table(&pool, &req).await?;
-  Ok(HttpResponse::Ok())
-}
-
-async fn add_column(
-  conn: ConnectionInfo,
-  http_req: HttpRequest,
-  Json(req): Json<AddColumnReq>,
-) -> Result<HttpResponseBuilder, ApiError> {
-  let pool = get_tenant_conn_pool(&conn, &http_req).await?;
-  tenants::add_column(&pool, &req).await?;
-  Ok(HttpResponse::Ok())
-}
-
-async fn drop_column(
-  conn: ConnectionInfo,
-  http_req: HttpRequest,
-  Json(req): Json<DropColumnReq>,
-) -> Result<HttpResponseBuilder, ApiError> {
-  let pool = get_tenant_conn_pool(&conn, &http_req).await?;
-  tenants::drop_column(&pool, &req).await?;
-  Ok(HttpResponse::Ok())
-}
-
-async fn rename_column(
-  conn: ConnectionInfo,
-  http_req: HttpRequest,
-  Json(req): Json<RenameColumnReq>,
-) -> Result<HttpResponseBuilder, ApiError> {
-  let pool = get_tenant_conn_pool(&conn, &http_req).await?;
-  tenants::rename_column(&pool, &req).await?;
-  Ok(HttpResponse::Ok())
-}
-
-async fn get_tenant_conn_pool(
-  conn: &ConnectionInfo,
-  http_req: &HttpRequest,
-) -> Result<MySqlPool> {
-  let host = conn.host();
-  let env_id = try_extract_env_id(host, &http_req)?;
-  let pool = darx_db::get_tenant_pool(env_id.as_str()).await?;
-  let pool = pool.as_any().downcast_ref::<MySqlTenantPool>().unwrap();
-  Ok(pool.inner().clone())
-}
+// async fn create_table(
+//   conn: ConnectionInfo,
+//   http_req: HttpRequest,
+//   Json(req): Json<CreateTableReq>,
+// ) -> Result<HttpResponseBuilder, ApiError> {
+//   let pool = get_tenant_conn_pool(&conn, &http_req).await?;
+//   tenants::create_table(&pool, &req).await?;
+//   Ok(HttpResponse::Ok())
+// }
+//
+// async fn drop_table(
+//   conn: ConnectionInfo,
+//   http_req: HttpRequest,
+//   Json(req): Json<DropTableReq>,
+// ) -> Result<HttpResponseBuilder, ApiError> {
+//   let pool = get_tenant_conn_pool(&conn, &http_req).await?;
+//   tenants::drop_table(&pool, &req).await?;
+//   Ok(HttpResponse::Ok())
+// }
+//
+// async fn add_column(
+//   conn: ConnectionInfo,
+//   http_req: HttpRequest,
+//   Json(req): Json<AddColumnReq>,
+// ) -> Result<HttpResponseBuilder, ApiError> {
+//   let pool = get_tenant_conn_pool(&conn, &http_req).await?;
+//   tenants::add_column(&pool, &req).await?;
+//   Ok(HttpResponse::Ok())
+// }
+//
+// async fn drop_column(
+//   conn: ConnectionInfo,
+//   http_req: HttpRequest,
+//   Json(req): Json<DropColumnReq>,
+// ) -> Result<HttpResponseBuilder, ApiError> {
+//   let pool = get_tenant_conn_pool(&conn, &http_req).await?;
+//   tenants::drop_column(&pool, &req).await?;
+//   Ok(HttpResponse::Ok())
+// }
+//
+// async fn rename_column(
+//   conn: ConnectionInfo,
+//   http_req: HttpRequest,
+//   Json(req): Json<RenameColumnReq>,
+// ) -> Result<HttpResponseBuilder, ApiError> {
+//   let pool = get_tenant_conn_pool(&conn, &http_req).await?;
+//   tenants::rename_column(&pool, &req).await?;
+//   Ok(HttpResponse::Ok())
+// }
+//
+// async fn get_tenant_conn_pool(
+//   conn: &ConnectionInfo,
+//   http_req: &HttpRequest,
+// ) -> Result<MySqlPool> {
+//   let host = conn.host();
+//   let env_id = try_extract_env_id(host, &http_req)?;
+//   let pool = darx_db::get_tenant_pool(env_id.as_str()).await?;
+//   let pool = pool.as_any().downcast_ref::<MySqlTenantPool>().unwrap();
+//   Ok(pool.inner().clone())
+// }
 
 fn try_extract_env_id(host: &str, http_req: &HttpRequest) -> Result<String> {
   let darx_env = env::var("DARX_ENV").expect("DARX_ENV should be configured");
