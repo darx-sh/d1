@@ -1,9 +1,16 @@
+///
+/// [`sql`] module implements logic related to tenant's query builder.
+/// It is used to implement the "schema api" and "table api" in data plane.
+/// We can move the logic into "db/tenants" and expose these as "ops" in future.
+///
 use sea_query::Iden;
 use serde::Deserialize;
 use std::fmt::Write;
 
 pub mod ddl;
+mod dml;
 
+#[derive(Deserialize)]
 pub enum DxDatum {
   Bool(bool),
   Int64(i64),

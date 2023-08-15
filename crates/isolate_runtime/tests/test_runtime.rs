@@ -3,9 +3,9 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 use darx_db::{
-  add_tenant_db_info, drop_tenant_db, get_tenant_pool, setup_tenant_db,
-  test_tenant_db_info, TenantConnPool, TenantDBInfo,
+  add_tenant_db_info, get_tenant_pool, test_tenant_db_info, TenantConnPool,
 };
+use darx_db::{drop_tenant_db, setup_tenant_db};
 use sqlx::Connection;
 
 use darx_isolate_runtime::DarxIsolate;

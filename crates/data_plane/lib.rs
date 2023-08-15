@@ -1,6 +1,6 @@
 use actix_cors::Cors;
 use actix_web::dev::{ConnectionInfo, Server};
-use actix_web::web::{get, post, Data, Json, Path};
+use actix_web::web::{get, post, scope, Data, Json, Path};
 use actix_web::{
   App, HttpRequest, HttpResponse, HttpResponseBuilder, HttpServer,
 };
@@ -10,7 +10,7 @@ use darx_core::api::{
 };
 use darx_core::tenants;
 use darx_core::{api::AddDeploymentReq, api::ApiError};
-use darx_db::MySqlTenantConnection;
+use darx_db::MySqlTenantPool;
 use serde_json;
 use sqlx::MySqlPool;
 use std::env;
@@ -68,11 +68,14 @@ pub async fn run_server(
         .route("/", get().to(|| async { "data plane healthy." }))
         .route("/invoke/{func_url}", post().to(invoke_function))
         .route("/add_deployment", post().to(add_deployment))
-        .route("/create_table", post().to(create_table))
-        .route("/drop_table", post().to(drop_table))
-        .route("/add_column", post().to(add_column))
-        .route("/drop_column", post().to(drop_column))
-        .route("/rename_column", post().to(rename_column))
+        .service(
+          scope("/schema")
+            .route("/create_table", post().to(create_table))
+            .route("/drop_table", post().to(drop_table))
+            .route("/add_column", post().to(add_column))
+            .route("/drop_column", post().to(drop_column))
+            .route("/rename_column", post().to(rename_column)),
+        )
     })
     .bind(&socket_addr)?
     .run(),
@@ -182,10 +185,7 @@ async fn get_tenant_conn_pool(
   let host = conn.host();
   let env_id = try_extract_env_id(host, &http_req)?;
   let pool = darx_db::get_tenant_pool(env_id.as_str()).await?;
-  let pool = pool
-    .as_any()
-    .downcast_ref::<MySqlTenantConnection>()
-    .unwrap();
+  let pool = pool.as_any().downcast_ref::<MySqlTenantPool>().unwrap();
   Ok(pool.inner().clone())
 }
 

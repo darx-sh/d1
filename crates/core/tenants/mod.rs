@@ -8,5 +8,5 @@ pub use deploy::{
 
 pub use sql::{
   ddl::{add_column, create_table, drop_column, drop_table, rename_column},
-  DxColumnType,
+  DxColumnType, DxDatum,
 };

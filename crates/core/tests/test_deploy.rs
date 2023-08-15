@@ -41,7 +41,7 @@ async fn test_deploy_code() -> Result<()> {
   ];
 
   let (deploy_seq, final_codes, http_routes, txn) =
-    deploy_code(txn, TEST_ENV_ID, &codes, &None, &None).await?;
+    deploy_code(txn, TEST_ENV_ID, &codes, &vec![], &None, &None).await?;
 
   txn.commit().await.context("Failed to commit transaction")?;
 
@@ -125,7 +125,7 @@ async fn test_deploy_plugin() -> Result<()> {
   ];
 
   let (deploy_seq, final_codes, http_routes, txn) =
-    deploy_code(txn, TEST_ENV_ID, &codes, &None, &None).await?;
+    deploy_code(txn, TEST_ENV_ID, &codes, &vec![], &None, &None).await?;
 
   txn.commit().await.context("Failed to commit transaction")?;
 
