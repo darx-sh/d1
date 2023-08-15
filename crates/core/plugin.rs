@@ -5,28 +5,44 @@ use anyhow::Result;
 use sqlx::MySqlPool;
 
 /// The "schema" plugin's "project_id" and "plugin_name".
-const SYS_PLUGIN_SCHEMA_PROJECT_ID: &str = "pid_plugin";
-pub const SYS_PLUGIN_SCHEMA_ENV_ID: &str = "000000000000_schema";
-const SYS_PLUGIN_SCHEMA_NAME: &str = "schema";
+pub const SYS_PLUGIN_SCHEMA_API_PROJECT_ID: &str = "pid_plugin";
+pub const SYS_PLUGIN_SCHEMA_API_ENV_ID: &str = "000000000000_schema";
+pub const SYS_PLUGIN_SCHEMA_API_NAME: &str = "schema";
+
+pub const SYS_PLUGIN_TABLE_API_PROJECT_ID: &str = "pid_table";
+pub const SYS_PLUGIN_TABLE_API_ENV_ID: &str = "000000000000_table";
+pub const SYS_PLUGIN_TABLE_API_NAME: &str = "table";
 
 pub async fn deploy_system_plugins(db_pool: &MySqlPool) -> Result<()> {
-  // schema plugin
-  let ddl = include_str!("plugin_data/schema/ddl.js");
-
-  let schema_codes = vec![Code {
-    fs_path: "functions/ddl.js".to_string(),
-    content: ddl.to_string(),
+  // schema api plugin
+  let schema_api = include_str!("plugin_data/schema/api.js");
+  let schema_api_codes = vec![Code {
+    fs_path: "functions/api.js".to_string(),
+    content: schema_api.to_string(),
   }];
-
   deploy_plugin(
     db_pool,
-    SYS_PLUGIN_SCHEMA_PROJECT_ID,
-    SYS_PLUGIN_SCHEMA_ENV_ID,
-    SYS_PLUGIN_SCHEMA_NAME,
-    &schema_codes,
+    SYS_PLUGIN_SCHEMA_API_PROJECT_ID,
+    SYS_PLUGIN_SCHEMA_API_ENV_ID,
+    SYS_PLUGIN_SCHEMA_API_NAME,
+    &schema_api_codes,
   )
   .await?;
 
+  // table api plugin
+  let table_api = include_str!("plugin_data/table/api.js");
+  let table_api_codes = vec![Code {
+    fs_path: "functions/api.js".to_string(),
+    content: table_api.to_string(),
+  }];
+  deploy_plugin(
+    db_pool,
+    SYS_PLUGIN_TABLE_API_PROJECT_ID,
+    SYS_PLUGIN_TABLE_API_ENV_ID,
+    SYS_PLUGIN_TABLE_API_NAME,
+    &table_api_codes,
+  )
+  .await?;
   Ok(())
 }
 
