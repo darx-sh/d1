@@ -21,4 +21,5 @@ futures.workspace = true
 futures-util.workspace = true
 once_cell.workspace = true
 dashmap.workspace = true
+sea-query.workspace = true
 
