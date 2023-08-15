@@ -9,6 +9,9 @@ class DBConn {
   execute(query, ...params) {
     return core.opAsync("op_db_execute", this.rid, query, params);
   }
+  ddl(req) {
+    return core.opAsync("op_ddl", this.rid, req);
+  }
 }
 
 class SelectStatement {
@@ -31,7 +34,7 @@ class SelectStatement {
   }
 
   async execute(conn) {
-    const {sql, values} = this.build();
+    const { sql, values } = this.build();
     return conn.execute(sql, values);
   }
 }

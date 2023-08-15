@@ -25,7 +25,6 @@ sea-query.workspace = true
 
 darx_db.workspace = true
 
-
 [dev-dependencies]
 darx_utils.workspace = true
 tokio.workspace = true

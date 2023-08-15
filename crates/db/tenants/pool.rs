@@ -18,11 +18,11 @@ pub struct TenantDBInfo {
 /// It is just a simple [`MySqlPool`].
 pub struct MySqlTenantPool(pub MySqlPool);
 
-impl MySqlTenantPool {
-  pub fn inner(&self) -> &MySqlPool {
-    &(self.0)
-  }
-}
+// impl MySqlTenantPool {
+//   pub fn inner(&self) -> &MySqlPool {
+//     &(self.0)
+//   }
+// }
 
 impl Deref for MySqlTenantPool {
   type Target = MySqlPool;

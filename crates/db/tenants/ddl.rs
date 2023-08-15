@@ -3,55 +3,55 @@ use crate::tenants::{
 };
 use crate::tenants::{DxColumnType, DxFieldType, DxIdent};
 use anyhow::Result;
-use sea_query::{ColumnDef, Index, MysqlQueryBuilder, Table};
-use sqlx::MySqlExecutor;
+use sea_query::{ColumnDef, Expr, Index, MysqlQueryBuilder, Table};
+// use sqlx::MySqlExecutor;
 
-pub async fn create_table<'c>(
-  exe: impl MySqlExecutor<'c>,
-  req: &CreateTableReq,
-) -> Result<()> {
-  let sql = create_table_sql(req)?;
-  sqlx::query(&sql).execute(exe).await?;
-  Ok(())
-}
+// pub async fn create_table<'c>(
+//   exe: impl MySqlExecutor<'c>,
+//   req: &CreateTableReq,
+// ) -> Result<()> {
+//   let sql = create_table_sql(req)?;
+//   sqlx::query(&sql).execute(exe).await?;
+//   Ok(())
+// }
+//
+// pub async fn drop_table<'c>(
+//   exe: impl MySqlExecutor<'c>,
+//   req: &DropTableReq,
+// ) -> Result<()> {
+//   let sql = drop_table_sql(req)?;
+//   sqlx::query(&sql).execute(exe).await?;
+//   Ok(())
+// }
+//
+// pub async fn add_column<'c>(
+//   exe: impl MySqlExecutor<'c>,
+//   req: &AddColumnReq,
+// ) -> Result<()> {
+//   let sql = add_column_sql(req)?;
+//   sqlx::query(&sql).execute(exe).await?;
+//   Ok(())
+// }
+//
+// pub async fn drop_column<'c>(
+//   exe: impl MySqlExecutor<'c>,
+//   req: &DropColumnReq,
+// ) -> Result<()> {
+//   let sql = drop_column_sql(req)?;
+//   sqlx::query(&sql).execute(exe).await?;
+//   Ok(())
+// }
+//
+// pub async fn rename_column<'c>(
+//   exe: impl MySqlExecutor<'c>,
+//   req: &RenameColumnReq,
+// ) -> Result<()> {
+//   let sql = rename_column_sql(req)?;
+//   sqlx::query(&sql).execute(exe).await?;
+//   Ok(())
+// }
 
-pub async fn drop_table<'c>(
-  exe: impl MySqlExecutor<'c>,
-  req: &DropTableReq,
-) -> Result<()> {
-  let sql = drop_table_sql(req)?;
-  sqlx::query(&sql).execute(exe).await?;
-  Ok(())
-}
-
-pub async fn add_column<'c>(
-  exe: impl MySqlExecutor<'c>,
-  req: &AddColumnReq,
-) -> Result<()> {
-  let sql = add_column_sql(req)?;
-  sqlx::query(&sql).execute(exe).await?;
-  Ok(())
-}
-
-pub async fn drop_column<'c>(
-  exe: impl MySqlExecutor<'c>,
-  req: &DropColumnReq,
-) -> Result<()> {
-  let sql = drop_column_sql(req)?;
-  sqlx::query(&sql).execute(exe).await?;
-  Ok(())
-}
-
-pub async fn rename_column<'c>(
-  exe: impl MySqlExecutor<'c>,
-  req: &RenameColumnReq,
-) -> Result<()> {
-  let sql = rename_column_sql(req)?;
-  sqlx::query(&sql).execute(exe).await?;
-  Ok(())
-}
-
-fn create_table_sql(req: &CreateTableReq) -> Result<String> {
+pub fn create_table_sql(req: &CreateTableReq) -> Result<String> {
   let mut stmt = Table::create();
 
   // add default columns and indexes
@@ -59,15 +59,16 @@ fn create_table_sql(req: &CreateTableReq) -> Result<String> {
   id.string().string_len(255);
   id.not_null();
 
+  // CURRENT_TIMESTAMP(3) is not supported by sea_query
   let mut created_at = ColumnDef::new(DxIdent("created_at".to_string()));
-  created_at.date_time();
+  created_at.custom(DxIdent("datetime(3)".to_string()));
   created_at.not_null();
-  created_at.default("CURRENT_TIMESTAMP(3)");
+  created_at.default(Expr::cust("CURRENT_TIMESTAMP(3)"));
 
   let mut updated_at = ColumnDef::new(DxIdent("updated_at".to_string()));
-  updated_at.date_time();
+  updated_at.custom(DxIdent("datetime(3)".to_string()));
   updated_at.not_null();
-  updated_at.default("CURRENT_TIMESTAMP(3)");
+  updated_at.default(Expr::cust("CURRENT_TIMESTAMP(3)"));
   updated_at.extra("ON UPDATE CURRENT_TIMESTAMP(3)");
 
   stmt.table(DxIdent(req.table_name.clone()));
@@ -86,13 +87,13 @@ fn create_table_sql(req: &CreateTableReq) -> Result<String> {
   Ok(stmt.build(MysqlQueryBuilder))
 }
 
-fn drop_table_sql(req: &DropTableReq) -> Result<String> {
+pub fn drop_table_sql(req: &DropTableReq) -> Result<String> {
   let mut stmt = Table::drop();
   stmt.table(DxIdent(req.table_name.clone()));
   Ok(stmt.build(MysqlQueryBuilder))
 }
 
-fn add_column_sql(req: &AddColumnReq) -> Result<String> {
+pub fn add_column_sql(req: &AddColumnReq) -> Result<String> {
   let mut stmt = Table::alter();
   stmt.table(DxIdent(req.table_name.clone()));
   let mut column_def = new_column_def(&req.column);
@@ -100,7 +101,7 @@ fn add_column_sql(req: &AddColumnReq) -> Result<String> {
   Ok(stmt.build(MysqlQueryBuilder))
 }
 
-fn rename_column_sql(req: &RenameColumnReq) -> Result<String> {
+pub fn rename_column_sql(req: &RenameColumnReq) -> Result<String> {
   let mut stmt = Table::alter();
   stmt.table(DxIdent(req.table_name.clone()));
   stmt.rename_column(
@@ -110,7 +111,7 @@ fn rename_column_sql(req: &RenameColumnReq) -> Result<String> {
   Ok(stmt.build(MysqlQueryBuilder))
 }
 
-fn drop_column_sql(req: &DropColumnReq) -> Result<String> {
+pub fn drop_column_sql(req: &DropColumnReq) -> Result<String> {
   let mut stmt = Table::alter();
   stmt.table(DxIdent(req.table_name.clone()));
   stmt.drop_column(DxIdent(req.column_name.clone()));
@@ -155,7 +156,7 @@ mod tests {
 
     assert_eq!(
       create_table_sql(&req).unwrap(),
-      "CREATE TABLE `test` ( `id` varchar(255) NOT NULL, `created_at` datetime NOT NULL DEFAULT 'CURRENT_TIMESTAMP(3)', `updated_at` datetime NOT NULL DEFAULT 'CURRENT_TIMESTAMP(3)' ON UPDATE CURRENT_TIMESTAMP(3), `age` bigint NOT NULL, PRIMARY KEY (`id`), KEY `idx_test_created_at` (`created_at`) )"
+      "CREATE TABLE `test` ( `id` varchar(255) NOT NULL, `created_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), `updated_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3), `age` bigint NOT NULL, PRIMARY KEY (`id`), KEY `idx_test_created_at` (`created_at`) )"
     );
   }
 
