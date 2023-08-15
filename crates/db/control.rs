@@ -1,4 +1,4 @@
-use crate::TenantDBInfo;
+use crate::tenants::TenantDBInfo;
 use anyhow::{Context, Result};
 use sqlx::{Executor, MySqlConnection};
 

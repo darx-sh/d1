@@ -3,7 +3,7 @@ use crate::api::{
 };
 use crate::tenants::sql::{DxColumnType, DxFieldType, DxIdent};
 use anyhow::Result;
-use sea_query::{ColumnDef, MysqlQueryBuilder, Table};
+use sea_query::{ColumnDef, Index, MysqlQueryBuilder, Table};
 use sqlx::MySqlExecutor;
 
 pub async fn create_table<'c>(
@@ -53,11 +53,36 @@ pub async fn rename_column<'c>(
 
 fn create_table_sql(req: &CreateTableReq) -> Result<String> {
   let mut stmt = Table::create();
+
+  // add default columns and indexes
+  let mut id = ColumnDef::new(DxIdent("id".to_string()));
+  id.string().string_len(255);
+  id.not_null();
+
+  let mut created_at = ColumnDef::new(DxIdent("created_at".to_string()));
+  created_at.date_time();
+  created_at.not_null();
+  created_at.default("CURRENT_TIMESTAMP(3)");
+
+  let mut updated_at = ColumnDef::new(DxIdent("updated_at".to_string()));
+  updated_at.date_time();
+  updated_at.not_null();
+  updated_at.default("CURRENT_TIMESTAMP(3)");
+  updated_at.extra("ON UPDATE CURRENT_TIMESTAMP(3)");
+
   stmt.table(DxIdent(req.table_name.clone()));
+  stmt.col(&mut id).col(&mut created_at).col(&mut updated_at);
   for column in &req.columns {
     let mut column_def = new_column_def(column);
     stmt.col(&mut column_def);
   }
+
+  stmt.primary_key(Index::create().col(DxIdent("id".to_string())));
+  stmt.index(
+    Index::create()
+      .name(format!("idx_{}_{}", req.table_name, "created_at"))
+      .col(DxIdent("created_at".to_string())),
+  );
   Ok(stmt.build(MysqlQueryBuilder))
 }
 
@@ -122,7 +147,7 @@ mod tests {
     let req = CreateTableReq {
       table_name: "test".to_string(),
       columns: vec![DxColumnType {
-        name: "id".to_string(),
+        name: "age".to_string(),
         field_type: DxFieldType::Int64,
         is_nullable: false,
       }],
@@ -130,7 +155,7 @@ mod tests {
 
     assert_eq!(
       create_table_sql(&req).unwrap(),
-      "CREATE TABLE `test` ( `id` bigint NOT NULL )"
+      "CREATE TABLE `test` ( `id` varchar(255) NOT NULL, `created_at` datetime NOT NULL DEFAULT 'CURRENT_TIMESTAMP(3)', `updated_at` datetime NOT NULL DEFAULT 'CURRENT_TIMESTAMP(3)' ON UPDATE CURRENT_TIMESTAMP(3), `age` bigint NOT NULL, PRIMARY KEY (`id`), KEY `idx_test_created_at` (`created_at`) )"
     );
   }
 
