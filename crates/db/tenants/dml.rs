@@ -1,8 +1,6 @@
-use crate::api::PaginationTableReq;
-use crate::tenants::sql::DxIdent;
+use crate::tenants::{DxIdent, PaginationTableReq};
 use anyhow::Result;
-use sea_query::ColumnRef::Asterisk;
-use sea_query::{Expr, MysqlQueryBuilder, Order, Query};
+use sea_query::{Asterisk, Expr, MysqlQueryBuilder, Order, Query};
 
 fn paginationTableSql(
   req: &PaginationTableReq,
@@ -27,6 +25,7 @@ fn paginationTableSql(
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::tenants::PaginationTableReq;
   use sea_query::{Value, Values};
 
   #[test]

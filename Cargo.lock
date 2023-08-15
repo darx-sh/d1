@@ -1116,6 +1116,7 @@ dependencies = [
  "futures-util",
  "once_cell",
  "rusqlite",
+ "sea-query",
  "serde",
  "serde_json",
  "sqlx",

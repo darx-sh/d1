@@ -1,7 +1,7 @@
-use crate::api::{
+use crate::tenants::{
   AddColumnReq, CreateTableReq, DropColumnReq, DropTableReq, RenameColumnReq,
 };
-use crate::tenants::sql::{DxColumnType, DxFieldType, DxIdent};
+use crate::tenants::{DxColumnType, DxFieldType, DxIdent};
 use anyhow::Result;
 use sea_query::{ColumnDef, Index, MysqlQueryBuilder, Table};
 use sqlx::MySqlExecutor;
