@@ -5,7 +5,6 @@ use std::any::Any;
 use std::fmt::Write;
 
 mod ddl;
-mod dml;
 mod execute;
 mod pool;
 
@@ -129,43 +128,6 @@ pub struct RenameColumnReq {
   pub old_column_name: String,
   #[serde(rename = "newColumnName")]
   pub new_column_name: String,
-}
-
-///
-/// table api: client --> data plane
-/// SELECT * FROM table_name WHERE created_at >= '2021-01-01' AND id NOT IN (1344, 231243) ORDER BY created_at DESC LIMIT 100
-///
-#[derive(Deserialize)]
-pub struct PaginationTableReq {
-  pub table_name: String,
-  pub prev_created_at: Option<String>,
-  pub prev_ids: Option<Vec<String>>,
-  pub limit: u64,
-}
-
-#[derive(Deserialize)]
-pub struct InsertTableReq {
-  pub table_name: String,
-  pub columns: Vec<String>,
-  pub values: Vec<Vec<DxDatum>>,
-}
-
-#[derive(Deserialize)]
-pub struct UpdateTableReq {
-  pub table_name: String,
-  pub columns: Vec<ColumnValue>,
-  pub filter: Option<String>,
-}
-
-#[derive(Deserialize)]
-pub struct ColumnValue {
-  pub name: String,
-  pub value: DxDatum,
-}
-
-#[derive(Deserialize)]
-pub struct DeleteTableReq {
-  pub table_name: String,
 }
 
 #[cfg(test)]

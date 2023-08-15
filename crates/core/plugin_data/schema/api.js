@@ -1,4 +1,4 @@
-export default async function ddl(req) {
+export default async function api(req) {
   const db = useDB();
   return await db.ddl(req);
 }
