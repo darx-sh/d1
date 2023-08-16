@@ -132,24 +132,25 @@ async fn test_deploy_plugin() -> Result<()> {
   let envs_dir = envs_dir();
   init_deployments(envs_dir.as_path(), &db_pool).await?;
 
-  let (env_id, _seq, r) =
-    match_route(TEST_ENV_ID, "_plugins/schema/api", "POST")
-      .expect("should match schema plugin url");
+  let ddl_url = "_plugins/schema/api.ddl";
+
+  let (env_id, _seq, r) = match_route(TEST_ENV_ID, ddl_url, "POST")
+    .expect("should match schema plugin url");
   assert_eq!(env_id, SYS_PLUGIN_SCHEMA_API_ENV_ID);
-  assert_eq!(r.http_path, "api");
+  assert_eq!(r.http_path, "api.ddl");
   assert_eq!(r.js_entry_point, "functions/api.js");
-  assert_eq!(r.js_export, "default");
+  assert_eq!(r.js_export, "ddl");
 
   let http_routes = list_api(&db_pool, TEST_ENV_ID).await?;
-  // schema: 1
+  // schema: 2
   // table:  4
   // hello:  1
   // hello2: 1
-  assert_eq!(http_routes.len(), 7);
+  assert_eq!(http_routes.len(), 8);
   assert_eq!(
     http_routes
       .iter()
-      .filter(|r| { r.http_path == "_plugins/schema/api" })
+      .filter(|r| { r.http_path == ddl_url })
       .count(),
     1
   );

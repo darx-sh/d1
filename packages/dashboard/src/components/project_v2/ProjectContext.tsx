@@ -63,7 +63,8 @@ type ProjectAction =
   | { type: "DoubleClickJsFile"; fsPath: string }
   | { type: "CloseJsTab"; fsPath: string }
   | { type: "SelectTab"; tabIdx: number }
-  | { type: "UpdatePostParam"; httpRoute: HttpRoute; param: string };
+  | { type: "UpdatePostParam"; httpRoute: HttpRoute; param: string }
+  | { type: "OpenDatabase" };
 
 export type CodeChecksums = {
   [key: string]: string;
@@ -100,8 +101,8 @@ export function useProjectDispatch() {
 function initialEditorCode(fsPath: string) {
   return `\
 export default function foo() {
-  return "hello from ${fsPath}"; 
-}  
+  return "hello from ${fsPath}";
+}
   `;
 }
 
@@ -168,12 +169,10 @@ function projectReducer(
         (t) => t.type === "JsEditor" && t.codeIdx === codeIdx
       );
       if (tabIdx >= 0) {
+        // we already find the tab, just select it.
         state.curOpenTabIdx = tabIdx;
-        if (state.tabs[tabIdx]!.type !== "JsEditor") {
-          throw new Error("Unexpected tab type: " + state.tabs[tabIdx]!.type);
-        }
-        state.tabs[tabIdx] = { type: "JsEditor", codeIdx };
       } else {
+        // create a new tab.
         state.tabs.push({ type: "JsEditor", codeIdx: codeIdx });
         state.curOpenTabIdx = state.tabs.length - 1;
       }
@@ -199,6 +198,17 @@ function projectReducer(
       });
       if (idx >= 0) {
         state.directory.httpRoutes[idx]!.curParams = param;
+      }
+      return state;
+    }
+    case "OpenDatabase": {
+      const tabIdx = state.tabs.findIndex((t) => t.type === "Database");
+      if (tabIdx >= 0) {
+        // we already find the tab, just select it.
+        state.curOpenTabIdx = tabIdx;
+      } else {
+        state.tabs.push({ type: "Database" });
+        state.curOpenTabIdx = state.tabs.length - 1;
       }
       return state;
     }
