@@ -15,10 +15,6 @@ export default function LeftTools() {
         <div>Database</div>
       </div>
       <div className="flex h-20 w-20 flex-col items-center p-4">
-        <CloudIcon className="h-6 w-6" />
-        <div>API</div>
-      </div>
-      <div className="flex h-20 w-20 flex-col items-center p-4">
         <ArrowTrendingUpIcon className="h-6 w-6" />
         <div>Reports</div>
       </div>

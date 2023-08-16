@@ -5,7 +5,7 @@ import {
 
 import { classNames } from "~/utils";
 
-export default function MiddleToolTabs() {
+export default function ToolTabs() {
   const projectState = useProjectState()!;
   const projectDispatch = useProjectDispatch()!;
   const tabs = projectState.tabs.map((tab, idx) => {

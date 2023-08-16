@@ -2,9 +2,9 @@ import React, { useState } from "react";
 import { useRouter } from "next/router";
 import TopNav from "~/components/project_v2/TopNav";
 import LeftContainer from "~/components/project_v2/LeftContainer";
-import MiddleContainer from "~/components/project_v2/MiddleContainer";
-import { ProjectProvider } from "~/components/project_v2/ProjectContext";
 import RightContainer from "~/components/project_v2/RightContainer";
+import { ProjectProvider } from "~/components/project_v2/ProjectContext";
+import HttpEndpoints from "~/components/project_v2/HttpEndpoints";
 
 function ProjectDetail() {
   const router = useRouter();
@@ -26,9 +26,6 @@ function ProjectDetail() {
             <LeftContainer></LeftContainer>
           </div>
           <div className="mb-5 flex-1 rounded border-2 border-gray-300 bg-white shadow-lg">
-            <MiddleContainer></MiddleContainer>
-          </div>
-          <div className="w-1/5 border-l-2 border-t-2 border-gray-300">
             <RightContainer></RightContainer>
           </div>
         </div>

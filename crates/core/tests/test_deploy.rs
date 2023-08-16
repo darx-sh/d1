@@ -141,6 +141,10 @@ async fn test_deploy_plugin() -> Result<()> {
   assert_eq!(r.js_export, "default");
 
   let http_routes = list_api(&db_pool, TEST_ENV_ID).await?;
+  // schema: 1
+  // table:  4
+  // hello:  1
+  // hello2: 1
   assert_eq!(http_routes.len(), 7);
   assert_eq!(
     http_routes
