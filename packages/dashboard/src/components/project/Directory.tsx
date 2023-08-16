@@ -63,10 +63,8 @@ function DirectoryTreeView() {
   };
 
   useEffect(() => {
-    const listCodeUrl =
-      "http://localhost:3457/list_code/cljb3ovlt0002e38vwo0xi5ge";
-    const deployCodeUrl =
-      "http://localhost:3457/deploy_code/cljb3ovlt0002e38vwo0xi5ge";
+    const listCodeUrl = "http://localhost:3457/list_code/8nvcym53y8d2";
+    const deployCodeUrl = "http://localhost:3457/deploy_code/8nvcym53y8d2";
     axios
       .get(listCodeUrl, {
         timeout: 4000,
@@ -91,8 +89,7 @@ function DirectoryTreeView() {
   const prevFileContent = useRef(defaultJsCode);
   useEffect(() => {
     const interval = setInterval(() => {
-      const deployCodeUrl =
-        "http://localhost:3457/deploy_code/cljb3ovlt0002e38vwo0xi5ge";
+      const deployCodeUrl = "http://localhost:3457/deploy_code/8nvcym53y8d2";
 
       if (curFileContent !== prevFileContent.current) {
         console.log("deploy_code: ", curFileContent);

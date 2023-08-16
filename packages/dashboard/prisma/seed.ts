@@ -13,7 +13,7 @@ async function main() {
         // fake organization
         organizationId: "fake",
         environments: {
-          create: [{ id: "cljb3ovlt0002e38vwo0xi5ge", name: "dev" }],
+          create: [{ id: "8nvcym53y8d2", name: "dev" }],
         },
       },
     });

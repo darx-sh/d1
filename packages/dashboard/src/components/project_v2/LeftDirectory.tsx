@@ -98,8 +98,7 @@ export default function LeftDirectory() {
       codes: { fs_path: string; content: string }[];
       http_routes: HttpRoute[];
     };
-    const listCodeUrl =
-      "http://localhost:3457/list_code/cljb3ovlt0002e38vwo0xi5ge";
+    const listCodeUrl = "http://localhost:3457/list_code/8nvcym53y8d2";
     const instance = axios.create();
     axiosRetry(instance, {
       retries: 100,
@@ -170,8 +169,7 @@ export default function LeftDirectory() {
     if (codeChanged) {
       setDeployingCode(true);
       // save code to server
-      const deployCodeUrl =
-        "http://localhost:3457/deploy_code/cljb3ovlt0002e38vwo0xi5ge";
+      const deployCodeUrl = "http://localhost:3457/deploy_code/8nvcym53y8d2";
       const codReq = codes.map((c) => {
         return { fs_path: c.fsPath, content: c.content };
       });

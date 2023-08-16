@@ -11,7 +11,7 @@ const DARX_FUNCTIONS_SUBDIR: &str = "functions";
 const DARX_LIB_SUBDIR: &str = "lib";
 
 // todo: used for mvp test only. will be removed in the future
-const MVP_TEST_ENV_ID: &str = "cljb3ovlt0002e38vwo0xi5ge";
+const MVP_TEST_ENV_ID: &str = "8nvcym53y8d2";
 
 pub async fn run_dev(root_dir: &str) -> Result<()> {
   let root_path = PathBuf::from(root_dir);
