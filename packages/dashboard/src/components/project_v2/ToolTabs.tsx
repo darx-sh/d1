@@ -4,6 +4,7 @@ import {
 } from "~/components/project_v2/ProjectContext";
 
 import { classNames } from "~/utils";
+import { CircleStackIcon } from "@heroicons/react/24/outline";
 
 export default function ToolTabs() {
   const projectState = useProjectState()!;
@@ -65,7 +66,12 @@ export default function ToolTabs() {
             });
           }}
         >
-          {tab.name}
+          <div className="flex flex-row items-center space-x-1">
+            {tab.name === "Database" ? (
+              <CircleStackIcon className="h-5 w-5" />
+            ) : null}
+            <p> {tab.name}</p>
+          </div>
         </a>
       ))}
     </nav>

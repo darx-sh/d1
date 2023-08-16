@@ -19,14 +19,14 @@ const myTheme = EditorView.theme({
 });
 
 export default function ToolContent() {
-  const projectState = useProjectState();
-  const projectDispatch = useProjectDispatch();
+  const projectState = useProjectState()!;
+  const projectDispatch = useProjectDispatch()!;
 
   const renderTabContent = (tabIdx: number) => {
-    const tab = projectState!.tabs[tabIdx]!;
+    const tab = projectState.tabs[tabIdx]!;
     switch (tab.type) {
       case "JsEditor": {
-        const code = projectState!.directory.codes[tab.codeIdx];
+        const code = projectState.directory.codes[tab.codeIdx];
         return (
           <div className="flex h-full justify-end space-x-2">
             <div className="flex-1">
@@ -36,7 +36,7 @@ export default function ToolContent() {
                 extensions={[javascript(), myTheme, EditorView.lineWrapping]}
                 onChange={(value, viewUpdate) => {
                   const t = tab as { type: "JsEditor"; codeIdx: number };
-                  projectDispatch!({
+                  projectDispatch({
                     type: "UpdateJsFile",
                     codeIdx: t.codeIdx,
                     content: value,
@@ -56,9 +56,9 @@ export default function ToolContent() {
     }
   };
 
-  return projectState!.curOpenTabIdx === null ? (
+  return projectState.curOpenTabIdx === null ? (
     <></>
   ) : (
-    renderTabContent(projectState!.curOpenTabIdx)
+    renderTabContent(projectState.curOpenTabIdx)
   );
 }
