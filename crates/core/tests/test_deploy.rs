@@ -10,7 +10,7 @@ use serial_test::serial;
 use std::env;
 use std::path::PathBuf;
 
-const TEST_ENV_ID: &str = "cljb3ovlt0002e38vwo0xi5ge";
+const TEST_ENV_ID: &str = "8nvcym53y8d2";
 
 #[serial]
 #[tokio::test]
@@ -124,7 +124,7 @@ async fn test_deploy_plugin() -> Result<()> {
     },
   ];
 
-  let (deploy_seq, final_codes, http_routes, txn) =
+  let (_deploy_seq, _final_codes, _http_routes, txn) =
     deploy_code(txn, TEST_ENV_ID, &codes, &vec![], &None, &None).await?;
 
   txn.commit().await.context("Failed to commit transaction")?;
@@ -132,7 +132,7 @@ async fn test_deploy_plugin() -> Result<()> {
   let envs_dir = envs_dir();
   init_deployments(envs_dir.as_path(), &db_pool).await?;
 
-  let (env_id, seq, r) =
+  let (env_id, _seq, r) =
     match_route(TEST_ENV_ID, "_plugins/schema/api", "POST")
       .expect("should match schema plugin url");
   assert_eq!(env_id, SYS_PLUGIN_SCHEMA_API_ENV_ID);

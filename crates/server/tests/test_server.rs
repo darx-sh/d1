@@ -12,7 +12,7 @@ use tracing_subscriber::prelude::__tracing_subscriber_SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::Layer;
 
-const ENV_ID: &str = "cljb3ovlt0002e38vwo0xi5ge";
+const ENV_ID: &str = "8nvcym53y8d2";
 const DATA: &str = "127.0.0.1:3456";
 const CONTROL: &str = "127.0.0.1:3457";
 

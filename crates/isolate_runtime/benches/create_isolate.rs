@@ -9,7 +9,7 @@ use tokio::time::Instant;
 
 use darx_isolate_runtime::DarxIsolate;
 
-const ENV_ID: &str = "cljb3ovlt0002e38vwo0xi5ge";
+const ENV_ID: &str = "8nvcym53y8d2";
 const DEPLOY_SEQ: i64 = 99;
 
 fn bench(c: &mut Criterion) {

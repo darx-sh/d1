@@ -30,13 +30,15 @@ export default function InvokeModal(props: InvokeModalProps) {
   const projectState = useProjectState()!;
   const projectDispatch = useProjectDispatch()!;
   const [postResult, setPostResult] = useState<string | null>(null);
-  const paramsRef = useRef<string>(projectState.directory.httpRoutes.filter((r) => {
-    return r.httpPath === props.httpRoute.httpPath;
-  })[0]!.curParams);
+  const paramsRef = useRef<string>(
+    projectState.directory.httpRoutes.filter((r) => {
+      return r.httpPath === props.httpRoute.httpPath;
+    })[0]!.curParams
+  );
   const functionUrl = `${env.NEXT_PUBLIC_DATA_PLANE_URL}/invoke/${props.httpRoute.httpPath}`;
   const url = new URL(functionUrl);
   // todo: hardcode env id for now.
-  const envId = "cljb3ovlt0002e38vwo0xi5ge";
+  const envId = "8nvcym53y8d2";
   let curlCommand = "";
   if (url.hostname === "localhost" || url.hostname === "127.0.0.1") {
     curlCommand = `curl -i -X POST -H "Content-Type: application/json" -H "Darx-Dev-Host: ${envId}.darx.sh" -d '${props.httpRoute.curParams}' ${functionUrl}`;
