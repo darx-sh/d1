@@ -2,7 +2,7 @@ use crate::api::ApiError;
 use crate::code::esm_parser::parse_module_export;
 use crate::env_vars::var::{Var, VarKind};
 use crate::env_vars::var_list::VarList;
-use crate::plugin::plugin_http_path;
+use crate::plugin::{plugin_http_path, plugin_project_id};
 use crate::route_builder::build_route;
 use crate::{unique_js_export, Code, HttpRoute, REGISTRY_FILE_NAME};
 use anyhow::{anyhow, Context, Result};
@@ -214,24 +214,18 @@ pub async fn list_code(
   Ok((codes, http_routes))
 }
 
-pub async fn deploy_plugin(
-  db_pool: &MySqlPool,
-  project_id: &str,
+pub async fn deploy_plugin<'c>(
+  mut txn: Transaction<'c, MySql>,
   env_id: &str,
   name: &str,
   codes: &Vec<Code>,
-) -> Result<String> {
-  let mut txn = db_pool
-    .begin()
-    .await
-    .context("Failed to start database transaction when create_plugin")?;
-
+) -> Result<(i64, Vec<Code>, Vec<HttpRoute>, Transaction<'c, MySql>)> {
   let plugin = sqlx::query!("SELECT id FROM plugins WHERE name = ?", name)
     .fetch_optional(&mut *txn)
     .await
     .context("Failed to query plugins table")?;
 
-  let plugin_id = if let Some(plugin) = plugin {
+  let _plugin_id = if let Some(plugin) = plugin {
     plugin.id
   } else {
     let plugin_id = new_nano_id();
@@ -249,7 +243,7 @@ pub async fn deploy_plugin(
       "INSERT INTO envs (id, name, project_id) VALUES (?, ?, ?)",
       env_id,
       name,
-      project_id,
+      plugin_project_id(name),
     )
     .execute(&mut *txn)
     .await
@@ -258,13 +252,7 @@ pub async fn deploy_plugin(
   };
 
   let vars = vec![];
-  let (_, _, _, txn) =
-    deploy_code(txn, env_id, codes, &vars, &None, &None).await?;
-  txn
-    .commit()
-    .await
-    .context("Failed to commit database transaction when create_plugin")?;
-  Ok(plugin_id)
+  deploy_code(txn, env_id, codes, &vars, &None, &None).await
 }
 
 pub async fn list_api(

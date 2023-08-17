@@ -176,7 +176,7 @@ export default function LeftDirectory() {
       axios
         .post(
           deployCodeUrl,
-          { codes: codReq },
+          { codes: codReq, vars: [] },
           { timeout: 2000, headers: { "Content-Type": "application/json" } }
         )
         .then((response) => {

@@ -61,7 +61,7 @@ pub async fn run_server(
         .wrap(cors)
         .app_data(Data::new(server_state.clone()))
         .route("/", get().to(|| async { "data plane healthy." }))
-        .route("/invoke/{func_url}", post().to(invoke_function))
+        .route("/invoke/{func_url:.*}", post().to(invoke_function))
         .route("/add_deployment", post().to(add_deployment))
       // .service(
       //   scope("/schema")
