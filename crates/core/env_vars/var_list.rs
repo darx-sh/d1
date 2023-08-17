@@ -6,11 +6,19 @@ use tracing::info;
 #[derive(Debug, PartialEq)]
 pub struct VarList {
   kind: VarKind,
+  // parent_id is env_id or deploy_id
   parent_id: String,
   vars: Vec<Var>,
 }
 
 impl VarList {
+  pub fn new_env_vars(env_id: &str, vars: &Vec<Var>) -> Self {
+    Self {
+      kind: VarKind::Env,
+      parent_id: env_id.to_string(),
+      vars: vars.clone(),
+    }
+  }
   pub fn env_to_deploy(mut self, deploy_id: &str) -> Self {
     assert_eq!(self.kind, VarKind::Env);
     self.kind = VarKind::Deploy;
@@ -31,7 +39,7 @@ impl VarList {
       return Ok(0);
     }
 
-    let (tbl, parent, _) = self.kind.tbl_col();
+    let (tbl, parent_name, _) = self.kind.tbl_col();
     let values = self
       .vars
       .iter()
@@ -42,7 +50,7 @@ impl VarList {
       .join(", ");
     let sql = format!(
       "insert into `{}` (`{}`, `key`, `value`) values {}",
-      tbl, parent, values
+      tbl, parent_name, values
     );
     let r = exe
       .execute(sql.as_str())

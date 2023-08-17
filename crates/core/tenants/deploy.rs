@@ -438,6 +438,13 @@ async fn find_deploy_dir(
         env_id, deploy_seq
       )
     })?;
+  if !path.exists() {
+    bail!(
+      "Deploy directory does not exist. env_id: {}, deploy_seq: {}",
+      env_id,
+      deploy_seq
+    );
+  }
   Ok(path)
 }
 

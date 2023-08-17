@@ -1,5 +1,5 @@
 use crate::env_vars::var::Var;
-use crate::{Code, HttpRoute};
+use crate::{Code, EnvKind, HttpRoute};
 use actix_web::http::header::ContentType;
 use actix_web::http::StatusCode;
 use actix_web::web::Json;
@@ -35,6 +35,17 @@ pub struct DeployCodeReq {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DeployCodeRsp {
   pub http_routes: Vec<HttpRoute>,
+}
+
+///
+/// deploy_plugin
+///
+#[derive(Serialize, Deserialize)]
+pub struct DeployPluginReq {
+  pub name: String,
+  pub env_kind: EnvKind,
+  pub codes: Vec<Code>,
+  pub vars: Vec<Var>,
 }
 
 ///
@@ -171,10 +182,35 @@ impl ResponseError for ApiError {
   }
 }
 
-pub async fn dir_to_deploy_req(
+pub async fn dir_to_deploy_code_req(
   dir: &Path,
   vars: Vec<Var>,
 ) -> anyhow::Result<DeployCodeReq> {
+  let codes = collect_code(dir).await?;
+  let req = DeployCodeReq {
+    tag: None,
+    desc: None,
+    codes,
+    vars,
+  };
+  Ok(req)
+}
+
+pub async fn dir_to_deploy_plugin_req(
+  plugin_name: &str,
+  dir: &Path,
+) -> anyhow::Result<DeployPluginReq> {
+  let codes = collect_code(dir).await?;
+  let req = DeployPluginReq {
+    name: plugin_name.to_string(),
+    env_kind: EnvKind::Dev,
+    codes,
+    vars: vec![],
+  };
+  Ok(req)
+}
+
+async fn collect_code(dir: &Path) -> anyhow::Result<Vec<Code>> {
   let mut file_list_path_vec = vec![];
   collect_js_file_list(&mut file_list_path_vec, dir).await?;
   let fs_path_str_vec = file_list_path_vec
@@ -207,14 +243,7 @@ pub async fn dir_to_deploy_req(
       );
     }
   }
-  let req = DeployCodeReq {
-    tag: None,
-    desc: None,
-    codes,
-    vars,
-  };
-
-  Ok(req)
+  Ok(codes)
 }
 
 #[async_recursion]

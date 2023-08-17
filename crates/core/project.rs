@@ -1,3 +1,4 @@
+use crate::env_vars::{Var, VarList};
 use anyhow::{Context, Result};
 use darx_db::setup_tenant_db;
 use darx_db::TenantDBInfo;
@@ -26,6 +27,7 @@ pub async fn new_project(
 
   let env_id = new_env(project_id.as_str(), "dev", conn).await?;
   new_env_db(&mut txn, env_id.as_str()).await?;
+  set_default_env_vars(&mut txn, env_id.as_str()).await?;
   txn.commit().await?;
   Ok((project_id, env_id))
 }
@@ -70,4 +72,16 @@ async fn new_env_db<'c>(
     database: db_name.clone(),
   };
   setup_tenant_db(conn, env_id, &db_info).await
+}
+
+async fn set_default_env_vars(
+  conn: &mut MySqlConnection,
+  env_id: &str,
+) -> Result<()> {
+  let var_list = VarList::new_env_vars(
+    env_id,
+    &vec![Var::new("DX_DB_NAME", format!("dx_{}", env_id).as_str())],
+  );
+  var_list.save(conn).await?;
+  Ok(())
 }

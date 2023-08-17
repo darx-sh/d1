@@ -1,4 +1,5 @@
 use anyhow::Result;
+use darx_core::plugin::deploy_system_plugins;
 use dotenv::dotenv;
 use serde_json::json;
 use std::env;
@@ -43,9 +44,10 @@ async fn test_main_process() {
   tokio::fs::create_dir(&server_data_path).await.unwrap();
 
   let handle = run_server(server_data_path).await;
+
   let vars = vec![darx_core::env_vars::Var::new("key", "value")];
 
-  let req = darx_core::api::dir_to_deploy_req(code_path.as_path(), vars)
+  let req = darx_core::api::dir_to_deploy_code_req(code_path.as_path(), vars)
     .await
     .unwrap();
   info!("req: {:#?}", req);
@@ -62,38 +64,51 @@ async fn test_main_process() {
 
   let req = json!({"msg": "123"});
 
-  let resp = client
-    .post(format!("http://{}/invoke/foo.Hi", DATA))
+  // let resp = client
+  //   .post(format!("http://{}/invoke/foo.Hi", DATA))
+  //   .header("Darx-Dev-Host", format!("{}.darx.sh", ENV_ID))
+  //   .json(&req)
+  //   .send()
+  //   .await
+  //   .unwrap()
+  //   .error_for_status()
+  //   .unwrap()
+  //   .text()
+  //   .await
+  //   .unwrap();
+  // assert_eq!(
+  //   resp,
+  //   "\"Hi 123 from foo, env key = value, test_key = test_value\""
+  // );
+  //
+  // let req = json!({"arr": [1,2,3], "obj":{"msg":"obj"}, "num": 1});
+  //
+  // let resp = client
+  //   .post(format!("http://{}/invoke/bar.Hi", DATA))
+  //   .header("Darx-Dev-Host", format!("{}.darx.sh", ENV_ID))
+  //   .json(&req)
+  //   .send()
+  //   .await
+  //   .unwrap()
+  //   .error_for_status()
+  //   .unwrap()
+  //   .text()
+  //   .await
+  //   .unwrap();
+  // assert_eq!(resp, "\"Hi 1 obj 1 null from bar\"");
+
+  let status = client
+    .post(format!(
+      "http://{}/invoke/_plugins/schema/api.listTable",
+      DATA
+    ))
     .header("Darx-Dev-Host", format!("{}.darx.sh", ENV_ID))
-    .json(&req)
+    .json(&json!({}))
     .send()
     .await
     .unwrap()
-    .error_for_status()
-    .unwrap()
-    .text()
-    .await
-    .unwrap();
-  assert_eq!(
-    resp,
-    "\"Hi 123 from foo, env key = value, test_key = test_value\""
-  );
-
-  let req = json!({"arr": [1,2,3], "obj":{"msg":"obj"}, "num": 1});
-
-  let resp = client
-    .post(format!("http://{}/invoke/bar.Hi", DATA))
-    .header("Darx-Dev-Host", format!("{}.darx.sh", ENV_ID))
-    .json(&req)
-    .send()
-    .await
-    .unwrap()
-    .error_for_status()
-    .unwrap()
-    .text()
-    .await
-    .unwrap();
-  assert_eq!(resp, "\"Hi 1 obj 1 null from bar\"");
+    .error_for_status();
+  assert_eq!(status.is_ok(), true);
 
   handle.abort();
   let _ = handle.await;

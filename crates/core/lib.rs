@@ -11,6 +11,23 @@ pub mod tenants;
 pub use project::new_project;
 
 #[derive(Debug, Serialize, Deserialize)]
+pub enum EnvKind {
+  #[serde(rename = "dev")]
+  Dev,
+  #[serde(rename = "prod")]
+  Prod,
+}
+
+impl EnvKind {
+  pub fn as_str(&self) -> &str {
+    match self {
+      EnvKind::Dev => "dev",
+      EnvKind::Prod => "prod",
+    }
+  }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Code {
   pub fs_path: String,
   pub content: String,
