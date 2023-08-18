@@ -5,8 +5,9 @@ use actix_web::{
   App, HttpRequest, HttpResponse, HttpResponseBuilder, HttpServer,
 };
 use anyhow::{Context, Result};
+use darx_core::api::AddVarDeployReq;
 use darx_core::tenants;
-use darx_core::{api::AddDeploymentReq, api::ApiError};
+use darx_core::{api::AddCodeDeployReq, api::ApiError};
 use serde_json;
 use std::env;
 use std::net::SocketAddr;
@@ -43,7 +44,7 @@ pub async fn run_server(
   .await
   .context("Failed to connect database")?;
 
-  tenants::init_deployments(envs_dir.as_path(), &db_pool)
+  tenants::init_deploys(envs_dir.as_path(), &db_pool)
     .await
     .context("Failed to init deployments on startup")?;
 
@@ -62,15 +63,8 @@ pub async fn run_server(
         .app_data(Data::new(server_state.clone()))
         .route("/", get().to(|| async { "data plane healthy." }))
         .route("/invoke/{func_url:.*}", post().to(invoke_function))
-        .route("/add_deployment", post().to(add_deployment))
-      // .service(
-      //   scope("/schema")
-      //     .route("/create_table", post().to(create_table))
-      //     .route("/drop_table", post().to(drop_table))
-      //     .route("/add_column", post().to(add_column))
-      //     .route("/drop_column", post().to(drop_column))
-      //     .route("/rename_column", post().to(rename_column)),
-      // )
+        .route("/add_code_deploy", post().to(add_code_deploy))
+        .route("/add_var_deploy", post().to(add_var_deploy))
     })
     .bind(&socket_addr)?
     .run(),
@@ -87,6 +81,8 @@ async fn invoke_function(
   let host = conn.host();
   let env_id = try_extract_env_id(host, &http_req)?;
   let func_url = func_url.into_inner();
+
+  tracing::info!("invoke_function: {}, env_id: {}", func_url, env_id);
 
   let (env_id, deploy_seq, route) =
     tenants::match_route(env_id.as_str(), func_url.as_str(), "POST").ok_or(
@@ -108,11 +104,11 @@ async fn invoke_function(
   Ok(Json(ret))
 }
 
-async fn add_deployment(
+async fn add_code_deploy(
   server_state: Data<Arc<ServerState>>,
-  Json(req): Json<AddDeploymentReq>,
+  Json(req): Json<AddCodeDeployReq>,
 ) -> Result<HttpResponseBuilder, ApiError> {
-  tenants::add_deployment(
+  tenants::add_code_deploy(
     server_state.envs_dir.as_path(),
     req.env_id.as_str(),
     req.deploy_seq,
@@ -120,6 +116,14 @@ async fn add_deployment(
     &req.http_routes,
   )
   .await?;
+  Ok(HttpResponse::Ok())
+}
+
+async fn add_var_deploy(
+  Json(req): Json<AddVarDeployReq>,
+) -> Result<HttpResponseBuilder, ApiError> {
+  tenants::add_var_deploy(req.env_id.as_str(), req.deploy_seq, &req.vars)
+    .await?;
   Ok(HttpResponse::Ok())
 }
 

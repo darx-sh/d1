@@ -18,12 +18,6 @@ pub struct TenantDBInfo {
 /// It is just a simple [`MySqlPool`].
 pub struct MySqlTenantPool(pub MySqlPool);
 
-// impl MySqlTenantPool {
-//   pub fn inner(&self) -> &MySqlPool {
-//     &(self.0)
-//   }
-// }
-
 impl Deref for MySqlTenantPool {
   type Target = MySqlPool;
 
@@ -35,16 +29,6 @@ impl Deref for MySqlTenantPool {
 impl DerefMut for MySqlTenantPool {
   fn deref_mut(&mut self) -> &mut Self::Target {
     &mut self.0
-  }
-}
-
-pub fn test_tenant_db_info(env_id: &str) -> TenantDBInfo {
-  TenantDBInfo {
-    host: "localhost".to_string(),
-    port: 3306,
-    user: env_id.to_string(),
-    password: env_id.to_string(),
-    database: format!("dx_{}", env_id),
   }
 }
 

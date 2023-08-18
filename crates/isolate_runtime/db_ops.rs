@@ -1,4 +1,5 @@
 use crate::EnvId;
+use anyhow::anyhow;
 use darx_db::{
   add_column_sql, create_table_sql, drop_column_sql, drop_table_sql,
   get_tenant_pool, rename_column_sql, DDLReq, TenantConnPool,
@@ -8,6 +9,7 @@ use deno_core::{op, ResourceId};
 use deno_core::{OpState, Resource};
 use std::borrow::Cow;
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::rc::Rc;
 
 deno_core::extension!(
@@ -17,6 +19,7 @@ deno_core::extension!(
     op_use_db,
     op_db_execute,
     op_ddl,
+    op_var_get,
     // op_select_statement,
     // op_select_from,
     // op_select_columns,
@@ -38,12 +41,11 @@ pub async fn op_use_db(
   op_state: Rc<RefCell<OpState>>,
 ) -> Result<ResourceId, AnyError> {
   let env_id = op_state.borrow().borrow::<EnvId>().clone();
-
   let r = get_tenant_pool(env_id.0.as_str()).await;
   match r {
     Err(e) => {
       tracing::error!("useDB error: {}", e);
-      Err(e)
+      Err(anyhow!("useDB error: {}", e))
     }
     Ok(conn) => {
       let rid = op_state.borrow_mut().resource_table.add(ConnResource(conn));
@@ -84,6 +86,12 @@ pub async fn op_ddl(
     DDLReq::RenameColumn(req) => rename_column_sql(&req),
   }?;
   conn.js_execute(sql.as_str(), vec![]).await
+}
+
+#[op]
+pub fn op_var_get(op_state: &mut OpState, key: String) -> Option<String> {
+  let vars = op_state.borrow::<HashMap<String, String>>();
+  vars.get(&key).cloned()
 }
 
 // struct SelectStatementResource(RefCell<SelectStatement>);

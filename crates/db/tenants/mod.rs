@@ -13,8 +13,7 @@ pub use ddl::{
   rename_column_sql,
 };
 pub use pool::{
-  add_tenant_db_info, get_tenant_pool, test_tenant_db_info, MySqlTenantPool,
-  TenantDBInfo,
+  add_tenant_db_info, get_tenant_pool, MySqlTenantPool, TenantDBInfo,
 };
 
 #[async_trait]

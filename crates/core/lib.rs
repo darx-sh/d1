@@ -8,7 +8,10 @@ mod project;
 mod route_builder;
 pub mod tenants;
 
-pub use project::new_project;
+pub use project::new_tenant_project;
+
+pub type DeployId = String;
+pub type DeploySeq = i64;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum EnvKind {

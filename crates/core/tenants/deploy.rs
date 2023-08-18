@@ -1,25 +1,27 @@
+use anyhow::{bail, Context, Result};
+use dashmap::DashMap;
+use deno_core::{serde_v8, v8};
+use futures::TryStreamExt;
+use once_cell::sync::Lazy;
+use patricia_tree::StringPatriciaMap;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::time::Duration;
-
-use anyhow::{bail, Context, Result};
-use dashmap::DashMap;
-use deno_core::{serde_v8, v8};
-use once_cell::sync::Lazy;
-use patricia_tree::StringPatriciaMap;
 use tokio::fs;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 use tokio::time::Instant;
 use tracing::{debug, info};
 
-use darx_isolate_runtime::DarxIsolate;
+use darx_isolate_runtime::{build_snapshot, DarxIsolate};
 
 use crate::api::ApiError;
 use crate::tenants::cache::LruCache;
-use crate::{plugin, unique_js_export, Code, HttpRoute, REGISTRY_FILE_NAME};
+use crate::{
+  plugin, unique_js_export, Code, DeploySeq, HttpRoute, REGISTRY_FILE_NAME,
+};
 
 //TODO lru size should be configured
 type SnapshotCache = LruCache<PathBuf, Box<[u8]>, 100>;
@@ -29,20 +31,29 @@ thread_local! {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct DeploymentRoute {
+pub(crate) struct RouteDeploy {
   pub env_id: String,
-  pub deploy_seq: i64,
+  pub deploy_seq: DeploySeq,
   pub http_routes: StringPatriciaMap<HttpRoute>,
 }
 
-static GLOBAL_ROUTER: Lazy<DashMap<String, Vec<DeploymentRoute>>> =
+pub(crate) struct VarDeploy {
+  pub env_id: String,
+  pub deploy_seq: DeploySeq,
+  pub vars: HashMap<String, String>,
+}
+
+static GLOBAL_ROUTER: Lazy<DashMap<String, Vec<RouteDeploy>>> =
+  Lazy::new(DashMap::new);
+
+static GLOBAL_VARS: Lazy<DashMap<String, Vec<VarDeploy>>> =
   Lazy::new(DashMap::new);
 
 static PLUGIN_REGISTRY: Lazy<DashMap<String, String>> = Lazy::new(DashMap::new);
 
 pub(crate) const SNAPSHOT_FILE: &str = "SNAPSHOT.bin";
 
-pub async fn add_deployment(
+pub async fn add_code_deploy(
   envs_dir: &Path,
   env_id: &str,
   deploy_seq: i64,
@@ -52,19 +63,17 @@ pub async fn add_deployment(
   let code_cnt = codes.len();
   let route_cnt = http_routes.len();
 
-  let mut deployment_route = DeploymentRoute {
+  let mut routes = RouteDeploy {
     env_id: env_id.to_string(),
     deploy_seq,
     http_routes: Default::default(),
   };
 
   for r in http_routes {
-    deployment_route
-      .http_routes
-      .insert(r.http_path.clone(), r.clone());
+    routes.http_routes.insert(r.http_path.clone(), r.clone());
   }
   add_code_files(env_id, deploy_seq, envs_dir, codes).await?;
-  add_route(deployment_route);
+  add_route(routes);
 
   info!(
     env = env_id,
@@ -76,19 +85,38 @@ pub async fn add_deployment(
   Ok(())
 }
 
-pub async fn init_deployments(
+pub async fn add_var_deploy(
+  env_id: &str,
+  deploy_seq: DeploySeq,
+  vars: &HashMap<String, String>,
+) -> Result<()> {
+  let vars = VarDeploy {
+    env_id: env_id.to_string(),
+    deploy_seq,
+    vars: vars.clone(),
+  };
+
+  let mut entry = GLOBAL_VARS
+    .entry(env_id.to_string())
+    .or_insert_with(|| Vec::new());
+  // newest deploy_seq stores in the front of the array
+  entry.insert(0, vars);
+  entry.sort_by(|a, b| b.deploy_seq.cmp(&a.deploy_seq));
+  Ok(())
+}
+
+pub async fn init_deploys(
   envs_dir: &Path,
   pool: &sqlx::MySqlPool,
 ) -> Result<()> {
-  let plugins = sqlx::query!("SELECT env_id, name FROM plugins")
-    .fetch_all(pool)
-    .await
-    .context("Failed to load plugins from db")?;
-  for plugin in plugins.iter() {
+  let mut plugins =
+    sqlx::query!("SELECT env_id, name FROM plugins").fetch(pool);
+  while let Some(plugin) = plugins.try_next().await? {
     PLUGIN_REGISTRY.insert(plugin.name.clone(), plugin.env_id.clone());
   }
 
-  let deployments = sqlx::query!(
+  // setup GLOBAL_ROUTER
+  let mut deploys = sqlx::query!(
     "\
     SELECT \
         deploys.id AS deploy_id, \
@@ -102,11 +130,8 @@ pub async fn init_deployments(
         http_routes.func_sig AS func_sig \
     FROM deploys INNER JOIN http_routes ON http_routes.deploy_id = deploys.id"
   )
-  .fetch_all(pool)
-  .await
-  .context("Failed to load deploys from db")?;
-
-  for deploy in deployments.iter() {
+  .fetch(pool);
+  while let Some(deploy) = deploys.try_next().await? {
     let http_route = HttpRoute {
       http_path: deploy.http_path.clone(),
       js_entry_point: deploy.js_entry_point.clone(),
@@ -116,15 +141,11 @@ pub async fn init_deployments(
       func_sig: serde_json::from_value(deploy.func_sig.clone())
         .context("Failed to extract func_sig")?,
     };
-
-    add_single_http_route(
-      deploy.env_id.as_str(),
-      deploy.deploy_seq,
-      http_route,
-    );
+    add_one_http_route(deploy.env_id.as_str(), deploy.deploy_seq, http_route);
   }
 
-  let codes = sqlx::query!(
+  // setup source code and snapshot in file system.
+  let mut codes = sqlx::query!(
     "SELECT \
             deploys.env_id AS env_id, \
             deploys.deploy_seq AS deploy_seq, \
@@ -134,16 +155,11 @@ pub async fn init_deployments(
         FROM \
             codes INNER JOIN deploys ON deploys.id = codes.deploy_id"
   )
-  .fetch_all(pool)
-  .await
-  .context("Failed to load codes from db")?;
-
-  let mut map: HashMap<(&str, i64), Vec<Code>> =
-    HashMap::with_capacity(codes.len());
-
-  for code in codes.iter() {
+  .fetch(pool);
+  let mut map: HashMap<(String, DeploySeq), Vec<Code>> = HashMap::new();
+  while let Some(code) = codes.try_next().await? {
     map
-      .entry((code.env_id.as_str(), code.deploy_seq))
+      .entry((code.env_id.to_string(), code.deploy_seq))
       .or_default()
       .push(Code {
         fs_path: code.fs_path.clone(),
@@ -164,6 +180,25 @@ pub async fn init_deployments(
     }
 
     add_snapshot(envs_dir, env_id, *deploy_seq).await?;
+  }
+
+  // setup GLOBAL_VARS
+  let mut vars = sqlx::query!(
+    "SELECT \
+            deploys.env_id AS env_id, \
+            deploys.deploy_seq AS deploy_seq, \
+            deploy_vars.key AS `key`, \
+            deploy_vars.value AS value \
+        FROM \
+            deploy_vars INNER JOIN deploys ON deploys.id = deploy_vars.deploy_id"
+  ).fetch(pool);
+  while let Some(row) = vars.try_next().await? {
+    add_one_var(
+      row.env_id.as_str(),
+      row.deploy_seq,
+      row.key.as_str(),
+      row.value.as_str(),
+    );
   }
   Ok(())
 }
@@ -208,6 +243,20 @@ pub fn match_route(
   }
 }
 
+///
+/// [`find_vars`] returns the vars for the given env_id and code's deploy_seq.
+/// The returned vars has the highest deploy_seq.
+///
+pub fn find_vars(env_id: &str) -> Option<HashMap<String, String>> {
+  if let Some(entry) = GLOBAL_VARS.get(env_id) {
+    if let Some(v) = entry.get(0) {
+      return Some(v.vars.clone());
+    }
+    return None;
+  }
+  None
+}
+
 pub async fn invoke_function(
   envs_dir: &Path,
   env_id: &str,
@@ -236,20 +285,24 @@ pub async fn invoke_function(
     cached.unwrap().clone()
   };
 
-  let mut isolate =
-    DarxIsolate::new_with_snapshot(env_id, deploy_seq, &deploy_dir, snapshot)
-      .await;
+  let vars = find_vars(env_id).unwrap_or_default();
+  let mut isolate = DarxIsolate::new_with_snapshot(
+    env_id,
+    deploy_seq,
+    &vars,
+    &deploy_dir,
+    snapshot,
+  )
+  .await;
 
+  let source_code = invoking_code(
+    unique_js_export(js_entry_point, js_export),
+    param_names.clone(),
+    req,
+  )?;
   let script_result = isolate
     .js_runtime
-    .execute_script(
-      "invoke_function",
-      invoking_code(
-        unique_js_export(js_entry_point, js_export),
-        param_names.clone(),
-        req,
-      )?,
-    )
+    .execute_script("invoke_function", source_code)
     .map_err(ApiError::Internal)?;
 
   let script_result = isolate.js_runtime.resolve_value(script_result);
@@ -270,9 +323,10 @@ pub async fn invoke_function(
   Ok(script_result)
 }
 
-fn add_route(route: DeploymentRoute) {
+fn add_route(route: RouteDeploy) {
   let env_id = route.env_id.clone();
   let mut entry = GLOBAL_ROUTER.entry(env_id).or_insert_with(|| Vec::new());
+  // newest deploy_seq stores in the front of the array
   entry.insert(0, route.clone());
   entry.sort_by(|a, b| b.deploy_seq.cmp(&a.deploy_seq));
 }
@@ -320,31 +374,9 @@ async fn add_snapshot(
 ) -> Result<()> {
   let deploy_dir =
     setup_deploy_dir(envs_dir.as_ref(), env_id, deploy_seq).await?;
-  let mut js_runtime = DarxIsolate::prepare_snapshot(&deploy_dir).await?;
-  let registry_file = deploy_dir.join(REGISTRY_FILE_NAME);
-  if !registry_file.exists() {
-    tracing::error!(
-      env = env_id,
-      seq = deploy_seq,
-      "file {} does not exist",
-      REGISTRY_FILE_NAME,
-    );
-    bail!("file {} does not exist", REGISTRY_FILE_NAME);
-  }
-
-  let module_id = js_runtime
-    .load_side_module(
-      &deno_core::resolve_path(REGISTRY_FILE_NAME, &deploy_dir)?,
-      None,
-    )
-    .await?;
-
-  let receiver = js_runtime.mod_evaluate(module_id);
-  js_runtime.run_event_loop(false).await?;
-  let _ = receiver.await?;
-
   let mut mark = Instant::now();
-  let snapshot = js_runtime.snapshot();
+  let snapshot =
+    build_snapshot(deploy_dir.as_path(), REGISTRY_FILE_NAME).await?;
   let snapshot_slice: &[u8] = &snapshot;
 
   info!(
@@ -372,7 +404,7 @@ async fn add_snapshot(
   Ok(())
 }
 
-fn add_single_http_route(env_id: &str, deploy_seq: i64, route: HttpRoute) {
+fn add_one_http_route(env_id: &str, deploy_seq: i64, route: HttpRoute) {
   let mut entry = GLOBAL_ROUTER
     .entry(env_id.to_string())
     .or_insert_with(|| Vec::new());
@@ -383,12 +415,35 @@ fn add_single_http_route(env_id: &str, deploy_seq: i64, route: HttpRoute) {
   {
     deploy.http_routes.insert(route.http_path.clone(), route);
   } else {
-    let mut d = DeploymentRoute {
+    let mut d = RouteDeploy {
       env_id: env_id.to_string(),
       deploy_seq,
       http_routes: StringPatriciaMap::new(),
     };
     d.http_routes.insert(route.http_path.clone(), route);
+    entry.push(d);
+  }
+
+  entry.sort_by(|a, b| b.deploy_seq.cmp(&a.deploy_seq));
+}
+
+fn add_one_var(env_id: &str, deploy_seq: DeploySeq, key: &str, value: &str) {
+  let mut entry = GLOBAL_VARS
+    .entry(env_id.to_string())
+    .or_insert_with(|| Vec::new());
+
+  if let Some(deploy) = entry
+    .iter_mut()
+    .find(|deploy| deploy.deploy_seq == deploy_seq)
+  {
+    deploy.vars.insert(key.to_string(), value.to_string());
+  } else {
+    let mut d = VarDeploy {
+      env_id: env_id.to_string(),
+      deploy_seq,
+      vars: HashMap::new(),
+    };
+    d.vars.insert(key.to_string(), value.to_string());
     entry.push(d);
   }
 

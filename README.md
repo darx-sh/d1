@@ -11,11 +11,15 @@ cp .env.server.example .env.server
 
 # 3. prepare database
 # Change DATABASE_URL in .env.server to use your own database
-# and execute database migrations 
+# and execute database migrations
 atlas schema apply -u "mysql://root:12345678@localhost:3306/darx_control" --to file://crates/control_plane/schema.hcl
 
 # 4. start server
 pnpm run dev:s
+
+# 5. install plugins
+cargo run -p darx_client deploy -p schema -d ./plugins/schema
+cargo run -p darx_client deploy -p schema -d ./plugins/table
 
 # 5. start dashboard
 pnpm run dev:d

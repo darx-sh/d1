@@ -3,14 +3,16 @@ use actix_web::dev::Server;
 use actix_web::web::{get, post, Data, Json, Path};
 use actix_web::{App, HttpResponse, HttpResponseBuilder, HttpServer};
 use anyhow::{anyhow, Context, Result};
+use std::collections::HashMap;
 use std::env;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tracing_actix_web::TracingLogger;
 
 use darx_core::api::{
-  add_deployment_url, AddDeploymentReq, ApiError, DeployCodeReq, DeployCodeRsp,
-  DeployPluginReq, ListApiRsp, ListCodeRsp, NewProjectReq, NewProjectRsp,
+  add_code_deploy_url, add_var_deploy_url, AddCodeDeployReq, AddVarDeployReq,
+  ApiError, DeployCodeReq, DeployCodeRsp, DeployPluginReq, DeployVarReq,
+  ListApiRsp, ListCodeRsp, NewProjectReq, NewProjectRsp,
 };
 use darx_core::code::control;
 use darx_core::plugin::plugin_env_id;
@@ -41,6 +43,7 @@ pub async fn run_server(socket_addr: SocketAddr) -> Result<Server> {
         .route("/", get().to(|| async { "control plane healthy." }))
         .route("/deploy_code/{env_id}", post().to(deploy_code))
         .route("/list_code/{env_id}", get().to(list_code))
+        .route("/deploy_var/{env_id}", post().to(deploy_var))
         .route("/list_api/{env_id}", get().to(list_api))
         .route("/deploy_plugin/{plugin_name}", post().to(deploy_plugin))
         .route("/new_project", post().to(new_project))
@@ -60,36 +63,29 @@ async fn deploy_code(
     .begin()
     .await
     .context("Failed to start transaction")?;
-  let (deploy_seq, codes, http_routes, txn) = control::deploy_code(
-    txn,
-    env_id.as_str(),
-    &req.codes,
-    &req.vars,
-    &req.tag,
-    &req.desc,
-  )
-  .await?;
+  let (deploy_seq, codes, http_routes, txn) =
+    control::deploy_code(txn, env_id.as_str(), &req.codes, &req.tag, &req.desc)
+      .await?;
 
-  let req = AddDeploymentReq {
+  let req = AddCodeDeployReq {
     env_id: env_id.to_string(),
     deploy_seq,
     codes,
     http_routes: http_routes.clone(),
   };
-  let url = add_deployment_url();
+  let url = add_code_deploy_url();
   let rsp = reqwest::Client::new()
     .post(url)
     .json(&req)
     .send()
     .await
-    .context("Failed to send add deployment request")?;
+    .context("Failed to send add_code_deploy request")?;
   if !rsp.status().is_success() {
     return Err(ApiError::Internal(anyhow!(
       "Failed to add deployment: {}",
       rsp.text().await.unwrap()
     )));
   }
-
   txn
     .commit()
     .await
@@ -105,6 +101,49 @@ async fn list_code(
   let (codes, http_routes) =
     control::list_code(db_pool, env_id.as_str()).await?;
   Ok(Json(ListCodeRsp { codes, http_routes }))
+}
+
+async fn deploy_var(
+  server_state: Data<Arc<ServerState>>,
+  env_id: Path<String>,
+  req: Json<DeployVarReq>,
+) -> Result<HttpResponseBuilder, ApiError> {
+  let txn = server_state
+    .db_pool
+    .begin()
+    .await
+    .context("Failed to start transaction")?;
+
+  let (deploy_seq, vars, txn) =
+    control::deploy_var(txn, env_id.as_str(), &req.vars, &req.desc).await?;
+
+  let vars: HashMap<_, _> = vars
+    .into_iter()
+    .map(|item| (item.key().to_string(), item.val().to_string()))
+    .collect();
+  let req = AddVarDeployReq {
+    env_id: env_id.to_string(),
+    deploy_seq,
+    vars,
+  };
+  let url = add_var_deploy_url();
+  let rsp = reqwest::Client::new()
+    .post(url)
+    .json(&req)
+    .send()
+    .await
+    .context("Failed to send add_var_deploy request")?;
+  if !rsp.status().is_success() {
+    return Err(ApiError::Internal(anyhow!(
+      "Failed to add var deploy: {}",
+      rsp.text().await.unwrap()
+    )));
+  }
+  txn
+    .commit()
+    .await
+    .context("Failed to commit transaction when deploy_var")?;
+  Ok(HttpResponse::Ok())
 }
 
 async fn list_api(
@@ -129,13 +168,13 @@ async fn deploy_plugin(
   let (deploy_seq, codes, http_routes, txn) =
     control::deploy_plugin(txn, env_id.as_str(), req.name.as_str(), &req.codes)
       .await?;
-  let req = AddDeploymentReq {
+  let req = AddCodeDeployReq {
     env_id: env_id.to_string(),
     deploy_seq,
     codes,
     http_routes: http_routes.clone(),
   };
-  let url = add_deployment_url();
+  let url = add_code_deploy_url();
   let rsp = reqwest::Client::new()
     .post(url)
     .json(&req)
@@ -162,7 +201,7 @@ async fn new_project(
   req: Json<NewProjectReq>,
 ) -> Result<Json<NewProjectRsp>, ApiError> {
   let db_pool = &server_state.db_pool;
-  let (project_id, env_id) = darx_core::new_project(
+  let (project_id, env_id) = darx_core::new_tenant_project(
     db_pool,
     req.org_id.as_str(),
     req.project_name.as_str(),

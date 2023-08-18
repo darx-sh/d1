@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 use criterion::{
@@ -36,6 +37,7 @@ async fn raw() {
   let mut isolate = DarxIsolate::new(
     ENV_ID,
     DEPLOY_SEQ,
+    &Default::default(),
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
       .join(format!("tests/data/{}/{}", ENV_ID, DEPLOY_SEQ)),
   );
