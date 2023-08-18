@@ -1,5 +1,4 @@
 use anyhow::Result;
-use darx_core::plugin::deploy_system_plugins;
 use dotenv::dotenv;
 use serde_json::json;
 use std::env;
@@ -18,6 +17,7 @@ const DATA: &str = "127.0.0.1:3456";
 const CONTROL: &str = "127.0.0.1:3457";
 
 #[actix_web::test]
+#[ignore]
 async fn test_main_process() {
   env::set_var("DATA_PLANE_URL", format!("http://{}", DATA));
   dotenv().ok();

@@ -1,4 +1,5 @@
 use crate::EnvId;
+use anyhow::anyhow;
 use darx_db::{
   add_column_sql, create_table_sql, drop_column_sql, drop_table_sql,
   get_tenant_pool, rename_column_sql, DDLReq, TenantConnPool,
@@ -38,12 +39,11 @@ pub async fn op_use_db(
   op_state: Rc<RefCell<OpState>>,
 ) -> Result<ResourceId, AnyError> {
   let env_id = op_state.borrow().borrow::<EnvId>().clone();
-
   let r = get_tenant_pool(env_id.0.as_str()).await;
   match r {
     Err(e) => {
       tracing::error!("useDB error: {}", e);
-      Err(e)
+      Err(anyhow!("useDB error: {}", e))
     }
     Ok(conn) => {
       let rid = op_state.borrow_mut().resource_table.add(ConnResource(conn));

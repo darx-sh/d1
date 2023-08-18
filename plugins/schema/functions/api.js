@@ -4,8 +4,8 @@ export async function ddl(req) {
 }
 
 export async function listTable() {
-  return "hi listTable";
-  //   const db = await useDB();
+  const db = await useDB();
+  return "hi";
   //   return await db.execute(`\
   // SELECT
   //   TABLE_NAME AS table,

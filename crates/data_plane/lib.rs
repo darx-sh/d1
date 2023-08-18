@@ -63,14 +63,6 @@ pub async fn run_server(
         .route("/", get().to(|| async { "data plane healthy." }))
         .route("/invoke/{func_url:.*}", post().to(invoke_function))
         .route("/add_deployment", post().to(add_deployment))
-      // .service(
-      //   scope("/schema")
-      //     .route("/create_table", post().to(create_table))
-      //     .route("/drop_table", post().to(drop_table))
-      //     .route("/add_column", post().to(add_column))
-      //     .route("/drop_column", post().to(drop_column))
-      //     .route("/rename_column", post().to(rename_column)),
-      // )
     })
     .bind(&socket_addr)?
     .run(),
@@ -87,6 +79,8 @@ async fn invoke_function(
   let host = conn.host();
   let env_id = try_extract_env_id(host, &http_req)?;
   let func_url = func_url.into_inner();
+
+  tracing::info!("invoke_function: {}, env_id: {}", func_url, env_id);
 
   let (env_id, deploy_seq, route) =
     tenants::match_route(env_id.as_str(), func_url.as_str(), "POST").ok_or(

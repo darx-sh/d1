@@ -51,6 +51,8 @@ pub async fn deploy_code<'c>(
   .context("Failed to find env")?
   .ok_or(ApiError::EnvNotFound(env_id.to_string()))?;
 
+  let deploy_seq = env.next_deploy_seq;
+
   sqlx::query!(
     "UPDATE envs SET next_deploy_seq = next_deploy_seq + 1 WHERE id = ?",
     env_id
@@ -59,7 +61,6 @@ pub async fn deploy_code<'c>(
   .await
   .context("Failed to update envs table")?;
 
-  let deploy_seq = env.next_deploy_seq + 1;
   let deploy_id = new_nano_id();
   sqlx::query!(
         "INSERT INTO deploys (id, updated_at, tag, description, env_id, deploy_seq) VALUES (?, CURRENT_TIMESTAMP(3), ?, ?, ?, ?)",

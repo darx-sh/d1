@@ -15,7 +15,7 @@ use tokio::io::AsyncWriteExt;
 use tokio::time::Instant;
 use tracing::{debug, info};
 
-use darx_isolate_runtime::DarxIsolate;
+use darx_isolate_runtime::{build_snapshot, DarxIsolate};
 
 use crate::api::ApiError;
 use crate::tenants::cache::LruCache;
@@ -240,16 +240,14 @@ pub async fn invoke_function(
     DarxIsolate::new_with_snapshot(env_id, deploy_seq, &deploy_dir, snapshot)
       .await;
 
+  let source_code = invoking_code(
+    unique_js_export(js_entry_point, js_export),
+    param_names.clone(),
+    req,
+  )?;
   let script_result = isolate
     .js_runtime
-    .execute_script(
-      "invoke_function",
-      invoking_code(
-        unique_js_export(js_entry_point, js_export),
-        param_names.clone(),
-        req,
-      )?,
-    )
+    .execute_script("invoke_function", source_code)
     .map_err(ApiError::Internal)?;
 
   let script_result = isolate.js_runtime.resolve_value(script_result);
@@ -320,31 +318,9 @@ async fn add_snapshot(
 ) -> Result<()> {
   let deploy_dir =
     setup_deploy_dir(envs_dir.as_ref(), env_id, deploy_seq).await?;
-  let mut js_runtime = DarxIsolate::prepare_snapshot(&deploy_dir).await?;
-  let registry_file = deploy_dir.join(REGISTRY_FILE_NAME);
-  if !registry_file.exists() {
-    tracing::error!(
-      env = env_id,
-      seq = deploy_seq,
-      "file {} does not exist",
-      REGISTRY_FILE_NAME,
-    );
-    bail!("file {} does not exist", REGISTRY_FILE_NAME);
-  }
-
-  let module_id = js_runtime
-    .load_side_module(
-      &deno_core::resolve_path(REGISTRY_FILE_NAME, &deploy_dir)?,
-      None,
-    )
-    .await?;
-
-  let receiver = js_runtime.mod_evaluate(module_id);
-  js_runtime.run_event_loop(false).await?;
-  let _ = receiver.await?;
-
   let mut mark = Instant::now();
-  let snapshot = js_runtime.snapshot();
+  let snapshot =
+    build_snapshot(deploy_dir.as_path(), REGISTRY_FILE_NAME).await?;
   let snapshot_slice: &[u8] = &snapshot;
 
   info!(
