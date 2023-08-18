@@ -1,5 +1,5 @@
 use crate::env_vars::var::Var;
-use crate::{Code, EnvKind, HttpRoute};
+use crate::{Code, DeploySeq, EnvKind, HttpRoute};
 use actix_web::http::header::ContentType;
 use actix_web::http::StatusCode;
 use actix_web::web::Json;
@@ -7,15 +7,24 @@ use actix_web::{HttpResponse, ResponseError};
 use async_recursion::async_recursion;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use std::collections::HashMap;
 use std::env;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 use tokio::fs;
 use tracing::info;
 
-pub fn add_deployment_url() -> String {
+pub fn add_code_deploy_url() -> String {
   format!(
-    "{}/add_deployment",
+    "{}/add_code_deploy",
+    env::var("DATA_PLANE_URL")
+      .expect("DATA_PLANE_URL should be configured to add route"),
+  )
+}
+
+pub fn add_var_deploy_url() -> String {
+  format!(
+    "{}/add_var_deploy",
     env::var("DATA_PLANE_URL")
       .expect("DATA_PLANE_URL should be configured to add route"),
   )
@@ -29,12 +38,20 @@ pub struct DeployCodeReq {
   pub tag: Option<String>,
   pub desc: Option<String>,
   pub codes: Vec<Code>,
-  pub vars: Vec<Var>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DeployCodeRsp {
   pub http_routes: Vec<HttpRoute>,
+}
+
+///
+/// deploy_vars
+///
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DeployVarReq {
+  pub desc: Option<String>,
+  pub vars: Vec<Var>,
 }
 
 ///
@@ -81,11 +98,18 @@ pub struct NewProjectRsp {
 /// add_deployment: control plane --> data plane
 ///
 #[derive(Debug, Serialize, Deserialize)]
-pub struct AddDeploymentReq {
+pub struct AddCodeDeployReq {
   pub env_id: String,
-  pub deploy_seq: i64,
+  pub deploy_seq: DeploySeq,
   pub codes: Vec<Code>,
   pub http_routes: Vec<HttpRoute>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AddVarDeployReq {
+  pub env_id: String,
+  pub deploy_seq: DeploySeq,
+  pub vars: HashMap<String, String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -184,14 +208,12 @@ impl ResponseError for ApiError {
 
 pub async fn dir_to_deploy_code_req(
   dir: &Path,
-  vars: Vec<Var>,
 ) -> anyhow::Result<DeployCodeReq> {
   let codes = collect_code(dir).await?;
   let req = DeployCodeReq {
     tag: None,
     desc: None,
     codes,
-    vars,
   };
   Ok(req)
 }

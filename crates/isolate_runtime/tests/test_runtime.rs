@@ -3,7 +3,9 @@ use darx_db::{add_tenant_db_info, get_tenant_pool, TenantDBInfo};
 use darx_db::{drop_tenant_db, setup_tenant_db};
 use darx_isolate_runtime::{build_snapshot, DarxIsolate};
 use darx_utils::test_control_db_url;
+use deno_core::{serde_v8, v8};
 use sqlx::Connection;
+use std::collections::HashMap;
 use std::ops::DerefMut;
 use std::path::PathBuf;
 use std::time::Duration;
@@ -45,8 +47,12 @@ async fn env_db_setup(env_id: &str, deploy_seq: i64) -> Result<PathBuf> {
 #[tokio::test]
 async fn test_run() {
   let deploy_path = env_deploy_path(TEST_ENV_ID, TEST_DEPLOY_SEQ);
-  let mut darx_runtime =
-    DarxIsolate::new(TEST_ENV_ID, TEST_DEPLOY_SEQ, deploy_path.as_path());
+  let mut darx_runtime = DarxIsolate::new(
+    TEST_ENV_ID,
+    TEST_DEPLOY_SEQ,
+    &Default::default(),
+    deploy_path.as_path(),
+  );
 
   darx_runtime
     .load_and_eval_module_file("foo.js")
@@ -61,8 +67,12 @@ async fn test_run() {
 #[tokio::test]
 async fn test_private() {
   let deploy_path = env_deploy_path(TEST_ENV_ID, TEST_DEPLOY_SEQ);
-  let mut darx_runtime =
-    DarxIsolate::new(TEST_ENV_ID, TEST_DEPLOY_SEQ, deploy_path.as_path());
+  let mut darx_runtime = DarxIsolate::new(
+    TEST_ENV_ID,
+    TEST_DEPLOY_SEQ,
+    &Default::default(),
+    deploy_path.as_path(),
+  );
   let r = darx_runtime
     .load_and_eval_module_file("load_private.js")
     .await;
@@ -85,14 +95,22 @@ async fn test_db_query() -> Result<()> {
     )
     .await?;
 
-  let mut darx_runtime =
-    DarxIsolate::new(TEST_ENV_ID, TEST_DEPLOY_SEQ, deploy_path.as_path());
+  let mut darx_runtime = DarxIsolate::new(
+    TEST_ENV_ID,
+    TEST_DEPLOY_SEQ,
+    &Default::default(),
+    deploy_path.as_path(),
+  );
   darx_runtime
     .load_and_eval_module_file("run_query.js")
     .await?;
 
-  let mut dx_runtime =
-    DarxIsolate::new(TEST_ENV_ID, TEST_DEPLOY_SEQ, deploy_path.as_path());
+  let mut dx_runtime = DarxIsolate::new(
+    TEST_ENV_ID,
+    TEST_DEPLOY_SEQ,
+    &Default::default(),
+    deploy_path.as_path(),
+  );
   dx_runtime.load_and_eval_module_file("run_ddl.js").await?;
   Ok(())
 }
@@ -103,8 +121,12 @@ async fn test_bad_db_conn() -> Result<()> {
   let env_id = "000000000000_schema_dev";
   let deploy_seq = 3;
   let deploy_path = env_deploy_path(env_id, deploy_seq);
-  let mut darx_runtime =
-    DarxIsolate::new(env_id, deploy_seq, deploy_path.as_path());
+  let mut darx_runtime = DarxIsolate::new(
+    env_id,
+    deploy_seq,
+    &Default::default(),
+    deploy_path.as_path(),
+  );
 
   // run registration (simulate the snapshot process)
   let module_id = darx_runtime
@@ -142,6 +164,7 @@ async fn test_db_bad_conn_snapshot() -> Result<()> {
   let mut isolate = DarxIsolate::new_with_snapshot(
     env_id,
     deploy_seq,
+    &Default::default(),
     deploy_path.as_path(),
     snapshot_box,
   )
@@ -154,5 +177,42 @@ async fn test_db_bad_conn_snapshot() -> Result<()> {
   let duration = Duration::from_secs(5);
   let script_result = tokio::time::timeout(duration, script_result).await?;
   assert_eq!(script_result.is_err(), true);
+  Ok(())
+}
+
+#[tokio::test]
+async fn test_var() -> Result<()> {
+  let deploy_path = env_deploy_path(TEST_ENV_ID, TEST_DEPLOY_SEQ);
+  // no vars defined
+  let mut darx_runtime = DarxIsolate::new(
+    TEST_ENV_ID,
+    TEST_DEPLOY_SEQ,
+    &Default::default(),
+    deploy_path.as_path(),
+  );
+  let _script_result = darx_runtime
+    .js_runtime
+    .execute_script("simple", "console.log(Dx.env.someKey)")?;
+
+  // some vars defined
+  let mut vars = HashMap::new();
+  vars.insert("key1".to_string(), "value1".to_string());
+  let mut darx_runtime = DarxIsolate::new(
+    TEST_ENV_ID,
+    TEST_DEPLOY_SEQ,
+    &vars,
+    deploy_path.as_path(),
+  );
+  let script_result = darx_runtime
+    .js_runtime
+    .execute_script("simple", "Dx.env.key1")?;
+  let mut handle_scope = darx_runtime.js_runtime.handle_scope();
+  let script_result = v8::Local::new(&mut handle_scope, script_result);
+  let script_result: serde_json::Value =
+    serde_v8::from_v8(&mut handle_scope, script_result)?;
+  assert_eq!(
+    script_result,
+    serde_json::Value::String("value1".to_string())
+  );
   Ok(())
 }

@@ -62,9 +62,7 @@ pub async fn run_dev(root_dir: &str) -> Result<()> {
 
 async fn handle_file_changed(server_path: &Path) -> Result<()> {
   let start_time = std::time::Instant::now();
-  //TODO how to config vars for dev/prod?
-  let vars = vec![];
-  let req = darx_core::api::dir_to_deploy_code_req(server_path, vars).await?;
+  let req = darx_core::api::dir_to_deploy_code_req(server_path).await?;
   let url = format!("http://127.0.0.1:3457/deploy_code/{}", MVP_TEST_ENV_ID);
   if let Err(e) = reqwest::Client::new()
     .post(url)

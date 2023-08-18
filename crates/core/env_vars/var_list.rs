@@ -61,7 +61,6 @@ impl VarList {
     if r.is_ok() {
       info!("inserted {} {:?} var list", self.vars.len(), self.kind);
     }
-
     r
   }
 

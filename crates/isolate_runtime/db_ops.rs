@@ -9,6 +9,7 @@ use deno_core::{op, ResourceId};
 use deno_core::{OpState, Resource};
 use std::borrow::Cow;
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::rc::Rc;
 
 deno_core::extension!(
@@ -18,6 +19,7 @@ deno_core::extension!(
     op_use_db,
     op_db_execute,
     op_ddl,
+    op_var_get,
     // op_select_statement,
     // op_select_from,
     // op_select_columns,
@@ -84,6 +86,12 @@ pub async fn op_ddl(
     DDLReq::RenameColumn(req) => rename_column_sql(&req),
   }?;
   conn.js_execute(sql.as_str(), vec![]).await
+}
+
+#[op]
+pub fn op_var_get(op_state: &mut OpState, key: String) -> Option<String> {
+  let vars = op_state.borrow::<HashMap<String, String>>();
+  vars.get(&key).cloned()
 }
 
 // struct SelectStatementResource(RefCell<SelectStatement>);

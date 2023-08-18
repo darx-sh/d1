@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use darx_core::code::control::{deploy_code, deploy_plugin, list_api};
 use darx_core::tenants::{
-  add_deployment, init_deployments, invoke_function, match_route,
+  add_code_deploy, init_deploys, invoke_function, match_route,
 };
 use darx_core::Code;
 use serde_json::json;
@@ -40,12 +40,12 @@ async fn test_deploy_code() -> Result<()> {
   ];
 
   let (deploy_seq, final_codes, http_routes, txn) =
-    deploy_code(txn, TEST_ENV_ID, &codes, &vec![], &None, &None).await?;
+    deploy_code(txn, TEST_ENV_ID, &codes, &None, &None).await?;
 
   txn.commit().await.context("Failed to commit transaction")?;
 
   let envs_dir = envs_dir();
-  add_deployment(
+  add_code_deploy(
     envs_dir.as_path(),
     TEST_ENV_ID,
     deploy_seq,
@@ -88,7 +88,6 @@ async fn test_deploy_code() -> Result<()> {
   .await?;
 
   assert_eq!(ret, json!("hi2"));
-
   Ok(())
 }
 
@@ -116,12 +115,12 @@ async fn test_deploy_plugin() -> Result<()> {
   let (_, _, _, txn) =
     deploy_plugin(txn, "0000_test_plugin", "test_plugin", &codes).await?;
   let (_, _, _, txn) =
-    deploy_code(txn, TEST_ENV_ID, &codes, &vec![], &None, &None).await?;
+    deploy_code(txn, TEST_ENV_ID, &codes, &None, &None).await?;
 
   txn.commit().await.context("Failed to commit transaction")?;
 
   let envs_dir = envs_dir();
-  init_deployments(envs_dir.as_path(), &db_pool).await?;
+  init_deploys(envs_dir.as_path(), &db_pool).await?;
 
   let plugin_hello = "_plugins/test_plugin/hello";
 

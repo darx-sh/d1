@@ -2,6 +2,7 @@ use anyhow::{bail, Context, Result};
 use db_ops::darx_db_ops;
 use deno_core::{v8, Extension, Snapshot};
 use module_loader::TenantModuleLoader;
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
@@ -26,21 +27,22 @@ struct EnvId(String);
 struct DeploySeq(i64);
 
 ///
-/// The DarxIsolate is a wrapper around deno_core::JsRuntime.
-/// [`env_id`] and [`deploy_seq`] may not correspond to the [`deploy_dir`].
-/// For example, when the [`deploy_dir`] is a plugin's directory,
+/// The DarxIsolate is a wrapper around [`deno_core::JsRuntime`].
+/// [`env_id`] and [`deploy_seq`] may not correspond to the [`code_dir`].
+/// For example, when the [`code_dir`] is a plugin's directory,
 /// the env_id and deploy_seq might belongs to a tenant.
 impl DarxIsolate {
   pub fn new(
     env_id: &str,
     deploy_seq: i64,
-    deploy_dir: impl AsRef<Path>,
+    vars: &HashMap<String, String>,
+    code_dir: impl AsRef<Path>,
   ) -> Self {
     let mut js_runtime = deno_core::JsRuntime::new(deno_core::RuntimeOptions {
       module_loader: Some(Rc::new(TenantModuleLoader::new(PathBuf::from(
-        deploy_dir.as_ref(),
+        code_dir.as_ref(),
       )))),
-      extensions: DarxIsolate::extensions(deploy_dir.as_ref()),
+      extensions: DarxIsolate::extensions(code_dir.as_ref()),
       ..Default::default()
     });
     js_runtime
@@ -53,21 +55,27 @@ impl DarxIsolate {
       .borrow_mut()
       .put::<DeploySeq>(DeploySeq(deploy_seq));
 
+    js_runtime
+      .op_state()
+      .borrow_mut()
+      .put::<HashMap<String, String>>(vars.clone());
+
     DarxIsolate {
       js_runtime,
-      deploy_dir: PathBuf::from(deploy_dir.as_ref()),
+      deploy_dir: PathBuf::from(code_dir.as_ref()),
     }
   }
 
   pub async fn new_with_snapshot(
     env_id: &str,
     deploy_seq: i64,
-    deploy_dir: impl AsRef<Path>,
+    vars: &HashMap<String, String>,
+    code_dir: impl AsRef<Path>,
     snapshot: Box<[u8]>,
   ) -> Self {
     let mut js_runtime = deno_core::JsRuntime::new(deno_core::RuntimeOptions {
       module_loader: Some(Rc::new(TenantModuleLoader::new(PathBuf::from(
-        deploy_dir.as_ref(),
+        code_dir.as_ref(),
       )))),
       is_main: false,
       //TODO memory limit from env vars or env config
@@ -89,20 +97,25 @@ impl DarxIsolate {
       .borrow_mut()
       .put::<DeploySeq>(DeploySeq(deploy_seq));
 
+    js_runtime
+      .op_state()
+      .borrow_mut()
+      .put::<HashMap<String, String>>(vars.clone());
+
     DarxIsolate {
       js_runtime,
-      deploy_dir: PathBuf::from(deploy_dir.as_ref()),
+      deploy_dir: PathBuf::from(code_dir.as_ref()),
     }
   }
 
   pub async fn prepare_snapshot(
-    deploy_dir: impl AsRef<Path>,
+    code_dir: impl AsRef<Path>,
   ) -> Result<deno_core::JsRuntime> {
     let js_runtime = deno_core::JsRuntime::new(deno_core::RuntimeOptions {
       module_loader: Some(Rc::new(TenantModuleLoader::new(PathBuf::from(
-        deploy_dir.as_ref(),
+        code_dir.as_ref(),
       )))),
-      extensions: DarxIsolate::extensions(deploy_dir.as_ref()),
+      extensions: DarxIsolate::extensions(code_dir.as_ref()),
       will_snapshot: true,
       ..Default::default()
     });
@@ -183,11 +196,11 @@ impl DarxIsolate {
 }
 
 pub async fn build_snapshot(
-  deploy_dir: &Path,
+  code_dir: &Path,
   registry_file_name: &str,
 ) -> Result<v8::StartupData> {
-  let mut js_runtime = DarxIsolate::prepare_snapshot(&deploy_dir).await?;
-  let registry_file = deploy_dir.join(registry_file_name);
+  let mut js_runtime = DarxIsolate::prepare_snapshot(&code_dir).await?;
+  let registry_file = code_dir.join(registry_file_name);
   if !registry_file.exists() {
     tracing::error!("file {} does not exist", registry_file.to_string_lossy());
     bail!("file {} does not exist", registry_file.to_string_lossy());
@@ -195,7 +208,7 @@ pub async fn build_snapshot(
 
   let module_id = js_runtime
     .load_side_module(
-      &deno_core::resolve_path(registry_file_name, &deploy_dir)?,
+      &deno_core::resolve_path(registry_file_name, &code_dir)?,
       None,
     )
     .await?;

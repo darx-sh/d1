@@ -45,9 +45,9 @@ async fn test_main_process() {
 
   let handle = run_server(server_data_path).await;
 
-  let vars = vec![darx_core::env_vars::Var::new("key", "value")];
+  // let vars = vec![darx_core::env_vars::Var::new("key", "value")];
 
-  let req = darx_core::api::dir_to_deploy_code_req(code_path.as_path(), vars)
+  let req = darx_core::api::dir_to_deploy_code_req(code_path.as_path())
     .await
     .unwrap();
   info!("req: {:#?}", req);
