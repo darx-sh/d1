@@ -91,7 +91,10 @@ pub async fn op_ddl(
 #[op]
 pub fn op_var_get(op_state: &mut OpState, key: String) -> Option<String> {
   let vars = op_state.borrow::<HashMap<String, String>>();
-  vars.get(&key).cloned()
+  match vars.get(&key) {
+    Some(v) => Some(v.to_string()),
+    None => None,
+  }
 }
 
 // struct SelectStatementResource(RefCell<SelectStatement>);

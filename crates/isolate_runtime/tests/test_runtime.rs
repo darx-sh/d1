@@ -152,7 +152,6 @@ async fn test_bad_db_conn() -> Result<()> {
 }
 
 #[tokio::test]
-#[ignore]
 async fn test_db_bad_conn_snapshot() -> Result<()> {
   // This env has no db setup, so it should fail when using db connection.
   let env_id = "000000000000_schema_dev";
@@ -190,9 +189,14 @@ async fn test_var() -> Result<()> {
     &Default::default(),
     deploy_path.as_path(),
   );
-  let _script_result = darx_runtime
+  let script_result = darx_runtime
     .js_runtime
-    .execute_script("simple", "console.log(Dx.env.someKey)")?;
+    .execute_script("simple", "Dx.env.someKey")?;
+  let mut handle_scope = darx_runtime.js_runtime.handle_scope();
+  let script_result = v8::Local::new(&mut handle_scope, script_result);
+  let script_result: serde_json::Value =
+    serde_v8::from_v8(&mut handle_scope, script_result)?;
+  assert_eq!(script_result, serde_json::Value::Null);
 
   // some vars defined
   let mut vars = HashMap::new();
@@ -214,5 +218,32 @@ async fn test_var() -> Result<()> {
     script_result,
     serde_json::Value::String("value1".to_string())
   );
+  Ok(())
+}
+
+#[tokio::test]
+async fn test_var_undefined_in_snapshot() -> Result<()> {
+  let env_id = "000000000000_schema_dev";
+  let deploy_seq = 3;
+  let deploy_path = env_deploy_path(env_id, deploy_seq);
+
+  let snapshot = build_snapshot(deploy_path.as_path(), "__registry.js").await?;
+  let snapshot_box = snapshot.as_ref().to_vec().into_boxed_slice();
+  let mut isolate = DarxIsolate::new_with_snapshot(
+    env_id,
+    deploy_seq,
+    &Default::default(),
+    deploy_path.as_path(),
+    snapshot_box,
+  )
+  .await;
+  let script_result = isolate
+    .js_runtime
+    .execute_script("simple", "Dx.env.someKey")?;
+  let mut handle_scope = isolate.js_runtime.handle_scope();
+  let script_result = v8::Local::new(&mut handle_scope, script_result);
+  let script_result: serde_json::Value =
+    serde_v8::from_v8(&mut handle_scope, script_result)?;
+  assert_eq!(script_result, serde_json::Value::Null);
   Ok(())
 }

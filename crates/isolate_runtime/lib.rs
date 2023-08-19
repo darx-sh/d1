@@ -84,6 +84,7 @@ impl DarxIsolate {
           .heap_limits(0, 512 * 1024 * 1024),
       ),
       startup_snapshot: Some(Snapshot::Boxed(snapshot)),
+      extensions: DarxIsolate::snapshot_extensions(code_dir.as_ref()),
       ..Default::default()
     });
 
@@ -191,6 +192,33 @@ impl DarxIsolate {
       ),
       darx_bootstrap::init_ops_and_esm(),
       darx_db_ops::init_ops_and_esm(),
+    ]
+  }
+
+  fn snapshot_extensions(deploy_dir: impl AsRef<Path>) -> Vec<Extension> {
+    let user_agent = "darx-runtime".to_string();
+    let root_cert_store = deno_tls::create_default_root_cert_store();
+
+    vec![
+      permissions::darx_permissions::init_ops(permissions::Options {
+        deploy_dir: PathBuf::from(deploy_dir.as_ref()),
+      }),
+      deno_webidl::deno_webidl::init_ops(),
+      deno_console::deno_console::init_ops(),
+      deno_url::deno_url::init_ops(),
+      deno_web::deno_web::init_ops::<permissions::Permissions>(
+        deno_web::BlobStore::default(),
+        None,
+      ),
+      deno_fetch::deno_fetch::init_ops::<permissions::Permissions>(
+        deno_fetch::Options {
+          user_agent,
+          root_cert_store: Some(root_cert_store),
+          ..Default::default()
+        },
+      ),
+      darx_bootstrap::init_ops(),
+      darx_db_ops::init_ops(),
     ]
   }
 }
