@@ -84,13 +84,20 @@ async fn invoke_function(
 
   tracing::info!("invoke_function: {}, env_id: {}", func_url, env_id);
 
-  let (env_id, deploy_seq, route) =
-    tenants::match_route(env_id.as_str(), func_url.as_str(), "POST").ok_or(
-      ApiError::FunctionNotFound(format!(
-        "host: {}, env_id: {}",
-        host, &env_id
-      )),
-    )?;
+  let r = tenants::match_route(env_id.as_str(), func_url.as_str(), "POST");
+  if r.is_none() {
+    return Err(ApiError::FunctionNotFound(format!(
+      "host: {}, env_id: {}",
+      host, &env_id
+    )));
+  }
+  let (env_id, deploy_seq, route) = r.unwrap();
+
+  info!(
+    "match_route: env_id: {}, deploy_seq: {}, route: {:?}",
+    env_id, deploy_seq, route
+  );
+
   let ret = tenants::invoke_function(
     &server_state.envs_dir,
     &env_id,

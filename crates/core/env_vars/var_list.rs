@@ -1,6 +1,7 @@
 use crate::env_vars::var::{Var, VarKind};
 use anyhow::{ensure, Context, Result};
 use sqlx::{MySqlExecutor, Row};
+use std::collections::HashMap;
 use tracing::info;
 
 #[derive(Debug, PartialEq)]
@@ -12,6 +13,13 @@ pub struct VarList {
 }
 
 impl VarList {
+  pub fn into_map(self) -> HashMap<String, String> {
+    self.vars.into_iter().fold(HashMap::new(), |mut acc, v| {
+      acc.insert(v.key().to_string(), v.val().to_string());
+      acc
+    })
+  }
+
   pub fn new_env_vars(env_id: &str, vars: &Vec<Var>) -> Self {
     Self {
       kind: VarKind::Env,

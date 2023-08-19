@@ -2,7 +2,7 @@ use crate::tenants::TenantDBInfo;
 use anyhow::{Context, Result};
 use sqlx::{Executor, MySqlConnection};
 
-pub async fn setup_tenant_db(
+pub async fn save_tenant_db(
   conn: &mut MySqlConnection,
   env_id: &str,
   db_info: &TenantDBInfo,

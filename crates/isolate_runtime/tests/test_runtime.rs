@@ -1,6 +1,6 @@
 use anyhow::Result;
 use darx_db::{add_tenant_db_info, get_tenant_pool, TenantDBInfo};
-use darx_db::{drop_tenant_db, setup_tenant_db};
+use darx_db::{drop_tenant_db, save_tenant_db};
 use darx_isolate_runtime::{build_snapshot, DarxIsolate};
 use darx_utils::test_control_db_url;
 use deno_core::{serde_v8, v8};
@@ -37,7 +37,7 @@ async fn env_db_setup(env_id: &str, deploy_seq: i64) -> Result<PathBuf> {
   let mut txn = conn.begin().await?;
   let db_info = test_tenant_db_info(env_id);
   drop_tenant_db(txn.deref_mut(), env_id, &db_info).await?;
-  setup_tenant_db(txn.deref_mut(), env_id, &db_info).await?;
+  save_tenant_db(txn.deref_mut(), env_id, &db_info).await?;
   txn.commit().await?;
 
   add_tenant_db_info(env_id, db_info);

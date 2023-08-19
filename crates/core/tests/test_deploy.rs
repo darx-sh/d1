@@ -57,9 +57,10 @@ async fn test_deploy_code() -> Result<()> {
   let (code_deploy_seq, final_codes, http_routes, txn) =
     deploy_code(txn, TEST_ENV_ID, &codes, &None, &None).await?;
 
+  let mut vars = HashMap::new();
+  vars.insert("key1".to_string(), "value1".to_string());
   let (var_deploy_seq, vars, txn) =
-    deploy_var(txn, TEST_ENV_ID, &vec![Var::new("key1", "value1")], &None)
-      .await?;
+    deploy_var(txn, TEST_ENV_ID, &vars, &None).await?;
 
   txn.commit().await.context("Failed to commit transaction")?;
 
@@ -73,10 +74,6 @@ async fn test_deploy_code() -> Result<()> {
   )
   .await?;
 
-  let vars: HashMap<_, _> = vars
-    .into_iter()
-    .map(|item| (item.key().to_string(), item.val().to_string()))
-    .collect();
   add_var_deploy(TEST_ENV_ID, var_deploy_seq, &vars).await?;
 
   let (env_id, seq, r) =

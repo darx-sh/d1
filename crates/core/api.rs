@@ -51,7 +51,7 @@ pub struct DeployCodeRsp {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DeployVarReq {
   pub desc: Option<String>,
-  pub vars: Vec<Var>,
+  pub vars: HashMap<String, String>,
 }
 
 ///
@@ -60,7 +60,6 @@ pub struct DeployVarReq {
 #[derive(Serialize, Deserialize)]
 pub struct DeployPluginReq {
   pub name: String,
-  pub env_kind: EnvKind,
   pub codes: Vec<Code>,
   pub vars: Vec<Var>,
 }
@@ -225,7 +224,6 @@ pub async fn dir_to_deploy_plugin_req(
   let codes = collect_code(dir).await?;
   let req = DeployPluginReq {
     name: plugin_name.to_string(),
-    env_kind: EnvKind::Dev,
     codes,
     vars: vec![],
   };

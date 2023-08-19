@@ -6,10 +6,13 @@ pub mod env_vars;
 pub mod plugin;
 mod project;
 mod route_builder;
+
 pub mod tenants;
+pub use project::Project;
 
-pub use project::new_tenant_project;
-
+pub type OrgId = String;
+pub type ProjectId = String;
+pub type EnvId = String;
 pub type DeployId = String;
 pub type DeploySeq = i64;
 

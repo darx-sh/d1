@@ -13,7 +13,7 @@ use handlebars::Handlebars;
 use serde::Serialize;
 use serde_json::json;
 use sqlx::{MySql, MySqlPool, Transaction};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::mem::swap;
 
 pub async fn deploy_code<'c>(
@@ -124,9 +124,9 @@ pub async fn deploy_code<'c>(
 pub async fn deploy_var<'c>(
   txn: Transaction<'c, MySql>,
   env_id: &str,
-  vars: &Vec<Var>,
+  vars: &HashMap<String, String>,
   desc: &Option<String>,
-) -> Result<(DeploySeq, Vec<Var>, Transaction<'c, MySql>)> {
+) -> Result<(DeploySeq, HashMap<String, String>, Transaction<'c, MySql>)> {
   let (deploy_id, deploy_seq, mut txn) =
     create_deploy(txn, env_id, &None, desc).await?;
 
@@ -139,7 +139,7 @@ pub async fn deploy_var<'c>(
 
   // merge deploy_vars with env_vars
   for var in vars {
-    map.insert(var.key(), var.val());
+    map.insert(var.0, var.1);
   }
   let mut final_vars: Vec<Var> =
     map.into_iter().map(|(k, v)| Var::new(k, v)).collect();
@@ -149,7 +149,7 @@ pub async fn deploy_var<'c>(
     .save(&mut *txn)
     .await
     .context("Fail to save deploy vars")?;
-  Ok((deploy_seq, var_list.vars().to_vec(), txn))
+  Ok((deploy_seq, var_list.into_map(), txn))
 }
 
 pub async fn list_code(

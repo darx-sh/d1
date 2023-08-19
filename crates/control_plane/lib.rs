@@ -3,7 +3,6 @@ use actix_web::dev::Server;
 use actix_web::web::{get, post, Data, Json, Path};
 use actix_web::{App, HttpResponse, HttpResponseBuilder, HttpServer};
 use anyhow::{anyhow, Context, Result};
-use std::collections::HashMap;
 use std::env;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -16,6 +15,7 @@ use darx_core::api::{
 };
 use darx_core::code::control;
 use darx_core::plugin::plugin_env_id;
+use darx_core::Project;
 
 pub async fn run_server(socket_addr: SocketAddr) -> Result<Server> {
   let db_pool = sqlx::MySqlPool::connect(
@@ -45,7 +45,7 @@ pub async fn run_server(socket_addr: SocketAddr) -> Result<Server> {
         .route("/list_code/{env_id}", get().to(list_code))
         .route("/deploy_var/{env_id}", post().to(deploy_var))
         .route("/list_api/{env_id}", get().to(list_api))
-        .route("/deploy_plugin/{plugin_name}", post().to(deploy_plugin))
+        .route("/deploy_plugin", post().to(deploy_plugin))
         .route("/new_project", post().to(new_project))
     })
     .bind(&socket_addr)?
@@ -117,10 +117,6 @@ async fn deploy_var(
   let (deploy_seq, vars, txn) =
     control::deploy_var(txn, env_id.as_str(), &req.vars, &req.desc).await?;
 
-  let vars: HashMap<_, _> = vars
-    .into_iter()
-    .map(|item| (item.key().to_string(), item.val().to_string()))
-    .collect();
   let req = AddVarDeployReq {
     env_id: env_id.to_string(),
     deploy_seq,
@@ -164,7 +160,7 @@ async fn deploy_plugin(
     .begin()
     .await
     .context("Failed to start transaction")?;
-  let env_id = plugin_env_id(req.name.as_str(), &req.env_kind);
+  let env_id = plugin_env_id(req.name.as_str());
   let (deploy_seq, codes, http_routes, txn) =
     control::deploy_plugin(txn, env_id.as_str(), req.name.as_str(), &req.codes)
       .await?;
@@ -201,13 +197,12 @@ async fn new_project(
   req: Json<NewProjectReq>,
 ) -> Result<Json<NewProjectRsp>, ApiError> {
   let db_pool = &server_state.db_pool;
-  let (project_id, env_id) = darx_core::new_tenant_project(
-    db_pool,
-    req.org_id.as_str(),
-    req.project_name.as_str(),
-  )
-  .await?;
-  Ok(Json(NewProjectRsp { project_id, env_id }))
+  let project = Project::new(req.org_id.as_str(), req.project_name.as_str());
+  project.save(db_pool).await?;
+  Ok(Json(NewProjectRsp {
+    project_id: project.id().to_string(),
+    env_id: project.env_id().to_string(),
+  }))
 }
 
 struct ServerState {
