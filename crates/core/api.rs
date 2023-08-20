@@ -5,6 +5,7 @@ use actix_web::http::StatusCode;
 use actix_web::web::Json;
 use actix_web::{HttpResponse, ResponseError};
 use async_recursion::async_recursion;
+use darx_db::TenantDBInfo;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::HashMap;
@@ -17,6 +18,14 @@ use tracing::info;
 pub fn add_code_deploy_url() -> String {
   format!(
     "{}/add_code_deploy",
+    env::var("DATA_PLANE_URL")
+      .expect("DATA_PLANE_URL should be configured to add route"),
+  )
+}
+
+pub fn add_plugin_deploy_url() -> String {
+  format!(
+    "{}/add_plugin_deploy",
     env::var("DATA_PLANE_URL")
       .expect("DATA_PLANE_URL should be configured to add route"),
   )
@@ -82,9 +91,15 @@ pub struct ListApiRsp {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct NewProjectReq {
+pub struct NewTenantProjectReq {
   pub org_id: String,
   pub project_name: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct NewPluginProjectReq {
+  pub org_id: String,
+  pub plugin_name: String,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -94,8 +109,23 @@ pub struct NewProjectRsp {
 }
 
 ///
-/// add_deployment: control plane --> data plane
+///  control plane --> data plane api begins.
 ///
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AddTenantDBReq {
+  pub env_id: String,
+  pub db_info: TenantDBInfo,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AddPluginDeployReq {
+  pub name: String,
+  pub env_id: String,
+  pub deploy_seq: DeploySeq,
+  pub codes: Vec<Code>,
+  pub http_routes: Vec<HttpRoute>,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AddCodeDeployReq {
   pub env_id: String,
@@ -103,6 +133,9 @@ pub struct AddCodeDeployReq {
   pub codes: Vec<Code>,
   pub http_routes: Vec<HttpRoute>,
 }
+///
+/// control plane --> data plane api ends.
+///
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AddVarDeployReq {

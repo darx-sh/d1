@@ -202,13 +202,14 @@ pub async fn list_code(
 pub async fn deploy_plugin<'c>(
   mut txn: Transaction<'c, MySql>,
   env_id: &str,
-  name: &str,
+  plugin_name: &str,
   codes: &Vec<Code>,
-) -> Result<(i64, Vec<Code>, Vec<HttpRoute>, Transaction<'c, MySql>)> {
-  let plugin = sqlx::query!("SELECT id FROM plugins WHERE name = ?", name)
-    .fetch_optional(&mut *txn)
-    .await
-    .context("Failed to query plugins table")?;
+) -> Result<(DeploySeq, Vec<Code>, Vec<HttpRoute>, Transaction<'c, MySql>)> {
+  let plugin =
+    sqlx::query!("SELECT id FROM plugins WHERE name = ?", plugin_name)
+      .fetch_optional(&mut *txn)
+      .await
+      .context("Failed to query plugins table")?;
 
   let _plugin_id = if let Some(plugin) = plugin {
     plugin.id
@@ -217,22 +218,12 @@ pub async fn deploy_plugin<'c>(
     sqlx::query!(
       "INSERT INTO plugins (id, name, env_id) VALUES (?, ?, ?)",
       plugin_id,
-      name,
+      plugin_name,
       env_id,
     )
     .execute(&mut *txn)
     .await
     .context("Failed to insert into plugins table")?;
-
-    sqlx::query!(
-      "INSERT INTO envs (id, name, project_id) VALUES (?, ?, ?)",
-      env_id,
-      name,
-      plugin_project_id(name),
-    )
-    .execute(&mut *txn)
-    .await
-    .context("Failed to insert into envs table when create_plugin")?;
     plugin_id
   };
   deploy_code(txn, env_id, codes, &None, &None).await

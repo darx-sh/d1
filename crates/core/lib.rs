@@ -4,10 +4,11 @@ pub mod api;
 pub mod code;
 pub mod env_vars;
 pub mod plugin;
-mod project;
+pub mod project;
 mod route_builder;
 
 pub mod tenants;
+
 pub use project::Project;
 
 pub type OrgId = String;
@@ -33,7 +34,7 @@ impl EnvKind {
   }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Code {
   pub fs_path: String,
   pub content: String,

@@ -9,9 +9,10 @@ use std::sync::Arc;
 use tracing_actix_web::TracingLogger;
 
 use darx_core::api::{
-  add_code_deploy_url, add_var_deploy_url, AddCodeDeployReq, AddVarDeployReq,
-  ApiError, DeployCodeReq, DeployCodeRsp, DeployPluginReq, DeployVarReq,
-  ListApiRsp, ListCodeRsp, NewProjectReq, NewProjectRsp,
+  add_code_deploy_url, add_plugin_deploy_url, add_var_deploy_url,
+  AddCodeDeployReq, AddPluginDeployReq, AddVarDeployReq, ApiError,
+  DeployCodeReq, DeployCodeRsp, DeployPluginReq, DeployVarReq, ListApiRsp,
+  ListCodeRsp, NewPluginProjectReq, NewProjectRsp, NewTenantProjectReq,
 };
 use darx_core::code::control;
 use darx_core::plugin::plugin_env_id;
@@ -41,12 +42,13 @@ pub async fn run_server(socket_addr: SocketAddr) -> Result<Server> {
         .wrap(cors)
         .app_data(Data::new(server_state.clone()))
         .route("/", get().to(|| async { "control plane healthy." }))
+        .route("/new_tenant_project", post().to(new_tenant_project))
+        .route("/new_plugin_project", post().to(new_plugin_project))
         .route("/deploy_code/{env_id}", post().to(deploy_code))
         .route("/list_code/{env_id}", get().to(list_code))
         .route("/deploy_var/{env_id}", post().to(deploy_var))
         .route("/list_api/{env_id}", get().to(list_api))
         .route("/deploy_plugin", post().to(deploy_plugin))
-        .route("/new_project", post().to(new_project))
     })
     .bind(&socket_addr)?
     .run(),
@@ -164,13 +166,14 @@ async fn deploy_plugin(
   let (deploy_seq, codes, http_routes, txn) =
     control::deploy_plugin(txn, env_id.as_str(), req.name.as_str(), &req.codes)
       .await?;
-  let req = AddCodeDeployReq {
+  let req = AddPluginDeployReq {
+    name: req.name.clone(),
     env_id: env_id.to_string(),
     deploy_seq,
     codes,
     http_routes: http_routes.clone(),
   };
-  let url = add_code_deploy_url();
+  let url = add_plugin_deploy_url();
   let rsp = reqwest::Client::new()
     .post(url)
     .json(&req)
@@ -192,12 +195,28 @@ async fn deploy_plugin(
   Ok(HttpResponse::Ok())
 }
 
-async fn new_project(
+async fn new_tenant_project(
   server_state: Data<Arc<ServerState>>,
-  req: Json<NewProjectReq>,
+  req: Json<NewTenantProjectReq>,
 ) -> Result<Json<NewProjectRsp>, ApiError> {
   let db_pool = &server_state.db_pool;
-  let project = Project::new(req.org_id.as_str(), req.project_name.as_str());
+  let project =
+    Project::new_tenant_proj(req.org_id.as_str(), req.project_name.as_str());
+
+  project.save(db_pool).await?;
+  Ok(Json(NewProjectRsp {
+    project_id: project.id().to_string(),
+    env_id: project.env_id().to_string(),
+  }))
+}
+
+async fn new_plugin_project(
+  server_state: Data<Arc<ServerState>>,
+  req: Json<NewPluginProjectReq>,
+) -> Result<Json<NewProjectRsp>, ApiError> {
+  let db_pool = &server_state.db_pool;
+  let project =
+    Project::new_plugin_proj(req.org_id.as_str(), req.plugin_name.as_str());
   project.save(db_pool).await?;
   Ok(Json(NewProjectRsp {
     project_id: project.id().to_string(),

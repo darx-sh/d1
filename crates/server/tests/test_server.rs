@@ -46,6 +46,7 @@ async fn test_main_process() {
 
   let handle = run_server(server_data_path).await;
 
+  // deploy_var
   let mut vars = HashMap::new();
   vars.insert("key1".to_string(), "value1".to_string());
   let req = DeployVarReq { desc: None, vars };
@@ -59,6 +60,7 @@ async fn test_main_process() {
     .error_for_status()
     .unwrap();
 
+  // deploy_code
   let req = darx_core::api::dir_to_deploy_code_req(code_path.as_path())
     .await
     .unwrap();
@@ -105,6 +107,7 @@ async fn test_main_process() {
     .unwrap();
   assert_eq!(resp, "\"Hi 1 obj 1 null from bar\"");
 
+  // deploy plugin
   let code_path =
     project_dir.join("tests/basic_test/user_home/plugins/test_plugin");
   let plugin_name = "test_plugin";

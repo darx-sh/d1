@@ -49,9 +49,28 @@ static GLOBAL_ROUTER: Lazy<DashMap<String, Vec<RouteDeploy>>> =
 static GLOBAL_VARS: Lazy<DashMap<String, Vec<VarDeploy>>> =
   Lazy::new(DashMap::new);
 
+// PLUGIN_REGISTRY maps a plugin's name to its env_id.
 static PLUGIN_REGISTRY: Lazy<DashMap<String, String>> = Lazy::new(DashMap::new);
 
 pub(crate) const SNAPSHOT_FILE: &str = "SNAPSHOT.bin";
+
+pub async fn add_plugin_deploy(
+  name: &str,
+  envs_dir: &Path,
+  env_id: &str,
+  deploy_seq: i64,
+  codes: &Vec<Code>,
+  http_routes: &Vec<HttpRoute>,
+) -> Result<()> {
+  let kv = PLUGIN_REGISTRY
+    .entry(name.to_string())
+    .or_insert(env_id.to_string());
+  if kv.value() != env_id {
+    bail!("Plugin name {} already exists in env {}", name, kv.value());
+  }
+  add_code_deploy(envs_dir, env_id, deploy_seq, codes, http_routes).await?;
+  Ok(())
+}
 
 pub async fn add_code_deploy(
   envs_dir: &Path,
