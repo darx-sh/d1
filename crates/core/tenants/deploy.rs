@@ -343,7 +343,8 @@ pub async fn invoke_function(
   let script_result = isolate
     .js_runtime
     .execute_script("invoke_function", source_code)
-    .map_err(ApiError::Internal)?;
+    .context("execute script error")
+    .map_err(ApiError::FunctionException)?;
 
   let script_result = isolate.js_runtime.resolve_value(script_result);
 
@@ -353,13 +354,16 @@ pub async fn invoke_function(
   let script_result = match tokio::time::timeout(duration, script_result).await
   {
     Err(_) => Err(ApiError::Timeout),
-    Ok(res) => res.map_err(ApiError::Internal),
+    Ok(res) => res
+      .context("resolve value error")
+      .map_err(ApiError::FunctionException),
   }?;
 
   let mut handle_scope = isolate.js_runtime.handle_scope();
   let script_result = v8::Local::new(&mut handle_scope, script_result);
   let script_result = serde_v8::from_v8(&mut handle_scope, script_result)
-    .map_err(|e| ApiError::Internal(anyhow::Error::new(e)))?;
+    .context("deserialize result error")
+    .map_err(ApiError::Internal)?;
   Ok(script_result)
 }
 

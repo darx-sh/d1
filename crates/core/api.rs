@@ -189,6 +189,10 @@ pub enum ApiError {
   FunctionNotFound(String),
   #[error("Function parameter error: {0}")]
   FunctionParameterError(String),
+  #[error("js runtime error: {0:?}")]
+  FunctionException(anyhow::Error),
+  #[error("parse error: {0}")]
+  FunctionParseError(String),
   #[error("Table {0} not found")]
   TableNotFound(String),
   #[error("Internal error: {0:?}")]
@@ -240,6 +244,16 @@ impl ResponseError for ApiError {
         HttpResponse::build(StatusCode::BAD_REQUEST)
           .insert_header(ContentType::plaintext())
           .body(self.to_string())
+      }
+
+      ApiError::FunctionException(_) => {
+        HttpResponse::build(StatusCode::OK) // status 200 for js runtime exception
+          .json(json!({"error": self.to_string()}))
+      }
+
+      ApiError::FunctionParseError(_) => {
+        HttpResponse::build(StatusCode::OK) // status 200 for js parse error
+          .json(json!({"error": self.to_string()}))
       }
 
       ApiError::TableNotFound(_) => HttpResponse::build(StatusCode::NOT_FOUND)

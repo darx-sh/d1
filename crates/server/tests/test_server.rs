@@ -23,6 +23,8 @@ const CONTROL: &str = "127.0.0.1:3457";
 #[actix_web::test]
 async fn test_main_process() {
   env::set_var("DATA_PLANE_URL", format!("http://{}", DATA));
+  env::set_var("DATA_PLANE_DB_HOST", "127.0.0.1");
+  env::set_var("DATA_PLANE_DB_PORT", "3306");
   dotenv().ok();
 
   let registry = tracing_subscriber::registry();
@@ -73,7 +75,7 @@ async fn test_main_process() {
     org_id: "test_org".to_string(),
     plugin_name: plugin_name.clone(),
   };
-  let client = reqwest::Client::new();
+
   let rsp = client
     .post(format!("http://{}/new_plugin_project", CONTROL))
     .json(&req)
@@ -91,7 +93,6 @@ async fn test_main_process() {
   let mut vars = HashMap::new();
   vars.insert("key1".to_string(), "value1".to_string());
   let req = DeployVarReq { desc: None, vars };
-  let client = reqwest::Client::new();
   client
     .post(format!("http://{}/deploy_var/{}", CONTROL, env_id.as_str()))
     .json(&req)
@@ -106,8 +107,6 @@ async fn test_main_process() {
     .await
     .unwrap();
   info!("req: {:#?}", req);
-  let client = reqwest::Client::new();
-
   client
     .post(format!(
       "http://{}/deploy_code/{}",
@@ -122,6 +121,7 @@ async fn test_main_process() {
     .unwrap();
 
   let req = json!({"msg": "123"});
+
   let resp = client
     .post(format!("http://{}/invoke/foo.Hi", DATA))
     .header("Darx-Dev-Host", format!("{}.darx.sh", env_id.as_str()))
@@ -181,6 +181,75 @@ async fn test_main_process() {
     .unwrap()
     .error_for_status();
   assert_eq!(status.is_ok(), true);
+
+  info!("test js runtime exception");
+
+  let resp = client
+    .post(format!("http://{}/invoke/foo.ThrowExp", DATA))
+    .header("Darx-Dev-Host", format!("{}.darx.sh", env_id))
+    .json(&json!({}))
+    .send()
+    .await
+    .unwrap()
+    .error_for_status()
+    .unwrap()
+    .json::<serde_json::Value>()
+    .await
+    .unwrap();
+
+  info!("runtime exception response: {}", &resp);
+
+  handle.abort();
+  let _ = handle.await;
+}
+
+#[actix_web::test]
+async fn test_deploy_bad_code() {
+  env::set_var("DATA_PLANE_URL", format!("http://{}", DATA));
+  dotenv().ok();
+
+  let registry = tracing_subscriber::registry();
+  registry
+    .with(
+      tracing_subscriber::fmt::layer()
+        .with_file(true)
+        .with_line_number(true)
+        .with_filter(
+          tracing_subscriber::EnvFilter::builder()
+            .with_default_directive(LevelFilter::INFO.into())
+            .from_env_lossy(),
+        ),
+    )
+    .init();
+
+  let project_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+  let code_path = project_dir.join("tests/deploy_bad_code");
+  let server_data_path = project_dir.join("tests/deploy_bad_code/server");
+
+  _ = tokio::fs::remove_dir_all(&server_data_path).await;
+  tokio::fs::create_dir(&server_data_path).await.unwrap();
+
+  let handle = run_server(server_data_path).await;
+
+  let req = darx_core::api::dir_to_deploy_code_req(code_path.as_path())
+    .await
+    .unwrap();
+  info!("req: {:#?}", req);
+  let client = reqwest::Client::new();
+
+  let resp = client
+    .post(format!("http://{}/deploy_code/{}", CONTROL, ENV_ID))
+    .json(&req)
+    .send()
+    .await
+    .unwrap()
+    .error_for_status()
+    .unwrap()
+    .json::<serde_json::Value>()
+    .await
+    .unwrap();
+
+  info!("syntax error response: {}", &resp);
 
   handle.abort();
   let _ = handle.await;
