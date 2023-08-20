@@ -94,16 +94,17 @@ async fn invoke_function(
       host, &env_id
     )));
   }
-  let (env_id, deploy_seq, route) = r.unwrap();
+  let (target_env_id, deploy_seq, route) = r.unwrap();
 
   info!(
-    "match_route: env_id: {}, deploy_seq: {}, route: {:?}",
-    env_id, deploy_seq, route
+    "match_route: env_id: {}, target_env_id: {}, deploy_seq: {}, route: {:?}",
+    env_id, target_env_id, deploy_seq, route
   );
 
   let ret = tenants::invoke_function(
     &server_state.envs_dir,
-    &env_id,
+    env_id.as_str(),
+    &target_env_id,
     deploy_seq,
     req,
     &route.js_entry_point,

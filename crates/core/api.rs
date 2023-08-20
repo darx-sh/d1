@@ -1,5 +1,5 @@
 use crate::env_vars::var::Var;
-use crate::{Code, DeploySeq, EnvKind, HttpRoute};
+use crate::{Code, DeploySeq, HttpRoute};
 use actix_web::http::header::ContentType;
 use actix_web::http::StatusCode;
 use actix_web::web::Json;
@@ -34,6 +34,14 @@ pub fn add_plugin_deploy_url() -> String {
 pub fn add_var_deploy_url() -> String {
   format!(
     "{}/add_var_deploy",
+    env::var("DATA_PLANE_URL")
+      .expect("DATA_PLANE_URL should be configured to add route"),
+  )
+}
+
+pub fn add_tenant_db_url() -> String {
+  format!(
+    "{}/add_tenant_db",
     env::var("DATA_PLANE_URL")
       .expect("DATA_PLANE_URL should be configured to add route"),
   )

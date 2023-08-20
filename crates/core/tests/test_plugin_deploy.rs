@@ -2,20 +2,13 @@ mod common;
 use anyhow::{Context, Result};
 use common::TenantProjectContext;
 use darx_core::api::AddCodeDeployReq;
-use darx_core::code::control::{
-  deploy_code, deploy_plugin, deploy_var, list_api,
-};
-use darx_core::env_vars::Var;
+use darx_core::code::control::{deploy_code, deploy_plugin, list_api};
 use darx_core::tenants::{
-  add_code_deploy, add_plugin_deploy, add_var_deploy, init_deploys,
-  invoke_function, match_route,
+  add_code_deploy, add_plugin_deploy, init_deploys, match_route,
 };
 use darx_core::{Code, Project};
 use darx_utils::new_nano_id;
-use serde_json::json;
 use sqlx::MySqlPool;
-use std::collections::HashMap;
-use std::env;
 use std::path::PathBuf;
 use test_context::test_context;
 
@@ -89,7 +82,7 @@ async fn deploy_to_ctrl(
 ) -> Result<(String, String, AddCodeDeployReq, AddCodeDeployReq)> {
   let db_pool = &ctx.db_pool().clone();
   let env_id = ctx.proj().env_id().clone();
-  let envs_dir = PathBuf::from(ctx.envs_dir());
+  let _envs_dir = PathBuf::from(ctx.envs_dir());
   let txn = db_pool
     .begin()
     .await

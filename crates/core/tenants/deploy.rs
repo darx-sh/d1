@@ -279,13 +279,14 @@ pub fn find_vars(env_id: &str) -> Option<HashMap<String, String>> {
 pub async fn invoke_function(
   envs_dir: &Path,
   env_id: &str,
+  target_env_id: &str,
   deploy_seq: i64,
   req: serde_json::Value,
   js_entry_point: &str,
   js_export: &str,
   param_names: &Vec<String>,
 ) -> Result<serde_json::Value, ApiError> {
-  let deploy_dir = find_deploy_dir(envs_dir, env_id, deploy_seq)
+  let deploy_dir = find_deploy_dir(envs_dir, target_env_id, deploy_seq)
     .await
     .map_err(|e| ApiError::DeployNotFound(e.to_string()))?;
 
@@ -304,6 +305,8 @@ pub async fn invoke_function(
     cached.unwrap().clone()
   };
 
+  // We DO NOT use target_env here.
+  // We use the env_id from the request.
   let vars = find_vars(env_id).unwrap_or_default();
   let mut isolate = DarxIsolate::new_with_snapshot(
     env_id,

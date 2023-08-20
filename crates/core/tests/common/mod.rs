@@ -55,11 +55,11 @@ impl AsyncTestContext for TenantProjectContext {
 
   async fn teardown(self) {
     self.proj.drop(&self.db_pool).await.unwrap();
-    // let _ = fs::remove_dir_all(self.envs_dir.join(self.proj.env_id())).await;
+    let _ = fs::remove_dir_all(self.envs_dir.join(self.proj.env_id())).await;
 
     if let Some(plugin) = self.plugin_proj {
       plugin.drop(&self.db_pool).await.unwrap();
-      // let _ = fs::remove_dir_all(self.envs_dir.join(plugin.env_id())).await;
+      let _ = fs::remove_dir_all(self.envs_dir.join(plugin.env_id())).await;
     }
   }
 }

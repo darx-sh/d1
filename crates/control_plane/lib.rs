@@ -9,10 +9,11 @@ use std::sync::Arc;
 use tracing_actix_web::TracingLogger;
 
 use darx_core::api::{
-  add_code_deploy_url, add_plugin_deploy_url, add_var_deploy_url,
-  AddCodeDeployReq, AddPluginDeployReq, AddVarDeployReq, ApiError,
-  DeployCodeReq, DeployCodeRsp, DeployPluginReq, DeployVarReq, ListApiRsp,
-  ListCodeRsp, NewPluginProjectReq, NewProjectRsp, NewTenantProjectReq,
+  add_code_deploy_url, add_plugin_deploy_url, add_tenant_db_url,
+  add_var_deploy_url, AddCodeDeployReq, AddPluginDeployReq, AddTenantDBReq,
+  AddVarDeployReq, ApiError, DeployCodeReq, DeployCodeRsp, DeployPluginReq,
+  DeployVarReq, ListApiRsp, ListCodeRsp, NewPluginProjectReq, NewProjectRsp,
+  NewTenantProjectReq,
 };
 use darx_core::code::control;
 use darx_core::plugin::plugin_env_id;
@@ -204,6 +205,28 @@ async fn new_tenant_project(
     Project::new_tenant_proj(req.org_id.as_str(), req.project_name.as_str());
 
   project.save(db_pool).await?;
+
+  let req = AddTenantDBReq {
+    env_id: project.env_id().to_string(),
+    db_info: project.db_info().as_ref().unwrap().clone(),
+  };
+  let url = add_tenant_db_url();
+  let rsp = reqwest::Client::new()
+    .post(url)
+    .json(&req)
+    .send()
+    .await
+    .context("Failed to send add_tenant_db request")?;
+
+  if !rsp.status().is_success() {
+    return Err(ApiError::Internal(anyhow!(
+      "Failed to add tenant db: {}",
+      rsp.text().await.unwrap()
+    )));
+  }
+
+  tracing::info!("tenant db added: {:?}", project.db_info());
+
   Ok(Json(NewProjectRsp {
     project_id: project.id().to_string(),
     env_id: project.env_id().to_string(),

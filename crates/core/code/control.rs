@@ -2,7 +2,7 @@ use crate::api::ApiError;
 use crate::code::esm_parser::parse_module_export;
 use crate::env_vars::var::{Var, VarKind};
 use crate::env_vars::var_list::VarList;
-use crate::plugin::{plugin_http_path, plugin_project_id};
+use crate::plugin::plugin_http_path;
 use crate::route_builder::build_route;
 use crate::{
   unique_js_export, Code, DeployId, DeploySeq, HttpRoute, REGISTRY_FILE_NAME,
@@ -387,10 +387,6 @@ mod tests {
           param_names: vec![],
         },
       },
-    ];
-    let vars = vec![
-      Var::new("key1".to_string(), "val1".to_string()),
-      Var::new("key2".to_string(), "val2".to_string()),
     ];
     let code = registry_code(&routes)?;
     assert_eq!(

@@ -1,3 +1,4 @@
 export async function listTable() {
-  return "from plugin";
+  const db = await useDB();
+  return db.execute("SELECT 1");
 }

@@ -65,9 +65,13 @@ impl Project {
     &self.env_id
   }
 
+  pub fn db_info(&self) -> &Option<TenantDBInfo> {
+    &self.db_info
+  }
+
   pub async fn save(&self, pool: &MySqlPool) -> Result<()> {
-    let mut txn = pool.begin().await?;
-    let mut txn = save_tenant_project(
+    let txn = pool.begin().await?;
+    let txn = save_tenant_project(
       txn,
       self.id.as_str(),
       self.org_id.as_str(),
@@ -89,8 +93,8 @@ impl Project {
   }
 
   pub async fn drop(&self, pool: &MySqlPool) -> Result<()> {
-    let mut txn = pool.begin().await?;
-    let mut txn = drop_env(txn, self.env_id.as_str()).await?;
+    let txn = pool.begin().await?;
+    let txn = drop_env(txn, self.env_id.as_str()).await?;
     let txn = drop_tenant_project(txn, self.id.as_str()).await?;
     txn.commit().await?;
     Ok(())

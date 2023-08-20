@@ -1,5 +1,4 @@
 use crate::api::ApiError;
-use crate::EnvKind;
 use anyhow::Result;
 
 pub const SYS_PLUGIN_SCHEMA_API: &str = "schema";

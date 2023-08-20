@@ -1,19 +1,13 @@
 mod common;
 use anyhow::{Context, Result};
 use common::TenantProjectContext;
-use darx_core::code::control::{
-  deploy_code, deploy_plugin, deploy_var, list_api,
-};
-use darx_core::env_vars::Var;
+use darx_core::code::control::{deploy_code, deploy_var};
 use darx_core::tenants::{
-  add_code_deploy, add_var_deploy, init_deploys, invoke_function, match_route,
+  add_code_deploy, add_var_deploy, invoke_function, match_route,
 };
 use darx_core::{Code, Project};
-use darx_utils::new_nano_id;
 use serde_json::json;
 use std::collections::HashMap;
-use std::env;
-use std::path::PathBuf;
 use test_context::test_context;
 
 #[test_context(TenantProjectContext)]
@@ -79,6 +73,7 @@ async fn test_deploy_code(ctx: &mut TenantProjectContext) -> Result<()> {
 
   let ret = invoke_function(
     envs_dir,
+    env_id,
     ret_env_id.as_str(),
     seq,
     json!({}),
@@ -96,6 +91,7 @@ async fn test_deploy_code(ctx: &mut TenantProjectContext) -> Result<()> {
 
   let ret = invoke_function(
     envs_dir,
+    env_id,
     ret_env_id.as_str(),
     seq,
     json!({}),
@@ -112,6 +108,7 @@ async fn test_deploy_code(ctx: &mut TenantProjectContext) -> Result<()> {
   assert_eq!(ret_env_id.as_str(), env_id);
   let ret = invoke_function(
     envs_dir,
+    env_id,
     ret_env_id.as_str(),
     seq,
     json!({}),
@@ -128,6 +125,7 @@ async fn test_deploy_code(ctx: &mut TenantProjectContext) -> Result<()> {
   assert_eq!(ret_env_id.as_str(), env_id);
   let ret = invoke_function(
     envs_dir,
+    env_id,
     ret_env_id.as_str(),
     seq,
     json!({}),
