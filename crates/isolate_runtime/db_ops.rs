@@ -44,7 +44,11 @@ pub async fn op_use_db(
   let r = get_tenant_pool(env_id.0.as_str()).await;
   match r {
     Err(e) => {
-      tracing::error!("useDB error: {}", e);
+      tracing::error!(
+        "useDB error env_id = {}, error = {}",
+        env_id.0.as_str(),
+        e
+      );
       Err(anyhow!("useDB error: {}", e))
     }
     Ok(conn) => {

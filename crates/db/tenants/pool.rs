@@ -2,10 +2,12 @@ use crate::TenantConnPool;
 use anyhow::anyhow;
 use dashmap::DashMap;
 use once_cell::sync::Lazy;
+use serde::{Deserialize, Serialize};
 use sqlx::mysql::MySqlConnectOptions;
 use sqlx::MySqlPool;
 use std::ops::{Deref, DerefMut};
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TenantDBInfo {
   pub host: String,
   pub port: u16,

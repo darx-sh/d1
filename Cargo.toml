@@ -69,8 +69,10 @@ swc_ecma_parser = { version = "0.137.2" }
 arrayvec = "0.7.4"
 patricia_tree = "0.6.1"
 async-recursion = "1"
-serial_test = "2"
 sea-query = "0"
+# tests related
+serial_test = "2"
+test-context = "0"
 
 [profile.dev.package.sqlx-macros]
 opt-level = 3

@@ -49,9 +49,28 @@ static GLOBAL_ROUTER: Lazy<DashMap<String, Vec<RouteDeploy>>> =
 static GLOBAL_VARS: Lazy<DashMap<String, Vec<VarDeploy>>> =
   Lazy::new(DashMap::new);
 
+// PLUGIN_REGISTRY maps a plugin's name to its env_id.
 static PLUGIN_REGISTRY: Lazy<DashMap<String, String>> = Lazy::new(DashMap::new);
 
 pub(crate) const SNAPSHOT_FILE: &str = "SNAPSHOT.bin";
+
+pub async fn add_plugin_deploy(
+  name: &str,
+  envs_dir: &Path,
+  env_id: &str,
+  deploy_seq: i64,
+  codes: &Vec<Code>,
+  http_routes: &Vec<HttpRoute>,
+) -> Result<()> {
+  let kv = PLUGIN_REGISTRY
+    .entry(name.to_string())
+    .or_insert(env_id.to_string());
+  if kv.value() != env_id {
+    bail!("Plugin name {} already exists in env {}", name, kv.value());
+  }
+  add_code_deploy(envs_dir, env_id, deploy_seq, codes, http_routes).await?;
+  Ok(())
+}
 
 pub async fn add_code_deploy(
   envs_dir: &Path,
@@ -260,13 +279,14 @@ pub fn find_vars(env_id: &str) -> Option<HashMap<String, String>> {
 pub async fn invoke_function(
   envs_dir: &Path,
   env_id: &str,
+  target_env_id: &str,
   deploy_seq: i64,
   req: serde_json::Value,
   js_entry_point: &str,
   js_export: &str,
   param_names: &Vec<String>,
 ) -> Result<serde_json::Value, ApiError> {
-  let deploy_dir = find_deploy_dir(envs_dir, env_id, deploy_seq)
+  let deploy_dir = find_deploy_dir(envs_dir, target_env_id, deploy_seq)
     .await
     .map_err(|e| ApiError::DeployNotFound(e.to_string()))?;
 
@@ -285,6 +305,8 @@ pub async fn invoke_function(
     cached.unwrap().clone()
   };
 
+  // We DO NOT use target_env here.
+  // We use the env_id from the request.
   let vars = find_vars(env_id).unwrap_or_default();
   let mut isolate = DarxIsolate::new_with_snapshot(
     env_id,

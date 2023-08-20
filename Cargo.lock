@@ -1054,6 +1054,7 @@ dependencies = [
  "anyhow",
  "arrayvec",
  "async-recursion",
+ "async-trait",
  "darx_db",
  "darx_isolate_runtime",
  "darx_utils",
@@ -1072,6 +1073,7 @@ dependencies = [
  "swc_common",
  "swc_ecma_ast",
  "swc_ecma_parser",
+ "test-context",
  "thiserror",
  "tokio",
  "tracing",
@@ -4214,6 +4216,27 @@ dependencies = [
  "redox_syscall 0.3.5",
  "rustix",
  "windows-sys 0.48.0",
+]
+
+[[package]]
+name = "test-context"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "055831a02a4f5aa28fede67f2902014273eb8c21b958ac5ebbd59b71ef30dbc3"
+dependencies = [
+ "async-trait",
+ "futures",
+ "test-context-macros",
+]
+
+[[package]]
+name = "test-context-macros"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8901a55b0a7a06ebc4a674dcca925170da8e613fa3b163a1df804ed10afb154d"
+dependencies = [
+ "quote",
+ "syn 1.0.109",
 ]
 
 [[package]]

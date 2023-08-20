@@ -2,7 +2,7 @@ use crate::api::ApiError;
 use crate::code::esm_parser::parse_module_export;
 use crate::env_vars::var::{Var, VarKind};
 use crate::env_vars::var_list::VarList;
-use crate::plugin::{plugin_http_path, plugin_project_id};
+use crate::plugin::plugin_http_path;
 use crate::route_builder::build_route;
 use crate::{
   unique_js_export, Code, DeployId, DeploySeq, HttpRoute, REGISTRY_FILE_NAME,
@@ -13,7 +13,7 @@ use handlebars::Handlebars;
 use serde::Serialize;
 use serde_json::json;
 use sqlx::{MySql, MySqlPool, Transaction};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::mem::swap;
 
 pub async fn deploy_code<'c>(
@@ -124,9 +124,9 @@ pub async fn deploy_code<'c>(
 pub async fn deploy_var<'c>(
   txn: Transaction<'c, MySql>,
   env_id: &str,
-  vars: &Vec<Var>,
+  vars: &HashMap<String, String>,
   desc: &Option<String>,
-) -> Result<(DeploySeq, Vec<Var>, Transaction<'c, MySql>)> {
+) -> Result<(DeploySeq, HashMap<String, String>, Transaction<'c, MySql>)> {
   let (deploy_id, deploy_seq, mut txn) =
     create_deploy(txn, env_id, &None, desc).await?;
 
@@ -139,7 +139,7 @@ pub async fn deploy_var<'c>(
 
   // merge deploy_vars with env_vars
   for var in vars {
-    map.insert(var.key(), var.val());
+    map.insert(var.0, var.1);
   }
   let mut final_vars: Vec<Var> =
     map.into_iter().map(|(k, v)| Var::new(k, v)).collect();
@@ -149,7 +149,7 @@ pub async fn deploy_var<'c>(
     .save(&mut *txn)
     .await
     .context("Fail to save deploy vars")?;
-  Ok((deploy_seq, var_list.vars().to_vec(), txn))
+  Ok((deploy_seq, var_list.into_map(), txn))
 }
 
 pub async fn list_code(
@@ -202,13 +202,14 @@ pub async fn list_code(
 pub async fn deploy_plugin<'c>(
   mut txn: Transaction<'c, MySql>,
   env_id: &str,
-  name: &str,
+  plugin_name: &str,
   codes: &Vec<Code>,
-) -> Result<(i64, Vec<Code>, Vec<HttpRoute>, Transaction<'c, MySql>)> {
-  let plugin = sqlx::query!("SELECT id FROM plugins WHERE name = ?", name)
-    .fetch_optional(&mut *txn)
-    .await
-    .context("Failed to query plugins table")?;
+) -> Result<(DeploySeq, Vec<Code>, Vec<HttpRoute>, Transaction<'c, MySql>)> {
+  let plugin =
+    sqlx::query!("SELECT id FROM plugins WHERE name = ?", plugin_name)
+      .fetch_optional(&mut *txn)
+      .await
+      .context("Failed to query plugins table")?;
 
   let _plugin_id = if let Some(plugin) = plugin {
     plugin.id
@@ -217,22 +218,12 @@ pub async fn deploy_plugin<'c>(
     sqlx::query!(
       "INSERT INTO plugins (id, name, env_id) VALUES (?, ?, ?)",
       plugin_id,
-      name,
+      plugin_name,
       env_id,
     )
     .execute(&mut *txn)
     .await
     .context("Failed to insert into plugins table")?;
-
-    sqlx::query!(
-      "INSERT INTO envs (id, name, project_id) VALUES (?, ?, ?)",
-      env_id,
-      name,
-      plugin_project_id(name),
-    )
-    .execute(&mut *txn)
-    .await
-    .context("Failed to insert into envs table when create_plugin")?;
     plugin_id
   };
   deploy_code(txn, env_id, codes, &None, &None).await
@@ -396,10 +387,6 @@ mod tests {
           param_names: vec![],
         },
       },
-    ];
-    let vars = vec![
-      Var::new("key1".to_string(), "val1".to_string()),
-      Var::new("key2".to_string(), "val2".to_string()),
     ];
     let code = registry_code(&routes)?;
     assert_eq!(

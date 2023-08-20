@@ -5,9 +5,10 @@ use actix_web::{
   App, HttpRequest, HttpResponse, HttpResponseBuilder, HttpServer,
 };
 use anyhow::{Context, Result};
-use darx_core::api::AddVarDeployReq;
+use darx_core::api::{AddPluginDeployReq, AddVarDeployReq};
 use darx_core::tenants;
-use darx_core::{api::AddCodeDeployReq, api::ApiError};
+use darx_core::{api::AddCodeDeployReq, api::AddTenantDBReq, api::ApiError};
+use darx_db;
 use serde_json;
 use std::env;
 use std::net::SocketAddr;
@@ -63,6 +64,8 @@ pub async fn run_server(
         .app_data(Data::new(server_state.clone()))
         .route("/", get().to(|| async { "data plane healthy." }))
         .route("/invoke/{func_url:.*}", post().to(invoke_function))
+        .route("/add_tenant_db", post().to(add_tenant_db))
+        .route("/add_plugin_deploy", post().to(add_plugin_deploy))
         .route("/add_code_deploy", post().to(add_code_deploy))
         .route("/add_var_deploy", post().to(add_var_deploy))
     })
@@ -84,16 +87,24 @@ async fn invoke_function(
 
   tracing::info!("invoke_function: {}, env_id: {}", func_url, env_id);
 
-  let (env_id, deploy_seq, route) =
-    tenants::match_route(env_id.as_str(), func_url.as_str(), "POST").ok_or(
-      ApiError::FunctionNotFound(format!(
-        "host: {}, env_id: {}",
-        host, &env_id
-      )),
-    )?;
+  let r = tenants::match_route(env_id.as_str(), func_url.as_str(), "POST");
+  if r.is_none() {
+    return Err(ApiError::FunctionNotFound(format!(
+      "host: {}, env_id: {}",
+      host, &env_id
+    )));
+  }
+  let (target_env_id, deploy_seq, route) = r.unwrap();
+
+  info!(
+    "match_route: env_id: {}, target_env_id: {}, deploy_seq: {}, route: {:?}",
+    env_id, target_env_id, deploy_seq, route
+  );
+
   let ret = tenants::invoke_function(
     &server_state.envs_dir,
-    &env_id,
+    env_id.as_str(),
+    &target_env_id,
     deploy_seq,
     req,
     &route.js_entry_point,
@@ -102,6 +113,29 @@ async fn invoke_function(
   )
   .await?;
   Ok(Json(ret))
+}
+
+async fn add_tenant_db(
+  Json(req): Json<AddTenantDBReq>,
+) -> Result<HttpResponseBuilder, ApiError> {
+  darx_db::add_tenant_db_info(req.env_id.as_str(), req.db_info);
+  Ok(HttpResponse::Ok())
+}
+
+async fn add_plugin_deploy(
+  server_state: Data<Arc<ServerState>>,
+  Json(req): Json<AddPluginDeployReq>,
+) -> Result<HttpResponseBuilder, ApiError> {
+  tenants::add_plugin_deploy(
+    &req.name,
+    server_state.envs_dir.as_path(),
+    req.env_id.as_str(),
+    req.deploy_seq,
+    &req.codes,
+    &req.http_routes,
+  )
+  .await?;
+  Ok(HttpResponse::Ok())
 }
 
 async fn add_code_deploy(

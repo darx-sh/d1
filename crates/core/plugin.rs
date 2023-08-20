@@ -1,5 +1,4 @@
 use crate::api::ApiError;
-use crate::EnvKind;
 use anyhow::Result;
 
 pub const SYS_PLUGIN_SCHEMA_API: &str = "schema";
@@ -9,8 +8,8 @@ pub fn plugin_project_id(plugin_name: &str) -> String {
   format!("000000000000_{}", plugin_name)
 }
 
-pub fn plugin_env_id(plugin_name: &str, env_kind: &EnvKind) -> String {
-  format!("000000000000_{}_{}", plugin_name, env_kind.as_str())
+pub fn plugin_env_id(plugin_name: &str) -> String {
+  format!("000000000000_{}", plugin_name)
 }
 
 // pub async fn deploy_system_plugins(db_pool: &MySqlPool) -> Result<()> {
