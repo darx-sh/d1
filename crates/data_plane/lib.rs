@@ -13,13 +13,13 @@ use serde_json;
 use std::env;
 use std::net::SocketAddr;
 use std::path::PathBuf;
-use std::sync::Arc;
 use tokio::fs;
 use tracing::info;
 use tracing_actix_web::TracingLogger;
 
 const DARX_ENVS_DIR: &str = "./darx_envs";
 
+#[derive(Clone)]
 struct ServerState {
   envs_dir: PathBuf,
 }
@@ -51,7 +51,7 @@ pub async fn run_server(
 
   info!("listen on {}", socket_addr);
 
-  let server_state = Arc::new(ServerState { envs_dir });
+  let server_state = ServerState { envs_dir };
   Ok(
     HttpServer::new(move || {
       let cors = Cors::default()
@@ -75,7 +75,7 @@ pub async fn run_server(
 }
 
 async fn invoke_function(
-  server_state: Data<Arc<ServerState>>,
+  server_state: Data<ServerState>,
   conn: ConnectionInfo,
   func_url: Path<String>,
   http_req: HttpRequest,
@@ -123,7 +123,7 @@ async fn add_tenant_db(
 }
 
 async fn add_plugin_deploy(
-  server_state: Data<Arc<ServerState>>,
+  server_state: Data<ServerState>,
   Json(req): Json<AddPluginDeployReq>,
 ) -> Result<HttpResponseBuilder, ApiError> {
   tenants::add_plugin_deploy(
@@ -139,7 +139,7 @@ async fn add_plugin_deploy(
 }
 
 async fn add_code_deploy(
-  server_state: Data<Arc<ServerState>>,
+  server_state: Data<ServerState>,
   Json(req): Json<AddCodeDeployReq>,
 ) -> Result<HttpResponseBuilder, ApiError> {
   tenants::add_code_deploy(
