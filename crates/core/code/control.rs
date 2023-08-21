@@ -1,4 +1,4 @@
-use crate::api::ApiError;
+use crate::api::{ApiError, EnvInfo, ProjectInfo};
 use crate::code::esm_parser::parse_module_export;
 use crate::env_vars::var::{Var, VarKind};
 use crate::env_vars::var_list::VarList;
@@ -152,10 +152,35 @@ pub async fn deploy_var<'c>(
   Ok((deploy_seq, var_list.into_map(), txn))
 }
 
-pub async fn list_code(
+pub async fn load_env(
   db_pool: &MySqlPool,
-  env_id: &str,
-) -> Result<(Vec<Code>, Vec<HttpRoute>)> {
+  proj_id: &str,
+) -> Result<(Vec<Code>, Vec<HttpRoute>, ProjectInfo, EnvInfo)> {
+  let project =
+    sqlx::query!("SELECT id, name FROM projects WHERE id = ?", proj_id)
+      .fetch_optional(db_pool)
+      .await
+      .context("Failed to query projects table")?
+      .ok_or(ApiError::ProjectNotFound(proj_id.to_string()))?;
+
+  // todo: only fetch the first environment right now.
+  let env =
+    sqlx::query!("SELECT id, name FROM envs WHERE project_id = ?", project.id)
+      .fetch_optional(db_pool)
+      .await
+      .context("Failed to query envs table")?
+      .ok_or(ApiError::EnvNotFound(format!("project_id: {}", proj_id)))?;
+
+  let env_id = env.id.clone();
+  let proj_info = ProjectInfo {
+    id: project.id,
+    name: project.name,
+  };
+  let env_info = EnvInfo {
+    id: env_id.clone(),
+    name: env.name,
+  };
+
   let deploy_id = sqlx::query!(
     "SELECT id FROM deploys WHERE env_id = ? ORDER BY deploy_seq DESC LIMIT 1",
     env_id
@@ -196,7 +221,7 @@ pub async fn list_code(
       });
     }
   }
-  Ok((codes, http_routes))
+  Ok((codes, http_routes, proj_info, env_info))
 }
 
 pub async fn deploy_plugin<'c>(

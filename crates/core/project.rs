@@ -1,3 +1,4 @@
+use crate::api::{EnvInfo, ProjectInfo};
 use crate::code::control::deploy_var;
 use crate::env_vars::{Var, VarList};
 use crate::plugin::{plugin_env_id, plugin_project_id};
@@ -15,11 +16,46 @@ pub struct Project {
   proj_name: String,
   org_id: OrgId,
   env_id: EnvId,
+  env_name: String,
   db_info: Option<TenantDBInfo>,
   var_list: VarList,
 }
 
+const DEFAULT_ENV_NAME: &str = "dev";
+
 impl Project {
+  pub async fn list_proj_info(
+    org_id: &str,
+    pool: &MySqlPool,
+  ) -> Result<Vec<ProjectInfo>> {
+    let projects =
+      sqlx::query!("SELECT id, name FROM projects WHERE org_id = ?", org_id)
+        .fetch_all(pool)
+        .await?;
+
+    let mut proj_infos = vec![];
+    for proj in projects.iter() {
+      let envs =
+        sqlx::query!("SELECT id, name FROM envs WHERE project_id = ?", proj.id)
+          .fetch_all(pool)
+          .await?;
+
+      let mut env_infos = vec![];
+      for env in envs.iter() {
+        env_infos.push(EnvInfo {
+          id: env.id.clone(),
+          name: env.name.clone(),
+        });
+      }
+
+      proj_infos.push(ProjectInfo {
+        id: proj.id.clone(),
+        name: proj.name.clone(),
+      });
+    }
+    Ok(proj_infos)
+  }
+
   pub fn new_tenant_proj(org_id: &str, name: &str) -> Self {
     let mut proj = Project::new_minimal_proj(org_id, name);
     let env_id = proj.env_id();
@@ -61,8 +97,16 @@ impl Project {
     &self.id
   }
 
+  pub fn name(&self) -> &str {
+    &self.proj_name
+  }
+
   pub fn env_id(&self) -> &EnvId {
     &self.env_id
+  }
+
+  pub fn env_name(&self) -> &str {
+    &self.env_name
   }
 
   pub fn db_info(&self) -> &Option<TenantDBInfo> {
@@ -108,6 +152,7 @@ impl Project {
       proj_name: proj_name.to_string(),
       org_id: ord_id.to_string(),
       env_id: env_id.clone(),
+      env_name: DEFAULT_ENV_NAME.to_string(),
       db_info: None,
       var_list: VarList::new_env_vars(env_id.as_str(), &vec![]),
     }
