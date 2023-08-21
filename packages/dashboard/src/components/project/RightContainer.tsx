@@ -1,5 +1,5 @@
-import ToolTabs from "~/components/project_v2/ToolTabs";
-import ToolContent from "~/components/project_v2/ToolContent";
+import ToolTabs from "~/components/project/ToolTabs";
+import ToolContent from "~/components/project/ToolContent";
 
 export default function RightContainer() {
   return (

@@ -1,9 +1,9 @@
 import {
   HttpRoute,
   useProjectState,
-} from "~/components/project_v2/ProjectContext";
+} from "~/components/project/ProjectContext";
 import { useState } from "react";
-import InvokeModal from "~/components/project_v2/InvokeModal";
+import InvokeModal from "~/components/project/InvokeModal";
 
 export default function HttpEndpoints() {
   const projectState = useProjectState()!;

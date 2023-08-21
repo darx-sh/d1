@@ -1,7 +1,7 @@
 import {
   useProjectState,
   useProjectDispatch,
-} from "~/components/project_v2/ProjectContext";
+} from "~/components/project/ProjectContext";
 
 import { classNames } from "~/utils";
 import { CircleStackIcon } from "@heroicons/react/24/outline";

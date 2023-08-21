@@ -5,7 +5,6 @@ use actix_web::{App, HttpResponse, HttpResponseBuilder, HttpServer};
 use anyhow::{anyhow, Context, Result};
 use std::env;
 use std::net::SocketAddr;
-use std::sync::Arc;
 use tracing_actix_web::TracingLogger;
 
 use darx_core::api::{
@@ -28,7 +27,7 @@ pub async fn run_server(socket_addr: SocketAddr) -> Result<Server> {
   .await
   .context("Failed to connect database")?;
 
-  let server_state = Arc::new(ServerState { db_pool });
+  let server_state = ServerState { db_pool };
   tracing::info!("listen on {}", socket_addr);
 
   Ok(
@@ -57,7 +56,7 @@ pub async fn run_server(socket_addr: SocketAddr) -> Result<Server> {
 }
 
 async fn deploy_code(
-  server_state: Data<Arc<ServerState>>,
+  server_state: Data<ServerState>,
   env_id: Path<String>,
   req: Json<DeployCodeReq>,
 ) -> Result<Json<DeployCodeRsp>, ApiError> {
@@ -97,7 +96,7 @@ async fn deploy_code(
 }
 
 async fn list_code(
-  server_state: Data<Arc<ServerState>>,
+  server_state: Data<ServerState>,
   env_id: Path<String>,
 ) -> Result<Json<ListCodeRsp>, ApiError> {
   let db_pool = &server_state.db_pool;
@@ -107,7 +106,7 @@ async fn list_code(
 }
 
 async fn deploy_var(
-  server_state: Data<Arc<ServerState>>,
+  server_state: Data<ServerState>,
   env_id: Path<String>,
   req: Json<DeployVarReq>,
 ) -> Result<HttpResponseBuilder, ApiError> {
@@ -146,7 +145,7 @@ async fn deploy_var(
 }
 
 async fn list_api(
-  server_state: Data<Arc<ServerState>>,
+  server_state: Data<ServerState>,
   env_id: Path<String>,
 ) -> Result<Json<ListApiRsp>, ApiError> {
   let db_pool = &server_state.db_pool;
@@ -155,7 +154,7 @@ async fn list_api(
 }
 
 async fn deploy_plugin(
-  server_state: Data<Arc<ServerState>>,
+  server_state: Data<ServerState>,
   req: Json<DeployPluginReq>,
 ) -> Result<HttpResponseBuilder, ApiError> {
   let txn = server_state
@@ -197,7 +196,7 @@ async fn deploy_plugin(
 }
 
 async fn new_tenant_project(
-  server_state: Data<Arc<ServerState>>,
+  server_state: Data<ServerState>,
   req: Json<NewTenantProjectReq>,
 ) -> Result<Json<NewProjectRsp>, ApiError> {
   let db_pool = &server_state.db_pool;
@@ -234,7 +233,7 @@ async fn new_tenant_project(
 }
 
 async fn new_plugin_project(
-  server_state: Data<Arc<ServerState>>,
+  server_state: Data<ServerState>,
   req: Json<NewPluginProjectReq>,
 ) -> Result<Json<NewProjectRsp>, ApiError> {
   let db_pool = &server_state.db_pool;
@@ -247,6 +246,7 @@ async fn new_plugin_project(
   }))
 }
 
+#[derive(Clone)]
 struct ServerState {
   db_pool: sqlx::MySqlPool,
 }

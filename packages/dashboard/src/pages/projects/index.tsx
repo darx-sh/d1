@@ -9,7 +9,7 @@ const user = {
 const navigation = [{ id: "Projects", href: "#", current: true }];
 const userNavigation = [{ id: "Sign out", href: "#" }];
 
-const projects = [
+const projects: { id: string }[] = [
   {
     id: "wild-dog-87",
   },
@@ -79,7 +79,7 @@ export default function Example() {
                 className="rounded-lg border border-gray-300 transition-colors duration-200 hover:border-gray-700"
               >
                 <Link
-                  href={`/projects/v2/${project.id}`}
+                  href={`/projects/${project.id}`}
                   className="flex place-content-center py-5"
                 >
                   <h2>

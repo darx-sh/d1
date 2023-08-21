@@ -4,7 +4,7 @@ import {
   HttpRoute,
   useProjectDispatch,
   useProjectState,
-} from "~/components/project_v2/ProjectContext";
+} from "~/components/project/ProjectContext";
 import { githubDark, githubLight } from "@uiw/codemirror-theme-github";
 import { json } from "@codemirror/lang-json";
 import { EditorView } from "@codemirror/view";
