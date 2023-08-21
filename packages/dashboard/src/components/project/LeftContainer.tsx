@@ -1,5 +1,5 @@
-import Directory from "~/components/project_v2/LeftDirectory";
-import Tools from "~/components/project_v2/LeftTools";
+import Directory from "~/components/project/LeftDirectory";
+import Tools from "~/components/project/LeftTools";
 export default function LeftContainer() {
   return (
     <div className="flex h-full flex-col">

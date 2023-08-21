@@ -3,7 +3,7 @@ import { githubLight } from "@uiw/codemirror-theme-github";
 import { javascript } from "@codemirror/lang-javascript";
 import { EditorView } from "@codemirror/view";
 import { useProjectState, useProjectDispatch } from "./ProjectContext";
-import HttpEndpoints from "~/components/project_v2/HttpEndpoints";
+import HttpEndpoints from "~/components/project/HttpEndpoints";
 import React from "react";
 
 const myTheme = EditorView.theme({

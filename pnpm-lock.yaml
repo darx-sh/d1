@@ -46,6 +46,9 @@ importers:
       '@prisma/client':
         specifier: ^4.11.0
         version: 4.11.0(prisma@4.11.0)
+      '@scaleway/random-name':
+        specifier: ^4.0.2
+        version: 4.0.2
       '@tanstack/react-query':
         specifier: ^4.28.0
         version: 4.28.0(react-dom@18.2.0)(react@18.2.0)
@@ -1590,6 +1593,11 @@ packages:
   /@rushstack/eslint-patch@1.3.2:
     resolution: {integrity: sha512-V+MvGwaHH03hYhY+k6Ef/xKd6RYlc4q8WBx+2ANmipHJcKuktNcI/NgEsJgdSUF6Lw32njT6OnrRsKYCdgHjYw==}
     dev: true
+
+  /@scaleway/random-name@4.0.2:
+    resolution: {integrity: sha512-aSQfSyaV+u0kv3yYDJ9gQeZGXpbtG0+c6RtgwixTGeEMkhb05TXzmS6zKYqHu2qywd01gQusEYh7c9vAvoSTzA==}
+    engines: {node: '>=14.x'}
+    dev: false
 
   /@smithy/protocol-http@1.1.1:
     resolution: {integrity: sha512-mFLFa2sSvlUxm55U7B4YCIsJJIMkA6lHxwwqOaBkral1qxFz97rGffP/mmd4JDuin1EnygiO5eNJGgudiUgmDQ==}

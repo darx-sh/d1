@@ -12,7 +12,7 @@ import {
   useProjectDispatch,
   CodeChecksums,
   initialHttpParam,
-} from "~/components/project_v2/ProjectContext";
+} from "~/components/project/ProjectContext";
 
 import axios from "axios";
 import axiosRetry from "axios-retry";
