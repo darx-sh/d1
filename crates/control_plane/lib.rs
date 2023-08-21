@@ -11,8 +11,8 @@ use darx_core::api::{
   add_code_deploy_url, add_plugin_deploy_url, add_tenant_db_url,
   add_var_deploy_url, AddCodeDeployReq, AddPluginDeployReq, AddTenantDBReq,
   AddVarDeployReq, ApiError, DeployCodeReq, DeployCodeRsp, DeployPluginReq,
-  DeployVarReq, ListApiRsp, ListCodeRsp, NewPluginProjectReq, NewProjectRsp,
-  NewTenantProjectReq,
+  DeployVarReq, EnvInfo, ListApiRsp, ListCodeRsp, ListProjectRsp,
+  NewPluginProjectReq, NewProjectRsp, NewTenantProjectReq, ProjectInfo,
 };
 use darx_core::code::control;
 use darx_core::plugin::plugin_env_id;
@@ -42,10 +42,11 @@ pub async fn run_server(socket_addr: SocketAddr) -> Result<Server> {
         .wrap(cors)
         .app_data(Data::new(server_state.clone()))
         .route("/", get().to(|| async { "control plane healthy." }))
+        .route("/list_project/{org_id}", get().to(list_project))
         .route("/new_tenant_project", post().to(new_tenant_project))
         .route("/new_plugin_project", post().to(new_plugin_project))
+        .route("/load_env/{project_id}", get().to(load_env))
         .route("/deploy_code/{env_id}", post().to(deploy_code))
-        .route("/list_code/{env_id}", get().to(list_code))
         .route("/deploy_var/{env_id}", post().to(deploy_var))
         .route("/list_api/{env_id}", get().to(list_api))
         .route("/deploy_plugin", post().to(deploy_plugin))
@@ -95,14 +96,19 @@ async fn deploy_code(
   Ok(Json(DeployCodeRsp { http_routes }))
 }
 
-async fn list_code(
+async fn load_env(
   server_state: Data<ServerState>,
-  env_id: Path<String>,
+  proj_id: Path<String>,
 ) -> Result<Json<ListCodeRsp>, ApiError> {
   let db_pool = &server_state.db_pool;
-  let (codes, http_routes) =
-    control::list_code(db_pool, env_id.as_str()).await?;
-  Ok(Json(ListCodeRsp { codes, http_routes }))
+  let (codes, http_routes, project, env) =
+    control::load_env(db_pool, proj_id.as_str()).await?;
+  Ok(Json(ListCodeRsp {
+    codes,
+    http_routes,
+    project,
+    env,
+  }))
 }
 
 async fn deploy_var(
@@ -195,6 +201,15 @@ async fn deploy_plugin(
   Ok(HttpResponse::Ok())
 }
 
+async fn list_project(
+  server_state: Data<ServerState>,
+  org_id: Path<String>,
+) -> Result<Json<ListProjectRsp>, ApiError> {
+  let db_pool = &server_state.db_pool;
+  let projects = Project::list_proj_info(org_id.as_str(), db_pool).await?;
+  Ok(Json(ListProjectRsp { projects }))
+}
+
 async fn new_tenant_project(
   server_state: Data<ServerState>,
   req: Json<NewTenantProjectReq>,
@@ -227,8 +242,14 @@ async fn new_tenant_project(
   tracing::info!("tenant db added: {:?}", project.db_info());
 
   Ok(Json(NewProjectRsp {
-    project_id: project.id().to_string(),
-    env_id: project.env_id().to_string(),
+    project: ProjectInfo {
+      id: project.id().to_string(),
+      name: project.name().to_string(),
+    },
+    env: EnvInfo {
+      id: project.env_id().to_string(),
+      name: project.env_name().to_string(),
+    },
   }))
 }
 
@@ -241,8 +262,16 @@ async fn new_plugin_project(
     Project::new_plugin_proj(req.org_id.as_str(), req.plugin_name.as_str());
   project.save(db_pool).await?;
   Ok(Json(NewProjectRsp {
-    project_id: project.id().to_string(),
-    env_id: project.env_id().to_string(),
+    project: ProjectInfo {
+      id: project.id().to_string(),
+      name: project.name().to_string(),
+    },
+    env: {
+      EnvInfo {
+        id: project.env_id().to_string(),
+        name: project.env_name().to_string(),
+      }
+    },
   }))
 }
 

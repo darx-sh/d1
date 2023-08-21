@@ -86,6 +86,8 @@ pub struct DeployPluginReq {
 ///
 #[derive(Serialize, Deserialize)]
 pub struct ListCodeRsp {
+  pub project: ProjectInfo,
+  pub env: EnvInfo,
   pub codes: Vec<Code>,
   pub http_routes: Vec<HttpRoute>,
 }
@@ -96,6 +98,23 @@ pub struct ListCodeRsp {
 #[derive(Serialize, Deserialize)]
 pub struct ListApiRsp {
   pub http_routes: Vec<HttpRoute>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ListProjectRsp {
+  pub projects: Vec<ProjectInfo>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ProjectInfo {
+  pub id: String,
+  pub name: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct EnvInfo {
+  pub id: String,
+  pub name: String,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -112,8 +131,8 @@ pub struct NewPluginProjectReq {
 
 #[derive(Serialize, Deserialize)]
 pub struct NewProjectRsp {
-  pub project_id: String,
-  pub env_id: String,
+  pub project: ProjectInfo,
+  pub env: EnvInfo,
 }
 
 ///
@@ -179,6 +198,8 @@ pub enum ApiError {
   Internal(anyhow::Error),
   #[error("Environment {0} not found")]
   EnvNotFound(String),
+  #[error("Project {0} not found")]
+  ProjectNotFound(String),
   #[error("Invalid plugin url: {0}")]
   InvalidPluginUrl(String),
   #[error("function execution timeout")]
@@ -235,6 +256,11 @@ impl ResponseError for ApiError {
 
       ApiError::EnvNotFound(_) => HttpResponse::build(StatusCode::NOT_FOUND)
         .json(json!({"error": self.to_string()})),
+
+      ApiError::ProjectNotFound(_) => {
+        HttpResponse::build(StatusCode::NOT_FOUND)
+          .json(json!({"error": self.to_string()}))
+      }
       ApiError::InvalidPluginUrl(_) => {
         HttpResponse::build(StatusCode::NOT_FOUND)
           .json(json!({"error": self.to_string()}))

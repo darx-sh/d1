@@ -17,6 +17,18 @@ type ProjectState = {
 
   tabs: Tab[];
   curOpenTabIdx: number | null;
+  projectInfo: ProjectInfo | null;
+  envInfo: EnvInfo | null;
+};
+
+export type ProjectInfo = {
+  id: string;
+  name: string;
+};
+
+export type EnvInfo = {
+  id: string;
+  name: string;
 };
 
 export type HttpRoute = {
@@ -39,6 +51,8 @@ const initialProject: ProjectState = {
   },
   tabs: [],
   curOpenTabIdx: null,
+  projectInfo: null,
+  envInfo: null,
 };
 
 enum TabType {
@@ -47,10 +61,14 @@ enum TabType {
 }
 
 type ProjectAction =
+  | { type: "SetProject"; project: ProjectInfo }
+  | { type: "SetCurEnv"; envId: string }
   | {
-      type: "LoadCodes";
+      type: "LoadEnv";
       codes: { fsPath: string; content: string }[];
       httpRoutes: HttpRoute[];
+      projectInfo: ProjectInfo;
+      envInfo: EnvInfo;
     }
   | { type: "PersistedCode"; checksums: CodeChecksums; httpRoutes: HttpRoute[] }
   | { type: "NewJsFile"; parentNodeId: NodeId; fileName: string }
@@ -111,7 +129,7 @@ function projectReducer(
   action: ProjectAction
 ): ProjectState {
   switch (action.type) {
-    case "LoadCodes": {
+    case "LoadEnv": {
       const codes = action.codes.map((c) => {
         const digest = md5(c.content).toString();
         return {
@@ -120,6 +138,8 @@ function projectReducer(
           curChecksum: digest,
         };
       });
+      state.projectInfo = action.projectInfo;
+      state.envInfo = action.envInfo;
       state.directory.codes = codes;
       state.directory.httpRoutes = action.httpRoutes;
       state.directory.treeViewData = buildTreeViewData(state.directory.codes);
