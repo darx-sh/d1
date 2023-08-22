@@ -1,12 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import FileMenu from "~/components/project/FileMenu";
-import TreeView, { NodeId } from "~/components/react-tree-view";
-import {
-  FolderIcon,
-  FolderOpenIcon,
-  DocumentPlusIcon,
-} from "@heroicons/react/24/solid";
-
+import TreeView, { type NodeId } from "~/components/react-tree-view";
+import { FolderIcon, FolderOpenIcon } from "@heroicons/react/24/solid";
 import {
   useProjectState,
   useProjectDispatch,
@@ -166,7 +161,7 @@ export default function LeftDirectory() {
                     className="h-6 w-40 rounded px-1.5 text-gray-900 shadow-sm outline-1 placeholder:text-gray-400"
                     placeholder="New File"
                     onKeyDown={handleNewFileCreate}
-                    onBlur={(event) => {
+                    onBlur={(_event) => {
                       setNewFileParent(null);
                     }}
                   />

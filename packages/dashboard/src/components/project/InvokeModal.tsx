@@ -1,7 +1,7 @@
 import React, { Fragment, useState, useRef } from "react";
 import { Dialog, Transition } from "@headlessui/react";
 import {
-  HttpRoute,
+  type HttpRoute,
   useProjectDispatch,
   useProjectState,
 } from "~/components/project/ProjectContext";
@@ -17,13 +17,6 @@ type InvokeModalProps = {
   httpRoute: HttpRoute;
   onClose: () => void;
 };
-
-const myTheme = EditorView.theme({
-  "&": {
-    fontSize: "1rem",
-    lineHeight: "1.5rem",
-  },
-});
 
 export default function InvokeModal(props: InvokeModalProps) {
   const [open, setOpen] = useState(true);
@@ -130,7 +123,7 @@ export default function InvokeModal(props: InvokeModalProps) {
                           ]}
                           height="200px"
                           basicSetup={{ lineNumbers: false, foldGutter: false }}
-                          onChange={(value, viewUpdate) => {
+                          onChange={(value, _viewUpdate) => {
                             paramsRef.current = value;
                             projectDispatch({
                               type: "UpdatePostParam",
