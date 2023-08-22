@@ -5,7 +5,6 @@
   "scripts": {
     "build": "next build",
     "dev": "next dev",
-    "postinstall": "prisma generate",
     "lint": "next lint",
     "start": "next start"
   },
@@ -17,8 +16,6 @@
     "@codemirror/view": "^6.13.2",
     "@headlessui/react": "^1.7.14",
     "@heroicons/react": "^2.0.17",
-    "@next-auth/prisma-adapter": "^1.0.5",
-    "@prisma/client": "^4.11.0",
     "@scaleway/random-name": "^4.0.2",
     "@tanstack/react-query": "^4.28.0",
     "@uiw/codemirror-theme-github": "^4.21.7",
