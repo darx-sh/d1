@@ -17,6 +17,7 @@ import { useInterval, useEffectOnce } from "usehooks-ts";
 
 function ProjectDetail() {
   const router = useRouter();
+  const { query } = router;
   const [isLoading, setIsLoading] = useState(true);
   const projectDispatch = useProjectDispatch()!;
   const projectState = useProjectState()!;
@@ -27,7 +28,7 @@ function ProjectDetail() {
     js_export: string;
   };
 
-  useEffectOnce(() => {
+  useEffect(() => {
     type LoadEnvRsp = {
       codes: { fs_path: string; content: string }[];
       http_routes: HttpRoute[];
@@ -39,7 +40,7 @@ function ProjectDetail() {
       return;
     }
 
-    const projectId = router.query.id as string;
+    const projectId = query.id as string;
     const loadEnvUrl = `http://localhost:3457/load_env/${projectId}`;
     const instance = axios.create();
     axiosRetry(instance, {
@@ -81,7 +82,7 @@ function ProjectDetail() {
         setIsLoading(false);
       })
       .catch((error) => console.error("load_env error: ", error));
-  });
+  }, [router.isReady]);
 
   const [deployingCode, setDeployingCode] = useState(false);
   useInterval(() => {
@@ -154,7 +155,10 @@ function ProjectDetail() {
   return (
     <>
       {isLoading ? (
-        <LoadingBar></LoadingBar>
+        <>
+          <p>{query.id}</p>
+          <LoadingBar></LoadingBar>
+        </>
       ) : (
         <div className="flex h-screen flex-col bg-gray-100">
           <div className="h-16">
