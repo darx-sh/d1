@@ -1,10 +1,11 @@
+import React from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import { githubLight } from "@uiw/codemirror-theme-github";
 import { javascript } from "@codemirror/lang-javascript";
 import { EditorView } from "@codemirror/view";
 import { useProjectState, useProjectDispatch } from "./ProjectContext";
 import HttpEndpoints from "~/components/project/HttpEndpoints";
-import React from "react";
+import Database from "~/components/project/Database";
 
 const myTheme = EditorView.theme({
   "&": {
@@ -28,7 +29,7 @@ export default function ToolContent() {
       case "JsEditor": {
         const code = projectState.directory.codes[tab.codeIdx];
         return (
-          <div className="flex h-full justify-end space-x-2">
+          <div className="flex h-full justify-end space-x-2 bg-white">
             <div className="flex-1">
               <CodeMirror
                 value={code!.content}
@@ -51,7 +52,7 @@ export default function ToolContent() {
         );
       }
       case "Database": {
-        return <div>Database</div>;
+        return <Database></Database>;
       }
     }
   };

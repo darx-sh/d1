@@ -50,8 +50,8 @@ async function useDB() {
   return new DBConn(rid);
 }
 
-let Dx = {};
-Dx.env = new Proxy(
+let Darx = {};
+Darx.env = new Proxy(
   {},
   {
     get(target, key) {
@@ -67,4 +67,4 @@ Dx.env = new Proxy(
 
 globalThis.useDB = useDB;
 globalThis.select = select;
-globalThis.Dx = Dx;
+globalThis.Darx = Darx;

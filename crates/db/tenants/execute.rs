@@ -86,6 +86,7 @@ impl Serialize for XRow {
     for column in columns {
       let name = column.name();
       let type_info = column.type_info();
+
       let type_name = type_info.name();
       match type_name {
         "INT" | "BIGINT" => {

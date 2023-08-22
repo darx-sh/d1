@@ -49,7 +49,7 @@ pub async fn run_server(socket_addr: SocketAddr) -> Result<Server> {
         .route("/deploy_code/{env_id}", post().to(deploy_code))
         .route("/deploy_var/{env_id}", post().to(deploy_var))
         .route("/list_api/{env_id}", get().to(list_api))
-        .route("/deploy_plugin", post().to(deploy_plugin))
+        .route("/deploy_plugin/{plugin_name}", post().to(deploy_plugin))
     })
     .bind(&socket_addr)?
     .run(),
@@ -161,6 +161,7 @@ async fn list_api(
 
 async fn deploy_plugin(
   server_state: Data<ServerState>,
+  plugin_name: Path<String>,
   req: Json<DeployPluginReq>,
 ) -> Result<HttpResponseBuilder, ApiError> {
   let txn = server_state
@@ -168,12 +169,12 @@ async fn deploy_plugin(
     .begin()
     .await
     .context("Failed to start transaction")?;
-  let env_id = plugin_env_id(req.name.as_str());
+  let env_id = plugin_env_id(plugin_name.as_str());
   let (deploy_seq, codes, http_routes, txn) =
-    control::deploy_plugin(txn, env_id.as_str(), req.name.as_str(), &req.codes)
+    control::deploy_code(txn, env_id.as_str(), &req.codes, &None, &None)
       .await?;
   let req = AddPluginDeployReq {
-    name: req.name.clone(),
+    name: plugin_name.clone(),
     env_id: env_id.to_string(),
     deploy_seq,
     codes,
@@ -217,9 +218,8 @@ async fn new_tenant_project(
   let db_pool = &server_state.db_pool;
   let project =
     Project::new_tenant_proj(req.org_id.as_str(), req.project_name.as_str());
-
-  project.save(db_pool).await?;
-
+  let txn = db_pool.begin().await.context("Failed to start txn")?;
+  let txn = project.save(txn).await?;
   let req = AddTenantDBReq {
     env_id: project.env_id().to_string(),
     db_info: project.db_info().as_ref().unwrap().clone(),
@@ -238,6 +238,8 @@ async fn new_tenant_project(
       rsp.text().await.unwrap()
     )));
   }
+
+  txn.commit().await.context("Failed to commit txn")?;
 
   tracing::info!("tenant db added: {:?}", project.db_info());
 
@@ -260,7 +262,9 @@ async fn new_plugin_project(
   let db_pool = &server_state.db_pool;
   let project =
     Project::new_plugin_proj(req.org_id.as_str(), req.plugin_name.as_str());
-  project.save(db_pool).await?;
+  project
+    .create_if_not_exist(&db_pool, req.plugin_name.as_str())
+    .await?;
   Ok(Json(NewProjectRsp {
     project: ProjectInfo {
       id: project.id().to_string(),

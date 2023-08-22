@@ -1,4 +1,3 @@
-use crate::env_vars::var::Var;
 use crate::{Code, DeploySeq, HttpRoute};
 use actix_web::http::header::ContentType;
 use actix_web::http::StatusCode;
@@ -76,9 +75,7 @@ pub struct DeployVarReq {
 ///
 #[derive(Serialize, Deserialize)]
 pub struct DeployPluginReq {
-  pub name: String,
   pub codes: Vec<Code>,
-  pub vars: Vec<Var>,
 }
 
 ///
@@ -285,15 +282,10 @@ pub async fn dir_to_deploy_code_req(
 }
 
 pub async fn dir_to_deploy_plugin_req(
-  plugin_name: &str,
   dir: &Path,
 ) -> anyhow::Result<DeployPluginReq> {
   let codes = collect_code(dir).await?;
-  let req = DeployPluginReq {
-    name: plugin_name.to_string(),
-    codes,
-    vars: vec![],
-  };
+  let req = DeployPluginReq { codes };
   Ok(req)
 }
 

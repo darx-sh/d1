@@ -44,7 +44,9 @@ impl AsyncTestContext for TenantProjectContext {
     .context("Failed to connect database")
     .unwrap();
     let proj = Project::new_tenant_proj("test_org", "test_proj");
-    proj.save(&db_pool).await.unwrap();
+    let txn = db_pool.begin().await.unwrap();
+    let txn = proj.save(txn).await.unwrap();
+    txn.commit().await.unwrap();
     TenantProjectContext {
       envs_dir,
       proj,

@@ -14,6 +14,7 @@ use std::ops::DerefMut;
 pub struct Project {
   id: ProjectId,
   proj_name: String,
+  plugin_name: Option<String>,
   org_id: OrgId,
   env_id: EnvId,
   env_name: String,
@@ -21,7 +22,7 @@ pub struct Project {
   var_list: VarList,
 }
 
-const DEFAULT_ENV_NAME: &str = "dev";
+const DEFAULT_ENV_NAME: &str = "production";
 
 impl Project {
   pub async fn list_proj_info(
@@ -64,7 +65,7 @@ impl Project {
     let db_port =
       env::var("DATA_PLANE_DB_PORT").expect("DATA_PLANE_DB_PORT not set");
     let db_user = env_id.clone();
-    let db_name = format!("dx_{}", new_nano_id());
+    let db_name = format!("dx_{}", env_id);
 
     // todo: encrypt this.
     let db_password = new_nano_id();
@@ -88,6 +89,7 @@ impl Project {
 
   pub fn new_plugin_proj(org_id: &str, plugin_name: &str) -> Self {
     let mut proj = Project::new_minimal_proj(org_id, plugin_name);
+    proj.plugin_name = Some(plugin_name.to_string());
     proj.id = plugin_project_id(plugin_name);
     proj.env_id = plugin_env_id(plugin_name);
     proj
@@ -113,8 +115,10 @@ impl Project {
     &self.db_info
   }
 
-  pub async fn save(&self, pool: &MySqlPool) -> Result<()> {
-    let txn = pool.begin().await?;
+  pub async fn save<'c>(
+    &self,
+    txn: Transaction<'c, MySql>,
+  ) -> Result<Transaction<'c, MySql>> {
     let txn = save_tenant_project(
       txn,
       self.id.as_str(),
@@ -132,14 +136,45 @@ impl Project {
 
     let txn =
       save_default_env_vars(txn, self.env_id.as_str(), &self.var_list).await?;
-    txn.commit().await?;
-    Ok(())
+
+    let txn = if let Some(plugin_name) = &self.plugin_name {
+      save_plugin(txn, plugin_name, self.env_id.as_str()).await?
+    } else {
+      txn
+    };
+    Ok(txn)
+  }
+
+  pub async fn create_if_not_exist(
+    &self,
+    pool: &MySqlPool,
+    plugin_name: &str,
+  ) -> Result<()> {
+    let mut txn = pool.begin().await?;
+    let plugin =
+      sqlx::query!("SELECT id, env_id FROM plugins WHERE name= ?", plugin_name)
+        .fetch_optional(txn.deref_mut())
+        .await?;
+
+    if let Some(_) = plugin {
+      txn.commit().await?;
+      Ok(())
+    } else {
+      let txn = self.save(txn).await?;
+      txn.commit().await?;
+      Ok(())
+    }
   }
 
   pub async fn drop(&self, pool: &MySqlPool) -> Result<()> {
     let txn = pool.begin().await?;
     let txn = drop_env(txn, self.env_id.as_str()).await?;
     let txn = drop_tenant_project(txn, self.id.as_str()).await?;
+    let txn = if let Some(plugin_name) = &self.plugin_name {
+      drop_plugin(txn, plugin_name).await?
+    } else {
+      txn
+    };
     txn.commit().await?;
     Ok(())
   }
@@ -150,6 +185,7 @@ impl Project {
     Project {
       id,
       proj_name: proj_name.to_string(),
+      plugin_name: None,
       org_id: ord_id.to_string(),
       env_id: env_id.clone(),
       env_name: DEFAULT_ENV_NAME.to_string(),
@@ -260,5 +296,34 @@ async fn save_default_env_vars<'c>(
     &Some("default env deploy".to_string()),
   )
   .await?;
+  Ok(txn)
+}
+
+async fn save_plugin<'c>(
+  mut txn: Transaction<'c, MySql>,
+  plugin_name: &str,
+  env_id: &str,
+) -> Result<Transaction<'c, MySql>> {
+  let plugin_id = new_nano_id();
+  sqlx::query!(
+    "INSERT INTO plugins (id, name, env_id) VALUES (?, ?, ?)",
+    plugin_id,
+    plugin_name,
+    env_id,
+  )
+  .execute(&mut *txn)
+  .await
+  .context("Failed to insert into plugins table")?;
+  Ok(txn)
+}
+
+async fn drop_plugin<'c>(
+  mut txn: Transaction<'c, MySql>,
+  plugin_name: &str,
+) -> Result<Transaction<'c, MySql>> {
+  sqlx::query!("DELETE FROM plugins WHERE name = ?", plugin_name)
+    .execute(&mut *txn)
+    .await
+    .context("Failed to delete from plugins table")?;
   Ok(txn)
 }
