@@ -1,5 +1,3 @@
-"use client";
-
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import TopNav from "~/components/project/TopNav";
