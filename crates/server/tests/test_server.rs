@@ -65,7 +65,7 @@ async fn test_main_process() {
     .json::<NewProjectRsp>()
     .await
     .unwrap();
-  let env_id = rsp.env_id;
+  let env_id = rsp.env.id;
 
   // create plugin project
   let plugin_name = format!("{}_test_plugin", new_nano_id());
@@ -85,7 +85,7 @@ async fn test_main_process() {
     .json::<NewProjectRsp>()
     .await
     .unwrap();
-  let _plugin_env_id = rsp.env_id;
+  let _plugin_env_id = rsp.env.id;
 
   // deploy_var
   let mut vars = HashMap::new();
@@ -155,15 +155,12 @@ async fn test_main_process() {
   // deploy plugin
   let code_path =
     project_dir.join("tests/basic_test/user_home/plugins/test_plugin");
-  let req = darx_core::api::dir_to_deploy_plugin_req(
-    plugin_name.as_str(),
-    code_path.as_path(),
-  )
-  .await
-  .unwrap();
+  let req = darx_core::api::dir_to_deploy_plugin_req(code_path.as_path())
+    .await
+    .unwrap();
   let client = reqwest::Client::new();
   client
-    .post(format!("http://{}/deploy_plugin", CONTROL))
+    .post(format!("http://{}/deploy_plugin/{}", CONTROL, plugin_name))
     .json(&req)
     .send()
     .await

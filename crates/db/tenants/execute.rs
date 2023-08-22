@@ -8,6 +8,7 @@ use serde::ser::SerializeMap;
 use serde::{Serialize, Serializer};
 use serde_json::Value;
 use sqlx::mysql::MySqlRow;
+use sqlx::types::time;
 use sqlx::{Column, Either, Row, TypeInfo};
 use std::any::Any;
 
@@ -86,17 +87,72 @@ impl Serialize for XRow {
     for column in columns {
       let name = column.name();
       let type_info = column.type_info();
+
       let type_name = type_info.name();
       match type_name {
-        "INT" | "BIGINT" => {
+        "BOOLEAN" => {
+          let v: Option<bool> = self.0.try_get(name).unwrap();
+          map.serialize_entry(name, &v)?;
+        }
+        "TINYINT UNSIGNED" | "SMALLINT UNSIGNED" | "INT UNSIGNED"
+        | "MEDIUMINT UNSIGNED" | "BIGINT UNSIGNED" => {
+          let v: Option<u64> = self.0.try_get(name).unwrap();
+          map.serialize_entry(name, &v)?;
+        }
+        "TINYINT" | "SMALLINT" | "INT" | "MEDIUMINT" | "BIGINT" => {
           let v: Option<i64> = self.0.try_get(name).unwrap();
           map.serialize_entry(name, &v)?;
         }
-        "VARCHAR" => {
+        "FLOAT" => {
+          let v: Option<f32> = self.0.try_get(name).unwrap();
+          map.serialize_entry(name, &v)?;
+        }
+        "DOUBLE" => {
+          let v: Option<f64> = self.0.try_get(name).unwrap();
+          map.serialize_entry(name, &v)?;
+        }
+        "NULL" => {
           let v: Option<String> = self.0.try_get(name).unwrap();
           map.serialize_entry(name, &v)?;
         }
-        _ => unimplemented!(),
+        "TIMESTAMP" => {
+          let v: Option<time::Time> = self.0.try_get(name).unwrap();
+          map.serialize_entry(name, &v)?;
+        }
+        "DATE" => {
+          let v: Option<time::Date> = self.0.try_get(name).unwrap();
+          map.serialize_entry(name, &v)?;
+        }
+        "TIME" => {
+          let v: Option<time::Time> = self.0.try_get(name).unwrap();
+          map.serialize_entry(name, &v)?;
+        }
+        "DATETIME" => {
+          let v: Option<time::Time> = self.0.try_get(name).unwrap();
+          map.serialize_entry(name, &v)?;
+        }
+        "YEAR" => {
+          let v: Option<time::Date> = self.0.try_get(name).unwrap();
+          map.serialize_entry(name, &v)?;
+        }
+        "BIT" => {
+          let v: Option<Vec<u8>> = self.0.try_get(name).unwrap();
+          map.serialize_entry(name, &v)?;
+        }
+        "ENUM" => {
+          let v: Option<String> = self.0.try_get(name).unwrap();
+          map.serialize_entry(name, &v)?;
+        }
+        "SET" => {
+          let v: Option<String> = self.0.try_get(name).unwrap();
+          map.serialize_entry(name, &v)?;
+        }
+
+        "CHAR" | "VARCHAR" | "TEXT" | "LONGTEXT" => {
+          let v: Option<String> = self.0.try_get(name).unwrap();
+          map.serialize_entry(name, &v)?;
+        }
+        other => unimplemented!("{}", other),
       }
     }
     map.end()

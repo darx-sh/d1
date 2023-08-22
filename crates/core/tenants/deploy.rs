@@ -1,4 +1,5 @@
 use anyhow::{bail, Context, Result};
+use darx_db::{add_tenant_db_info, TenantDBInfo};
 use dashmap::DashMap;
 use deno_core::{serde_v8, v8};
 use futures::TryStreamExt;
@@ -219,6 +220,23 @@ pub async fn init_deploys(
       row.value.as_str(),
     );
   }
+
+  // setup GLOBAL_DB_INFO
+  let mut dbs = sqlx::query!(
+    "SELECT env_id, db_host, db_port, db_user, db_password, db_name FROM env_dbs"
+  )
+  .fetch(pool);
+  while let Some(db) = dbs.try_next().await? {
+    let db_info = TenantDBInfo {
+      host: db.db_host,
+      port: db.db_port as u16,
+      user: db.db_user,
+      password: db.db_password,
+      database: db.db_name,
+    };
+    add_tenant_db_info(db.env_id.as_str(), db_info);
+  }
+
   Ok(())
 }
 

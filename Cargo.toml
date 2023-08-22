@@ -39,7 +39,7 @@ tracing-actix-web = "0.7"
 actix-cors = "0.6"
 #todo: rusqlite is sync, we might need async.
 rusqlite = { version = "0.29.0", features = ["bundled"] }
-sqlx = {version = "0.7", features = ["runtime-tokio-rustls", "mysql", "json", "macros"]}
+sqlx = {version = "0.7", features = ["runtime-tokio-rustls", "mysql", "json", "macros", "time"]}
 
 async-trait = { version = "0.1.68" }
 anyhow = { version = "1"}

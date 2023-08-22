@@ -98,7 +98,9 @@ async fn deploy_to_ctrl(
     let plugin_proj =
       Project::new_plugin_proj("test_plugin_org", plugin_name.as_str());
     let plugin_env_id = plugin_proj.env_id().to_string();
-    plugin_proj.save(db_pool).await?;
+    let txn = db_pool.begin().await?;
+    let txn = plugin_proj.save(txn).await?;
+    txn.commit().await?;
     ctx.set_plugin_proj(plugin_proj);
     plugin_env_id
   };
