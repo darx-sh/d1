@@ -1,5 +1,5 @@
 import {
-  HttpRoute,
+  type HttpRoute,
   useProjectState,
 } from "~/components/project/ProjectContext";
 import { useState } from "react";
