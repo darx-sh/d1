@@ -103,7 +103,6 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     projectReducer,
     initialProject
   );
-
   return (
     <ProjectStateContext.Provider value={projectState}>
       <ProjectDispatchContext.Provider value={projectDispatch}>
