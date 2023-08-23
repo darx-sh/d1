@@ -34,7 +34,9 @@ export async function paginateTable(tableName, prevCreatedAt, prevIds, limit) {
   const whereFragment = whereCreated(prevCreatedAt) + whereIds(prevIds);
   const sql = `SELECT * FROM ${tableName} ${whereFragment} ORDER BY created_at DESC LIMIT ?`;
   const params = [...paramCreated(prevCreatedAt), ...paramIds(prevIds), limit];
-  return await db.execute(sql, params);
+  const db = await useDB();
+  const { rows } = await db.execute(sql, ...params);
+  return rows;
 }
 
 export async function insertRow(tableName, columns, values) {
@@ -42,6 +44,7 @@ export async function insertRow(tableName, columns, values) {
   const valuesPlaceholder = values.map(() => "?").join(", ");
   const sql = `INSERT INTO ${tableName} (${colNamesFragment}) VALUES (${valuesPlaceholder})`;
   const params = values;
+  const db = await useDB();
   return await db.execute(sql, params);
 }
 
@@ -51,6 +54,7 @@ export async function updateRow(tableName, id, columns) {
   const setFragment = columnNames.map((name) => `${name} = ?`).join(", ");
   const sql = `UPDATE ${tableName} SET ${setFragment} WHERE id = ?`;
   const params = [...columnValues, id];
+  const db = await useDB();
   return await db.execute(sql, params);
 }
 
@@ -58,5 +62,6 @@ export async function deleteRows(tableName, ids) {
   const placeholders = ids.map(() => "?").join(", ");
   const sql = `DELETE FROM ${tableName} WHERE id IN (${placeholders})`;
   const params = ids;
+  const db = await useDB();
   return await db.execute(sql, params);
 }

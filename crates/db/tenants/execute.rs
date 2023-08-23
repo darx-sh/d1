@@ -111,6 +111,13 @@ impl Serialize for XRow {
           let v: Option<f64> = self.0.try_get(name).unwrap();
           map.serialize_entry(name, &v)?;
         }
+        "DECIMAL" => {
+          // todo: why?
+          let v: Option<sqlx::types::BigDecimal> =
+            self.0.try_get(name).unwrap();
+          let v = v.map(|v| format!("{}", v));
+          map.serialize_entry(name, &v)?;
+        }
         "NULL" => {
           let v: Option<String> = self.0.try_get(name).unwrap();
           map.serialize_entry(name, &v)?;

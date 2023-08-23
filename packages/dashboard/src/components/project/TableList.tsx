@@ -1,3 +1,5 @@
+import { useDatabaseState, useDatabaseDispatch } from "./DatabaseContext";
+
 const navigation = [
   { name: "Dashboard", href: "#", current: true },
   { name: "Team", href: "#", current: false },
@@ -12,6 +14,13 @@ function classNames(...classes: string[]) {
 }
 
 export default function TableList() {
+  const state = useDatabaseState();
+  const dispatch = useDatabaseDispatch();
+
+  const navigation = Object.keys(state.schema).map((tableName: string) => {
+    return { name: tableName, href: "#", current: false };
+  });
+
   return (
     <nav className="flex flex-col p-2" aria-label="Tables">
       <button

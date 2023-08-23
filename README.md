@@ -19,7 +19,7 @@ pnpm run dev:s
 
 # 5. install plugins
 cargo run -p darx_client deploy -p schema -d ./plugins/schema
-cargo run -p darx_client deploy -p schema -d ./plugins/table
+cargo run -p darx_client deploy -p table -d ./plugins/table
 
 # 5. start dashboard
 pnpm run dev:d
