@@ -115,24 +115,23 @@ impl Serialize for XRow {
           let v: Option<String> = self.0.try_get(name).unwrap();
           map.serialize_entry(name, &v)?;
         }
-        "TIMESTAMP" => {
-          let v: Option<time::Time> = self.0.try_get(name).unwrap();
+        "TIMESTAMP" | "DATETIME" => {
+          let v: Option<time::OffsetDateTime> = self.0.try_get(name).unwrap();
+          let v = v.map(|v| format!("{}", v));
           map.serialize_entry(name, &v)?;
         }
         "DATE" => {
           let v: Option<time::Date> = self.0.try_get(name).unwrap();
+          let v = v.map(|v| format!("{}", v));
           map.serialize_entry(name, &v)?;
         }
         "TIME" => {
           let v: Option<time::Time> = self.0.try_get(name).unwrap();
-          map.serialize_entry(name, &v)?;
-        }
-        "DATETIME" => {
-          let v: Option<time::Time> = self.0.try_get(name).unwrap();
+          let v = v.map(|v| format!("{}", v));
           map.serialize_entry(name, &v)?;
         }
         "YEAR" => {
-          let v: Option<time::Date> = self.0.try_get(name).unwrap();
+          let v: Option<String> = self.0.try_get(name).unwrap();
           map.serialize_entry(name, &v)?;
         }
         "BIT" => {
@@ -147,7 +146,6 @@ impl Serialize for XRow {
           let v: Option<String> = self.0.try_get(name).unwrap();
           map.serialize_entry(name, &v)?;
         }
-
         "CHAR" | "VARCHAR" | "TEXT" | "LONGTEXT" => {
           let v: Option<String> = self.0.try_get(name).unwrap();
           map.serialize_entry(name, &v)?;

@@ -12,7 +12,7 @@ export default function Database() {
   const envId = projectState.envInfo!.id;
 
   useEffectOnce(() => {
-    const listTableUrl = `${env.NEXT_PUBLIC_DATA_PLANE_URL}/invoke/_plugins/schema/api.listTable`;
+    const listTableUrl = `${env.NEXT_PUBLIC_DATA_PLANE_URL}/invoke/_plugins/schema/api.listTableNames`;
     axios
       .post(
         listTableUrl,

@@ -13,7 +13,7 @@ import {
 } from "~/components/project/ProjectContext";
 import axios from "axios";
 import axiosRetry from "axios-retry";
-import { useInterval, useEffectOnce } from "usehooks-ts";
+import { useInterval } from "usehooks-ts";
 
 function ProjectDetail() {
   const router = useRouter();
