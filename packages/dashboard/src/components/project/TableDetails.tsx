@@ -85,7 +85,7 @@ export default function TableDetails() {
         </div>
       </div>
 
-      <div className="min-w-full py-2 align-middle sm:px-6 lg:px-8">
+      <div className="min-w-full overflow-auto py-2 align-middle sm:px-6 lg:px-8">
         <table className="min-w-full divide-y divide-gray-300">
           <thead>{renderColumnNames()}</thead>
           <tbody className="divide-y divide-gray-200">{renderRows()}</tbody>

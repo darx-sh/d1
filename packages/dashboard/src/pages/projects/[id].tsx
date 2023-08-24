@@ -168,7 +168,7 @@ function ProjectDetail() {
             <div className="w-48 flex-none border-r-2 border-t-2 border-gray-300 bg-gray-50">
               <LeftContainer></LeftContainer>
             </div>
-            <div className="mb-2 flex-1 rounded border-2 border-gray-300 bg-white shadow-lg">
+            <div className="mb-2 min-w-0 flex-1 rounded border-2 border-gray-300 bg-white shadow-lg">
               <RightContainer></RightContainer>
             </div>
           </div>

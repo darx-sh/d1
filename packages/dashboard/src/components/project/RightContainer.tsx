@@ -7,7 +7,7 @@ export default function RightContainer() {
       <div className="bg-gray-100">
         <ToolTabs></ToolTabs>
       </div>
-      <div className="flex-1 bg-gray-100">
+      <div className="min-w-0 flex-1 bg-gray-100">
         <ToolContent></ToolContent>
       </div>
     </div>
