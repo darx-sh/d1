@@ -165,7 +165,7 @@ function ProjectDetail() {
             <TopNav></TopNav>
           </div>
           <div className="flex flex-1 space-x-2">
-            <div className="w-48 border-r-2 border-t-2 border-gray-300 bg-gray-50">
+            <div className="w-48 flex-none border-r-2 border-t-2 border-gray-300 bg-gray-50">
               <LeftContainer></LeftContainer>
             </div>
             <div className="mb-2 flex-1 rounded border-2 border-gray-300 bg-white shadow-lg">
