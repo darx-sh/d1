@@ -1,18 +1,9 @@
 import { Row, useDatabaseState } from "./DatabaseContext";
-
-const people = [
-  {
-    name: "Lindsay Walton",
-    title: "Front-end Developer",
-    email: "lindsay.walton@example.com",
-    role: "Member",
-  },
-  // More people...
-];
+import { Cog6ToothIcon } from "@heroicons/react/24/outline";
 export default function TableDetails() {
   const dbState = useDatabaseState();
   const curTable = dbState.curData!.tableName;
-  const columnNames = dbState.schema[curTable]!.slice(0, 3);
+  const columnNames = dbState.schema[curTable]!;
 
   const renderColumnNames = (columnNames: string[]) => {
     return (
@@ -22,7 +13,7 @@ export default function TableDetails() {
             <th
               key={col}
               scope="col"
-              className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+              className="border bg-gray-300 py-3.5 pl-4 pr-8 text-left text-sm font-semibold text-gray-900"
             >
               {col}
             </th>
@@ -42,7 +33,7 @@ export default function TableDetails() {
           return (
             <td
               key={idx}
-              className="whitespace-nowrap px-3 py-4 text-sm text-gray-500"
+              className="whitespace-nowrap border py-4 pl-4 pr-8 text-sm text-gray-500"
             >
               {row[name]}
             </td>
@@ -62,17 +53,12 @@ export default function TableDetails() {
     <div className="px-4 sm:px-6 lg:px-8">
       <div className="sm:flex sm:items-center">
         <div className="sm:flex-auto">
-          <h1 className="text-base font-semibold leading-6 text-gray-900">
-            {curTable}
-          </h1>
-        </div>
-        <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
-          <button
-            type="button"
-            className="block rounded bg-gray-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-          >
-            Edit Table
-          </button>
+          <div className="flex items-center">
+            <h1 className="p-2 text-base font-semibold leading-6 text-gray-900">
+              {curTable}
+            </h1>
+            <Cog6ToothIcon className="h-6 w-6 hover:bg-gray-600"></Cog6ToothIcon>
+          </div>
         </div>
         <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
           <button
@@ -85,11 +71,9 @@ export default function TableDetails() {
       </div>
 
       <div className="overflow-auto py-2 align-middle">
-        <table className="divide-y divide-gray-300">
+        <table>
           <thead>{renderColumnNames(columnNames)}</thead>
-          <tbody className="divide-y divide-gray-200">
-            {renderRows(columnNames)}
-          </tbody>
+          <tbody>{renderRows(columnNames)}</tbody>
         </table>
       </div>
     </div>
