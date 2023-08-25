@@ -20,8 +20,8 @@ type InvokeModalProps = {
 
 export default function InvokeModal(props: InvokeModalProps) {
   const [open, setOpen] = useState(true);
-  const projectState = useProjectState()!;
-  const projectDispatch = useProjectDispatch()!;
+  const projectState = useProjectState();
+  const projectDispatch = useProjectDispatch();
   const [postResult, setPostResult] = useState<string | null>(null);
   const paramsRef = useRef<string>(
     projectState.directory.httpRoutes.filter((r) => {
@@ -62,6 +62,14 @@ export default function InvokeModal(props: InvokeModalProps) {
     ".cm-scroller": { overflow: "auto" },
   });
 
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch (err) {
+      console.error("Error in copying text: ", err);
+    }
+  };
+
   return (
     <Transition.Root show={open} as={Fragment}>
       <Dialog
@@ -85,7 +93,7 @@ export default function InvokeModal(props: InvokeModalProps) {
                 leaveFrom="translate-x-0"
                 leaveTo="translate-x-full"
               >
-                <Dialog.Panel className="pointer-events-auto w-screen max-w-md">
+                <Dialog.Panel className="pointer-events-auto w-screen max-w-3xl">
                   <div className="flex h-full flex-col overflow-y-scroll border-l-2 bg-white py-3 shadow-xl">
                     <div className="px-4 sm:px-6">
                       <div className="flex items-start justify-between">
@@ -141,12 +149,19 @@ export default function InvokeModal(props: InvokeModalProps) {
                         </button>
                       </div>
                       <div className="mt-3 max-w-fit overflow-x-auto">
-                        <div className="flex items-center justify-end">
+                        <div className="flex items-center">
                           <p className="p-1 text-sm font-light italic">
                             Example curl command
                           </p>
+                          <button
+                            type="button"
+                            className="ml-2 rounded bg-gray-300 px-2.5 py-1 text-xs font-semibold shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+                            onClick={() => copyToClipboard(curlCommand)}
+                          >
+                            Copy
+                          </button>
                         </div>
-                        <p className="whitespace-nowrap bg-gray-100 p-4 text-sm font-light italic">
+                        <p className="overflow-auto whitespace-nowrap bg-gray-100 p-4 text-sm font-light italic">
                           {curlCommand}
                         </p>
                       </div>

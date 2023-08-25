@@ -7,7 +7,7 @@ import {
 import { useProjectDispatch } from "./ProjectContext";
 
 export default function LeftTools() {
-  const projectDispatch = useProjectDispatch()!;
+  const projectDispatch = useProjectDispatch();
   return (
     <div className="ml-2 flex flex-wrap">
       <div

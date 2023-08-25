@@ -6,7 +6,7 @@ import { useState } from "react";
 import InvokeModal from "~/components/project/InvokeModal";
 
 export default function HttpEndpoints() {
-  const projectState = useProjectState()!;
+  const projectState = useProjectState();
   const [invokingHttpRoute, setInvokingHttpRoute] = useState<HttpRoute | null>(
     null
   );

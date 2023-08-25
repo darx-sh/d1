@@ -113,11 +113,11 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
 }
 
 export function useProjectState() {
-  return useContext(ProjectStateContext);
+  return useContext(ProjectStateContext)!;
 }
 
 export function useProjectDispatch() {
-  return useContext(ProjectDispatchContext);
+  return useContext(ProjectDispatchContext)!;
 }
 
 function initialEditorCode(fsPath: string) {

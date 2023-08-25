@@ -35,7 +35,7 @@ export default function LeftDirectory() {
       event.preventDefault();
       const inputValue = newFileInputRef.current!.value;
       if (inputValue.endsWith(".js") || inputValue.endsWith(".ts")) {
-        projectDispatch!({
+        projectDispatch({
           type: "NewJsFile",
           parentNodeId: newFileParent!,
           fileName: inputValue,
@@ -76,7 +76,7 @@ export default function LeftDirectory() {
   const handleNodeSelect = (nodeSelectProps: ITreeViewOnNodeSelectProps) => {
     const { element } = nodeSelectProps;
     if (!element.isBranch) {
-      projectDispatch!({
+      projectDispatch({
         type: "OpenJsFile",
         nodeId: element.id,
       });
@@ -109,7 +109,7 @@ export default function LeftDirectory() {
         )}
       </div>
       <TreeView
-        data={projectState!.directory.treeViewData}
+        data={projectState.directory.treeViewData}
         defaultExpandedIds={["/functions", "/"]}
         expandedIds={expandedIds}
         onNodeSelect={handleNodeSelect}
