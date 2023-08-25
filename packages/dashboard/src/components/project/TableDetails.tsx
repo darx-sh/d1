@@ -13,7 +13,7 @@ export default function TableDetails() {
             <th
               key={col}
               scope="col"
-              className="border bg-gray-300 py-3.5 pl-4 pr-8 text-left text-sm font-semibold text-gray-900"
+              className="border bg-gray-300 px-4 py-3.5 text-left text-sm font-semibold text-gray-900"
             >
               {col}
             </th>
@@ -33,7 +33,7 @@ export default function TableDetails() {
           return (
             <td
               key={idx}
-              className="whitespace-nowrap border py-4 pl-4 pr-8 text-sm text-gray-500"
+              className="whitespace-nowrap border px-4 py-4 text-sm text-gray-500"
             >
               {row[name]}
             </td>
