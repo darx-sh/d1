@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import TopNav from "~/components/project/TopNav";
 import LeftContainer from "~/components/project/LeftContainer";
 import RightContainer from "~/components/project/RightContainer";
-import LoadingBar from "~/components/project/LoadingBar";
+import Spinner from "~/components/project/Spinner";
 import {
   CodeChecksums,
   initialHttpParam,
@@ -19,8 +19,8 @@ function ProjectDetail() {
   const router = useRouter();
   const { query } = router;
   const [isLoading, setIsLoading] = useState(true);
-  const projectDispatch = useProjectDispatch()!;
-  const projectState = useProjectState()!;
+  const projectDispatch = useProjectDispatch();
+  const projectState = useProjectState();
   type HttpRoute = {
     http_path: string;
     method: string;
@@ -157,7 +157,7 @@ function ProjectDetail() {
       {isLoading ? (
         <>
           <p>{query.id}</p>
-          <LoadingBar></LoadingBar>
+          <Spinner></Spinner>
         </>
       ) : (
         <div className="flex h-screen flex-col bg-gray-100">

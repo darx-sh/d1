@@ -7,8 +7,8 @@ import { classNames } from "~/utils";
 import { CircleStackIcon } from "@heroicons/react/24/outline";
 
 export default function ToolTabs() {
-  const projectState = useProjectState()!;
-  const projectDispatch = useProjectDispatch()!;
+  const projectState = useProjectState();
+  const projectDispatch = useProjectDispatch();
   const tabs = projectState.tabs.map((tab, idx) => {
     switch (tab.type) {
       case "JsEditor": {

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useEffectOnce } from "usehooks-ts";
 import axios from "axios";
 import axiosRetry from "axios-retry";
-import LoadingBar from "~/components/project/LoadingBar";
+import Spinner from "~/components/project/Spinner";
 import {
   ProjectInfo,
   ProjectProvider,
@@ -84,7 +84,7 @@ function Projects() {
   return (
     <>
       {isLoading ? (
-        <LoadingBar />
+        <Spinner />
       ) : (
         <div className="min-h-full">
           <nav className="border-b border-gray-200 bg-white">

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useEffectOnce } from "usehooks-ts";
 import TableList from "~/components/project/TableList";
 import TableDetails from "~/components/project/TableDetails";
-import LoadingBar from "~/components/project/LoadingBar";
+import Spinner from "~/components/project/Spinner";
 import { useProjectState } from "~/components/project/ProjectContext";
 import {
   DatabaseProvider,
@@ -32,7 +32,7 @@ function rspToSchema(rsp: ListTableRsp): SchemaDef {
 
 function Database() {
   const [isLoading, setIsLoading] = useState(true);
-  const projectState = useProjectState()!;
+  const projectState = useProjectState();
   const dbDispatch = useDatabaseDispatch();
   const envId = projectState.envInfo!.id;
 
@@ -85,7 +85,7 @@ function Database() {
   return (
     <>
       {isLoading ? (
-        <LoadingBar></LoadingBar>
+        <Spinner></Spinner>
       ) : (
         <div className=" flex h-full border-2 pt-2">
           <div className="w-40 flex-none bg-white">

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { useProjectState } from "~/components/project/ProjectContext";
 
 export default function TopNav() {
-  const projectState = useProjectState()!;
+  const projectState = useProjectState();
   const nav = [
     {
       name: "Home",
