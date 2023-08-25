@@ -12,11 +12,12 @@ const people = [
 export default function TableDetails() {
   const dbState = useDatabaseState();
   const curTable = dbState.curData!.tableName;
+  const columnNames = dbState.schema[curTable]!.slice(0, 3);
 
-  const renderColumnNames = () => {
+  const renderColumnNames = (columnNames: string[]) => {
     return (
       <tr>
-        {dbState.schema[curTable]!.map((col, idx) => {
+        {columnNames.map((col, idx) => {
           return (
             <th
               key={col}
@@ -51,9 +52,7 @@ export default function TableDetails() {
     );
   };
 
-  const renderRows = () => {
-    const curTable = dbState.curData!.tableName;
-    const columnNames = dbState.schema[curTable]!;
+  const renderRows = (columnNames: string[]) => {
     return dbState.curData?.rows.map((row, idx) => {
       return renderOneRow(row, columnNames, idx);
     });
@@ -85,10 +84,12 @@ export default function TableDetails() {
         </div>
       </div>
 
-      <div className="min-w-full overflow-auto py-2 align-middle sm:px-6 lg:px-8">
-        <table className="min-w-full divide-y divide-gray-300">
-          <thead>{renderColumnNames()}</thead>
-          <tbody className="divide-y divide-gray-200">{renderRows()}</tbody>
+      <div className="overflow-auto py-2 align-middle">
+        <table className="divide-y divide-gray-300">
+          <thead>{renderColumnNames(columnNames)}</thead>
+          <tbody className="divide-y divide-gray-200">
+            {renderRows(columnNames)}
+          </tbody>
         </table>
       </div>
     </div>
