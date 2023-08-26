@@ -1,9 +1,13 @@
+import { useState } from "react";
 import { Row, useDatabaseState } from "./DatabaseContext";
 import { Cog6ToothIcon } from "@heroicons/react/24/outline";
+import EditTableModal from "~/components/project/EditTableModal";
+
 export default function TableDetails() {
   const dbState = useDatabaseState();
   const curTable = dbState.curData!.tableName;
   const columnNames = dbState.schema[curTable]!;
+  const [isEditTable, setIsEditTable] = useState(false);
 
   const renderColumnNames = (columnNames: string[]) => {
     return (
@@ -50,32 +54,46 @@ export default function TableDetails() {
   };
 
   return (
-    <div className="px-4 sm:px-6 lg:px-8">
-      <div className="sm:flex sm:items-center">
-        <div className="sm:flex-auto">
-          <div className="flex items-center">
-            <h1 className="p-2 text-base font-semibold leading-6 text-gray-900">
-              {curTable}
-            </h1>
-            <Cog6ToothIcon className="h-6 w-6 hover:bg-gray-600"></Cog6ToothIcon>
+    <>
+      <EditTableModal
+        open={isEditTable}
+        onClose={() => {
+          setIsEditTable(false);
+        }}
+      ></EditTableModal>
+
+      <div className="px-4 sm:px-6 lg:px-8">
+        <div className="sm:flex sm:items-center">
+          <div className="sm:flex-auto">
+            <div className="flex items-center">
+              <h1 className="p-2 text-base font-semibold leading-6 text-gray-900">
+                {curTable}
+              </h1>
+              <Cog6ToothIcon
+                onClick={() => {
+                  setIsEditTable(true);
+                }}
+                className="h-6 w-6 hover:bg-gray-600"
+              ></Cog6ToothIcon>
+            </div>
+          </div>
+          <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
+            <button
+              type="button"
+              className="block rounded bg-gray-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+            >
+              New Record
+            </button>
           </div>
         </div>
-        <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
-          <button
-            type="button"
-            className="block rounded bg-gray-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-          >
-            New Record
-          </button>
+
+        <div className="overflow-auto py-2 align-middle">
+          <table>
+            <thead>{renderColumnNames(columnNames)}</thead>
+            <tbody>{renderRows(columnNames)}</tbody>
+          </table>
         </div>
       </div>
-
-      <div className="overflow-auto py-2 align-middle">
-        <table>
-          <thead>{renderColumnNames(columnNames)}</thead>
-          <tbody>{renderRows(columnNames)}</tbody>
-        </table>
-      </div>
-    </div>
+    </>
   );
 }
