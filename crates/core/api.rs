@@ -1,12 +1,10 @@
 use crate::{Code, DeploySeq, HttpRoute};
-use actix_web::http::header::ContentType;
 use actix_web::http::StatusCode;
-use actix_web::web::Json;
 use actix_web::{HttpResponse, ResponseError};
 use async_recursion::async_recursion;
 use darx_db::TenantDBInfo;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::env;
 use std::path::{Path, PathBuf};
@@ -168,17 +166,10 @@ pub struct AddVarDeployReq {
   pub vars: HashMap<String, String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ApiResponse<T> {
-  result: T,
-}
-
-pub type JsonApiResponse<T> = Json<ApiResponse<T>>;
-
 #[derive(Error, Debug)]
 pub enum ApiError {
   #[error("Authorization failed")]
-  Auth,
+  AuthError,
   #[error("IO error: {0}")]
   IoError(#[from] std::io::Error),
   #[error("Domain {0} not found")]
@@ -190,7 +181,7 @@ pub enum ApiError {
   #[error("Function parameter error: {0}")]
   FunctionParameterError(String),
   #[error("js runtime error: {0:?}")]
-  FunctionException(anyhow::Error),
+  FunctionRuntimeError(anyhow::Error),
   #[error("parse error: {0}")]
   FunctionParseError(String),
   #[error("Table {0} not found")]
@@ -213,72 +204,95 @@ impl From<anyhow::Error> for ApiError {
   }
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ErrorResponse<T> {
+  pub error: Error<T>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Error<T> {
+  pub code: i32, // 3 digits of http status code + 2 digits of custom error code
+
+  #[serde(rename = "type")]
+  pub typ: Cow<'static, str>, // string representation of ApiError type
+
+  pub message: String,
+
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub details: Option<T>,
+}
+
+impl ApiError {
+  pub const fn error_code(&self) -> (StatusCode, i32) {
+    match self {
+      ApiError::AuthError => (StatusCode::UNAUTHORIZED, 40100),
+      ApiError::IoError(_) => (StatusCode::INTERNAL_SERVER_ERROR, 50000),
+      ApiError::DomainNotFound(_) => (StatusCode::NOT_FOUND, 40400),
+      ApiError::DeployNotFound(_) => (StatusCode::NOT_FOUND, 40401),
+      ApiError::FunctionNotFound(_) => (StatusCode::NOT_FOUND, 40402),
+      ApiError::FunctionParameterError(_) => (StatusCode::BAD_REQUEST, 40000),
+      ApiError::FunctionRuntimeError(_) => {
+        (StatusCode::INTERNAL_SERVER_ERROR, 50001)
+      }
+      ApiError::FunctionParseError(_) => (StatusCode::BAD_REQUEST, 40001),
+      ApiError::TableNotFound(_) => (StatusCode::NOT_FOUND, 40403),
+      ApiError::Internal(_) => (StatusCode::INTERNAL_SERVER_ERROR, 50099),
+      ApiError::EnvNotFound(_) => (StatusCode::NOT_FOUND, 40404),
+      ApiError::ProjectNotFound(_) => (StatusCode::NOT_FOUND, 40405),
+      ApiError::InvalidPluginUrl(_) => (StatusCode::BAD_REQUEST, 40002),
+      ApiError::Timeout => (StatusCode::INTERNAL_SERVER_ERROR, 50002),
+    }
+  }
+}
+
+macro_rules! build_error_response {
+  ($self:expr, $typ:expr) => {
+    HttpResponse::build($self.error_code().0).json(ErrorResponse {
+      error: Error::<()> {
+        code: $self.error_code().1,
+        typ: Cow::from($typ),
+        message: $self.to_string(),
+        details: None,
+      },
+    })
+  };
+}
+
 impl ResponseError for ApiError {
   fn error_response(&self) -> HttpResponse {
     match self {
-      ApiError::Auth => HttpResponse::build(StatusCode::UNAUTHORIZED)
-        .insert_header(ContentType::plaintext())
-        .body(self.to_string()),
-
-      ApiError::IoError(_) => {
-        HttpResponse::build(StatusCode::INTERNAL_SERVER_ERROR)
-          .insert_header(ContentType::plaintext())
-          .body(self.to_string())
+      ApiError::AuthError => build_error_response!(self, "AuthError"),
+      ApiError::IoError(_) => build_error_response!(self, "IoError"),
+      ApiError::DomainNotFound(_) => {
+        build_error_response!(self, "DomainNotFound")
       }
-
-      ApiError::DomainNotFound(_) => HttpResponse::build(StatusCode::NOT_FOUND)
-        .insert_header(ContentType::plaintext())
-        .body(self.to_string()),
-
-      ApiError::DeployNotFound(_) => HttpResponse::build(StatusCode::NOT_FOUND)
-        .insert_header(ContentType::plaintext())
-        .body(self.to_string()),
-
+      ApiError::DeployNotFound(_) => {
+        build_error_response!(self, "DeployNotFound")
+      }
       ApiError::FunctionNotFound(_) => {
-        HttpResponse::build(StatusCode::NOT_FOUND)
-          .insert_header(ContentType::plaintext())
-          .body(self.to_string())
+        build_error_response!(self, "FunctionNotFound")
       }
-
       ApiError::FunctionParameterError(_) => {
-        HttpResponse::build(StatusCode::BAD_REQUEST)
-          .insert_header(ContentType::plaintext())
-          .body(self.to_string())
+        build_error_response!(self, "FunctionParameterError")
       }
-
-      ApiError::FunctionException(_) => {
-        HttpResponse::build(StatusCode::OK) // status 200 for js runtime exception
-          .json(json!({"error": self.to_string()}))
+      ApiError::FunctionRuntimeError(_) => {
+        build_error_response!(self, "FunctionRuntimeError")
       }
-
       ApiError::FunctionParseError(_) => {
-        HttpResponse::build(StatusCode::OK) // status 200 for js parse error
-          .json(json!({"error": self.to_string()}))
+        build_error_response!(self, "FunctionParseError")
       }
-
-      ApiError::TableNotFound(_) => HttpResponse::build(StatusCode::NOT_FOUND)
-        .insert_header(ContentType::plaintext())
-        .body(self.to_string()),
-
-      ApiError::Internal(_) => {
-        HttpResponse::build(StatusCode::INTERNAL_SERVER_ERROR)
-          .json(json!({"error": self.to_string()}))
+      ApiError::TableNotFound(_) => {
+        build_error_response!(self, "TableNotFound")
       }
-
-      ApiError::EnvNotFound(_) => HttpResponse::build(StatusCode::NOT_FOUND)
-        .json(json!({"error": self.to_string()})),
-
+      ApiError::Internal(_) => build_error_response!(self, "Internal"),
+      ApiError::EnvNotFound(_) => build_error_response!(self, "EnvNotFound"),
       ApiError::ProjectNotFound(_) => {
-        HttpResponse::build(StatusCode::NOT_FOUND)
-          .json(json!({"error": self.to_string()}))
+        build_error_response!(self, "ProjectNotFound")
       }
       ApiError::InvalidPluginUrl(_) => {
-        HttpResponse::build(StatusCode::NOT_FOUND)
-          .json(json!({"error": self.to_string()}))
+        build_error_response!(self, "InvalidPluginUrl")
       }
-
-      ApiError::Timeout => HttpResponse::build(StatusCode::REQUEST_TIMEOUT)
-        .json(json!({"error": self.to_string()})),
+      ApiError::Timeout => build_error_response!(self, "Timeout"),
     }
   }
 }

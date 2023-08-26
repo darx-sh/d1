@@ -344,7 +344,7 @@ pub async fn invoke_function(
     .js_runtime
     .execute_script("invoke_function", source_code)
     .context("execute script error")
-    .map_err(ApiError::FunctionException)?;
+    .map_err(ApiError::FunctionRuntimeError)?;
 
   let script_result = isolate.js_runtime.resolve_value(script_result);
 
@@ -356,7 +356,7 @@ pub async fn invoke_function(
     Err(_) => Err(ApiError::Timeout),
     Ok(res) => res
       .context("resolve value error")
-      .map_err(ApiError::FunctionException),
+      .map_err(ApiError::FunctionRuntimeError),
   }?;
 
   let mut handle_scope = isolate.js_runtime.handle_scope();
