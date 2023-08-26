@@ -15,15 +15,16 @@ export default function TableList() {
     return { name: tableName, href: "#", current: false };
   });
 
+  console.log("isCreateTable: ", isCreateTable);
   return (
     <>
-      {isCreateTable && (
-        <CreateTableModal
-          onClose={() => {
-            setIsCreateTable(false);
-          }}
-        ></CreateTableModal>
-      )}
+      <CreateTableModal
+        open={isCreateTable}
+        onClose={() => {
+          setIsCreateTable(false);
+        }}
+      ></CreateTableModal>
+
       <nav className="flex flex-col p-2" aria-label="Tables">
         <button
           type="button"
