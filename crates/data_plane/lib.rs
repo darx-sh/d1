@@ -85,7 +85,7 @@ async fn invoke_function(
   let env_id = try_extract_env_id(host, &http_req)?;
   let func_url = func_url.into_inner();
 
-  tracing::info!("invoke_function: {}, env_id: {}", func_url, env_id);
+  info!("invoke_function: {}, env_id: {}", func_url, env_id);
 
   let r = tenants::match_route(env_id.as_str(), func_url.as_str(), "POST");
   if r.is_none() {

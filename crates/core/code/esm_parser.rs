@@ -1,6 +1,7 @@
 use crate::FunctionSignatureV1;
 use anyhow::{anyhow, bail, Result};
-use std::io::stderr;
+use std::io::Write;
+use std::sync::{Arc, Mutex};
 use swc_common::errors::Handler;
 use swc_common::sync::Lrc;
 use swc_common::{FileName, SourceMap};
@@ -13,12 +14,13 @@ pub(crate) fn parse_module_export(
   source: &str,
 ) -> Result<Vec<FunctionSignatureV1>> {
   let cm: Lrc<SourceMap> = Default::default();
-  let handler =
-    Handler::with_emitter_writer(Box::new(stderr()), Some(cm.clone()));
+
   let fm = cm.new_source_file(
     FileName::Custom(file_name.to_string()),
     source.to_string(),
   );
+  let writer = Box::<LockedWriter>::default();
+  let handler = Handler::with_emitter_writer(writer.clone(), Some(cm.clone()));
 
   let module = parse_file_as_module(
     &fm,
@@ -29,7 +31,9 @@ pub(crate) fn parse_module_export(
   )
   .map_err(|err| {
     err.into_diagnostic(&handler).emit();
-    anyhow!("parse_file_as_module error")
+    let s = writer.0.lock().unwrap();
+    let s = String::from_utf8_lossy(&s);
+    anyhow!(s.to_string())
   })?;
 
   let mut sigs = vec![];
@@ -65,6 +69,23 @@ pub(crate) fn parse_module_export(
     }
   }
   Ok(sigs)
+}
+
+#[derive(Clone, Default)]
+struct LockedWriter(Arc<Mutex<Vec<u8>>>);
+
+impl Write for LockedWriter {
+  fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+    let mut lock = self.0.lock().unwrap();
+
+    lock.extend_from_slice(buf);
+
+    Ok(buf.len())
+  }
+
+  fn flush(&mut self) -> std::io::Result<()> {
+    Ok(())
+  }
 }
 
 fn extract_fn_parameters(f: &Box<Function>) -> Result<Vec<String>> {

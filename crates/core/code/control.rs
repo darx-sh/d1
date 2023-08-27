@@ -22,7 +22,8 @@ pub async fn deploy_code<'c>(
   codes: &Vec<Code>,
   tag: &Option<String>,
   desc: &Option<String>,
-) -> Result<(i64, Vec<Code>, Vec<HttpRoute>, Transaction<'c, MySql>)> {
+) -> Result<(i64, Vec<Code>, Vec<HttpRoute>, Transaction<'c, MySql>), ApiError>
+{
   let mut http_routes = vec![];
   for code in codes.iter() {
     let functions_dir = "functions/";
@@ -35,7 +36,8 @@ pub async fn deploy_code<'c>(
       continue;
     }
     let content = code.content.clone();
-    let fn_sigs = parse_module_export(code.fs_path.as_str(), content.as_str())?;
+    let fn_sigs = parse_module_export(code.fs_path.as_str(), content.as_str())
+      .map_err(|e| ApiError::FunctionParseError(e.to_string()))?;
     for sig in fn_sigs.iter() {
       // the http route should start without `functions`.
       let route = build_route(Some(functions_dir), code.fs_path.as_str(), sig)?;
@@ -229,12 +231,11 @@ pub async fn deploy_plugin<'c>(
   env_id: &str,
   plugin_name: &str,
   codes: &Vec<Code>,
-) -> Result<(DeploySeq, Vec<Code>, Vec<HttpRoute>, Transaction<'c, MySql>)> {
-  let plugin =
-    sqlx::query!("SELECT id FROM plugins WHERE name = ?", plugin_name)
-      .fetch_optional(&mut *txn)
-      .await
-      .context("Failed to query plugins table")?;
+) -> Result<(DeploySeq, Vec<Code>, Vec<HttpRoute>, Transaction<'c, MySql>), ApiError> {
+  let plugin = sqlx::query!("SELECT id FROM plugins WHERE name = ?", plugin_name)
+    .fetch_optional(&mut *txn)
+    .await
+    .context("Failed to query plugins table")?;
 
   let _plugin_id = if let Some(plugin) = plugin {
     plugin.id

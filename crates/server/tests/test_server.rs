@@ -1,9 +1,11 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use darx_core::api::{
-  DeployVarReq, NewPluginProjectReq, NewProjectRsp, NewTenantProjectReq,
+  ApiError, DeployVarReq, ErrorResponse, NewPluginProjectReq, NewProjectRsp,
+  NewTenantProjectReq,
 };
 use darx_utils::new_nano_id;
 use dotenv::dotenv;
+use reqwest::Client;
 use serde_json::json;
 use std::collections::HashMap;
 use std::env;
@@ -22,50 +24,9 @@ const CONTROL: &str = "127.0.0.1:3457";
 
 #[actix_web::test]
 async fn test_main_process() {
-  env::set_var("DATA_PLANE_URL", format!("http://{}", DATA));
-  dotenv().ok();
-
-  let registry = tracing_subscriber::registry();
-  registry
-    .with(
-      tracing_subscriber::fmt::layer()
-        .with_file(true)
-        .with_line_number(true)
-        .with_filter(
-          tracing_subscriber::EnvFilter::builder()
-            .with_default_directive(LevelFilter::INFO.into())
-            .from_env_lossy(),
-        ),
-    )
-    .init();
-
-  // prepare test data
   let project_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-  let code_path = project_dir.join("tests/basic_test/user_home/alice");
-  let server_data_path = project_dir.join("tests/basic_test/server");
-  _ = tokio::fs::remove_dir_all(&server_data_path).await;
-  tokio::fs::create_dir(&server_data_path).await.unwrap();
-
-  let handle = run_server(server_data_path).await;
-
-  // create tenant project
-  let req = NewTenantProjectReq {
-    org_id: "test_org".to_string(),
-    project_name: "test_proj".to_string(),
-  };
-  let client = reqwest::Client::new();
-  let rsp = client
-    .post(format!("http://{}/new_tenant_project", CONTROL))
-    .json(&req)
-    .send()
-    .await
-    .unwrap()
-    .error_for_status()
-    .unwrap()
-    .json::<NewProjectRsp>()
-    .await
-    .unwrap();
-  let env_id = rsp.env.id;
+  let (handle, env_id, client) =
+    prepare_server(project_dir.join("tests/basic_test/server")).await;
 
   // create plugin project
   let plugin_name = format!("{}_test_plugin", new_nano_id());
@@ -73,7 +34,6 @@ async fn test_main_process() {
     org_id: "test_org".to_string(),
     plugin_name: plugin_name.clone(),
   };
-  let client = reqwest::Client::new();
   let rsp = client
     .post(format!("http://{}/new_plugin_project", CONTROL))
     .json(&req)
@@ -91,7 +51,6 @@ async fn test_main_process() {
   let mut vars = HashMap::new();
   vars.insert("key1".to_string(), "value1".to_string());
   let req = DeployVarReq { desc: None, vars };
-  let client = reqwest::Client::new();
   client
     .post(format!("http://{}/deploy_var/{}", CONTROL, env_id.as_str()))
     .json(&req)
@@ -102,12 +61,11 @@ async fn test_main_process() {
     .unwrap();
 
   // deploy_code
+  let code_path = project_dir.join("tests/basic_test/user_home/alice");
   let req = darx_core::api::dir_to_deploy_code_req(code_path.as_path())
     .await
     .unwrap();
   info!("req: {:#?}", req);
-  let client = reqwest::Client::new();
-
   client
     .post(format!(
       "http://{}/deploy_code/{}",
@@ -158,7 +116,6 @@ async fn test_main_process() {
   let req = darx_core::api::dir_to_deploy_plugin_req(code_path.as_path())
     .await
     .unwrap();
-  let client = reqwest::Client::new();
   client
     .post(format!("http://{}/deploy_plugin/{}", CONTROL, plugin_name))
     .json(&req)
@@ -182,8 +139,108 @@ async fn test_main_process() {
     .error_for_status();
   assert_eq!(status.is_ok(), true);
 
+  info!("test js runtime exception");
+
+  let expected =
+    ApiError::FunctionRuntimeError(anyhow!("fake err")).error_code();
+
+  let resp = client
+    .post(format!("http://{}/invoke/foo.ThrowExp", DATA))
+    .header("Darx-Dev-Host", format!("{}.darx.sh", env_id))
+    .json(&json!({}))
+    .send()
+    .await
+    .unwrap();
+
+  assert_eq!(resp.status(), expected.0);
+
+  let resp = resp.json::<ErrorResponse<()>>().await.unwrap();
+  assert_eq!(resp.error.code, expected.1);
+  info!("runtime exception response: {:?}", &resp);
+
   handle.abort();
   let _ = handle.await;
+}
+
+#[actix_web::test]
+async fn test_deploy_bad_code() {
+  let project_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+  let (handle, env_id, client) =
+    prepare_server(project_dir.join("tests/deploy_bad_code/server")).await;
+  let code_path =
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/deploy_bad_code");
+
+  let req = darx_core::api::dir_to_deploy_code_req(code_path.as_path())
+    .await
+    .unwrap();
+  info!("req: {:#?}", req);
+
+  let expected = ApiError::FunctionParseError("".to_string()).error_code();
+
+  let resp = client
+    .post(format!("http://{}/deploy_code/{}", CONTROL, env_id))
+    .json(&req)
+    .send()
+    .await
+    .unwrap();
+
+  assert_eq!(resp.status(), expected.0);
+
+  let resp = resp.json::<ErrorResponse<()>>().await.unwrap();
+  assert_eq!(resp.error.code, expected.1);
+  info!("syntax error response: {:?}", &resp);
+
+  handle.abort();
+  let _ = handle.await;
+}
+
+async fn prepare_server(
+  server_path: PathBuf,
+) -> (JoinHandle<Result<()>>, String, Client) {
+  env::set_var("DATA_PLANE_URL", format!("http://{}", DATA));
+  env::set_var("DATA_PLANE_DB_HOST", "127.0.0.1");
+  env::set_var("DATA_PLANE_DB_PORT", "3306");
+  dotenv().ok();
+
+  let registry = tracing_subscriber::registry();
+  registry
+    .with(
+      tracing_subscriber::fmt::layer()
+        .with_file(true)
+        .with_line_number(true)
+        .with_filter(
+          tracing_subscriber::EnvFilter::builder()
+            .with_default_directive(LevelFilter::INFO.into())
+            .from_env_lossy(),
+        ),
+    )
+    .init();
+
+  _ = tokio::fs::remove_dir_all(&server_path).await;
+  tokio::fs::create_dir(&server_path).await.unwrap();
+
+  let handle = run_server(server_path).await;
+
+  // create tenant project
+  let req = NewTenantProjectReq {
+    org_id: "test_org".to_string(),
+    project_name: "test_proj".to_string(),
+  };
+  let client = Client::new();
+  let rsp = client
+    .post(format!("http://{}/new_tenant_project", CONTROL))
+    .json(&req)
+    .send()
+    .await
+    .unwrap()
+    .error_for_status()
+    .unwrap()
+    .json::<NewProjectRsp>()
+    .await
+    .unwrap();
+  let env_id = rsp.env.id;
+
+  (handle, env_id, client)
 }
 
 async fn run_server(server_data_path: PathBuf) -> JoinHandle<Result<()>> {
