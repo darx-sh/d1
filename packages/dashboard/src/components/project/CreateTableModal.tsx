@@ -1,6 +1,7 @@
 import { useState, Fragment } from "react";
 import { Dialog, Transition } from "@headlessui/react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
+import TableEditor from "~/components/project/TableEditor";
 
 type CreateTableModalProps = {
   onClose: () => void;
@@ -91,9 +92,10 @@ export default function CreateTableModal(props: CreateTableModalProps) {
                           </div>
 
                           <div className="border-b border-gray-900/10 pb-12">
-                            <h2 className="text-base font-semibold leading-7 text-gray-900">
+                            <h2 className="text-base font-normal leading-7 text-gray-900">
                               Columns
                             </h2>
+                            <TableEditor />
                           </div>
                         </div>
 
