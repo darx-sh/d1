@@ -1,20 +1,23 @@
 import { useState, Fragment } from "react";
 import { Dialog, Transition } from "@headlessui/react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
-import TableEditor from "~/components/project/TableEditor";
+import ColumnsEditor from "~/components/project/ColumnsEditor";
+import { TableDef } from "~/components/project/DatabaseContext";
 
 type CreateTableModalProps = {
   onClose: () => void;
   open: boolean;
+  tableDef: TableDef | null;
 };
-export default function CreateTableModal(props: CreateTableModalProps) {
+export default function TableEditorModal(props: CreateTableModalProps) {
+  const { onClose, open, tableDef } = props;
   return (
-    <Transition.Root show={props.open} as={Fragment}>
+    <Transition.Root show={open} as={Fragment}>
       <Dialog
         as="div"
         className="relative z-10"
         onClose={() => {
-          props.onClose();
+          onClose();
         }}
       >
         <Transition.Child
@@ -46,14 +49,14 @@ export default function CreateTableModal(props: CreateTableModalProps) {
                     <div className="px-4 sm:px-6">
                       <div className="flex items-start justify-between">
                         <Dialog.Title className="text-base font-semibold leading-6 text-gray-900">
-                          Create Table
+                          Table Editor
                         </Dialog.Title>
                         <div className="ml-3 flex h-7 items-center">
                           <button
                             type="button"
                             className="relative rounded-md bg-white text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                             onClick={() => {
-                              props.onClose();
+                              onClose();
                             }}
                           >
                             <span className="absolute -inset-2.5" />
@@ -63,10 +66,10 @@ export default function CreateTableModal(props: CreateTableModalProps) {
                         </div>
                       </div>
                     </div>
-                    <div className="relative mt-6 flex-1 px-4 sm:px-6">
+                    <div className="relative flex-1 px-4">
                       <form>
-                        <div className="space-y-12">
-                          <div className="border-b border-gray-900/10 pb-12">
+                        <div className="space-y-6">
+                          <div className="border-b border-gray-900/10 pb-6">
                             <div className="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
                               <div className="sm:col-span-4">
                                 <label
@@ -83,7 +86,9 @@ export default function CreateTableModal(props: CreateTableModalProps) {
                                       id="tableName"
                                       autoComplete="tableName"
                                       className="block flex-1 border-0 bg-transparent py-1.5 pl-1 text-gray-900 placeholder:text-gray-400 focus:ring-0 sm:text-sm sm:leading-6"
-                                      placeholder="Your table name"
+                                      placeholder={
+                                        tableDef?.name ?? "Your table name"
+                                      }
                                     />
                                   </div>
                                 </div>
@@ -95,7 +100,9 @@ export default function CreateTableModal(props: CreateTableModalProps) {
                             <h2 className="text-base font-normal leading-7 text-gray-900">
                               Columns
                             </h2>
-                            <TableEditor />
+                            <ColumnsEditor
+                              columns={tableDef?.columns ?? []}
+                            ></ColumnsEditor>
                           </div>
                         </div>
 

@@ -16,7 +16,7 @@ function classNames(...classes: string[]) {
 }
 
 export default function ColumnTypeSelect() {
-  const [selected, setSelected] = useState(columnOptions[0]);
+  const [selected, setSelected] = useState(columnOptions[0]!);
 
   return (
     <Listbox value={selected} onChange={setSelected}>

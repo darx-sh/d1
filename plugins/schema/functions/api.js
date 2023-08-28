@@ -10,7 +10,7 @@ export async function listTable() {
   SELECT \
     TABLE_NAME AS tableName, \
     COLUMN_NAME AS columnName, \
-    DATA_TYPE AS type, \
+    DATA_TYPE AS columnType, \
     IS_NULLABLE AS nullable, \
     COLUMN_DEFAULT AS defaultValue, \
     COLUMN_COMMENT AS comment \
