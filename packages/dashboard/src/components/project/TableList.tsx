@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useDatabaseState, useDatabaseDispatch } from "./DatabaseContext";
-import CreateTableModal from "~/components/project/CreateTableModal";
+import TableEditorModal from "~/components/project/TableEditorModal";
 
 function classNames(...classes: string[]) {
   return classes.filter(Boolean).join(" ");
@@ -15,15 +15,15 @@ export default function TableList() {
     return { name: tableName, href: "#", current: false };
   });
 
-  console.log("isCreateTable: ", isCreateTable);
   return (
     <>
-      <CreateTableModal
+      <TableEditorModal
         open={isCreateTable}
         onClose={() => {
           setIsCreateTable(false);
         }}
-      ></CreateTableModal>
+        tableDef={null}
+      ></TableEditorModal>
 
       <nav className="flex flex-col p-2" aria-label="Tables">
         <button

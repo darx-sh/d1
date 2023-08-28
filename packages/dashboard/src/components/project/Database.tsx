@@ -8,23 +8,69 @@ import {
   DatabaseProvider,
   Row,
   SchemaDef,
+  TableDef,
+  ColumnType,
+  ColumnDef,
   useDatabaseDispatch,
+  DefaultValueType,
 } from "~/components/project/DatabaseContext";
 import { env } from "~/env.mjs";
 import axios from "axios";
 
-type ListTableRsp = { tableName: string; columnName: string }[];
+type ListTableRsp = {
+  tableName: string;
+  columnName: string;
+  columnType: string;
+  nullable: string;
+  defaultValue: DefaultValueType;
+}[];
 
 function rspToSchema(rsp: ListTableRsp): SchemaDef {
   const schema = {} as SchemaDef;
   let lastTableName = null;
 
-  for (const { tableName, columnName } of rsp) {
+  for (const {
+    tableName,
+    columnName,
+    columnType,
+    nullable,
+    defaultValue,
+  } of rsp) {
+    const newColumnDef = (
+      tableName: string,
+      columnName: string,
+      columnType: string,
+      nullable: string,
+      defaultValue: DefaultValueType
+    ): ColumnDef => {
+      return {
+        name: columnName,
+        columnType: columnType.toLowerCase() as ColumnType,
+        isNullable: nullable === "YES",
+        defaultValue: defaultValue,
+      };
+    };
+
     if (tableName !== lastTableName) {
-      schema[tableName] = [columnName];
+      // create new TableDef
+      const tableDef: TableDef = {
+        name: tableName,
+        columns: [
+          newColumnDef(
+            tableName,
+            columnName,
+            columnType,
+            nullable,
+            defaultValue
+          ),
+        ],
+      };
+      schema[tableName] = tableDef;
       lastTableName = tableName;
     } else {
-      schema[tableName]!.push(columnName);
+      schema[tableName]!.columns.push(
+        newColumnDef(tableName, columnName, columnType, nullable, defaultValue)
+      );
     }
   }
   return schema;

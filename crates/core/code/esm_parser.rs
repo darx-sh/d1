@@ -114,11 +114,11 @@ mod tests {
         export function sub(c, d) {
             return c - d;
         }
-                
+
         export default function mul(e, f) {
             return e * f;
         }
-                
+
         "#;
     let sigs = parse_module_export("test.js", source).unwrap();
     assert_eq!(sigs.len(), 3);

@@ -13,7 +13,67 @@ export interface Row {
 export interface SchemaDef {
   // key is table name, value is column names
   // column name is ordered by ORDINAL_POSITION
-  [key: string]: string[];
+  [key: string]: TableDef;
+}
+
+export interface TableDef {
+  name: string;
+  columns: ColumnDef[];
+}
+
+export type ColumnType =
+  // numeric data types
+  | "tinyint"
+  | "smallint"
+  | "mediumint"
+  | "int"
+  | "bigint"
+  | "decimal"
+  | "numeric"
+  | "float"
+  | "double"
+  | "bit"
+  // date and time data types
+  | "date"
+  | "time"
+  | "datetime"
+  | "timestamp"
+  | "year"
+  // string data types
+  | "char"
+  | "varchar"
+  | "binary"
+  | "varbinary"
+  | "blob"
+  | "text"
+  | "enum"
+  | "set"
+  // json
+  | "json";
+
+export type DefaultValueType = null | string | number | boolean | object;
+
+export function displayDefaultValue(v: DefaultValueType) {
+  if (v === null) {
+    return "NULL";
+  }
+  const t = typeof v;
+  if (t === "string") {
+    return `${v as string}`;
+  } else if (t === "number") {
+    return (v as number).toString();
+  } else if (t === "boolean") {
+    return (v as boolean).toString();
+  } else if (t === "object") {
+    return JSON.stringify(v);
+  }
+}
+
+export interface ColumnDef {
+  name: string;
+  columnType: ColumnType;
+  defaultValue: DefaultValueType;
+  isNullable: boolean;
 }
 
 const initialState: DatabaseState = {

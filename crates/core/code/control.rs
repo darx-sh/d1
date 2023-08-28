@@ -231,11 +231,15 @@ pub async fn deploy_plugin<'c>(
   env_id: &str,
   plugin_name: &str,
   codes: &Vec<Code>,
-) -> Result<(DeploySeq, Vec<Code>, Vec<HttpRoute>, Transaction<'c, MySql>), ApiError> {
-  let plugin = sqlx::query!("SELECT id FROM plugins WHERE name = ?", plugin_name)
-    .fetch_optional(&mut *txn)
-    .await
-    .context("Failed to query plugins table")?;
+) -> Result<
+  (DeploySeq, Vec<Code>, Vec<HttpRoute>, Transaction<'c, MySql>),
+  ApiError,
+> {
+  let plugin =
+    sqlx::query!("SELECT id FROM plugins WHERE name = ?", plugin_name)
+      .fetch_optional(&mut *txn)
+      .await
+      .context("Failed to query plugins table")?;
 
   let _plugin_id = if let Some(plugin) = plugin {
     plugin.id
