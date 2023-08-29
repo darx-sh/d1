@@ -9,7 +9,7 @@ import {
   Row,
   SchemaDef,
   TableDef,
-  ColumnType,
+  FieldType,
   ColumnDef,
   useDatabaseDispatch,
   DefaultValueType,
@@ -45,7 +45,7 @@ function rspToSchema(rsp: ListTableRsp): SchemaDef {
     ): ColumnDef => {
       return {
         name: columnName,
-        columnType: columnType.toLowerCase() as ColumnType,
+        fieldType: columnType.toLowerCase() as FieldType,
         isNullable: nullable === "YES",
         defaultValue: defaultValue,
       };
@@ -97,7 +97,6 @@ function Database() {
         }
       )
       .then((response) => {
-        console.log(response.data);
         const rows = response.data as Row[];
         dbDispatch({ type: "LoadData", tableName, rows });
         setIsLoading(false);

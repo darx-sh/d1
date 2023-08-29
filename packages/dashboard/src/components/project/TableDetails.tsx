@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Row, useDatabaseState } from "./DatabaseContext";
+import { Row, useDatabaseState, useDatabaseDispatch } from "./DatabaseContext";
 import { Cog6ToothIcon } from "@heroicons/react/24/outline";
 import TableEditorModal from "~/components/project/TableEditorModal";
 
 export default function TableDetails() {
   const dbState = useDatabaseState();
-  const curTable = dbState.curData!.tableName;
+  const dbDispatch = useDatabaseDispatch();
+  const curTable = dbState.curDisplayData!.tableName;
   const tableDef = dbState.schema[curTable]!;
   const columnNames = dbState.schema[curTable]!.columns.map((c) => {
     return c.name;
@@ -51,7 +52,7 @@ export default function TableDetails() {
   };
 
   const renderRows = (columnNames: string[]) => {
-    return dbState.curData?.rows.map((row, idx) => {
+    return dbState.curDisplayData?.rows.map((row, idx) => {
       return renderOneRow(row, columnNames, idx);
     });
   };
@@ -61,9 +62,10 @@ export default function TableDetails() {
       <TableEditorModal
         open={isEditTable}
         onClose={() => {
+          dbDispatch({ type: "DeleteScratchTable" });
           setIsEditTable(false);
         }}
-        tableDef={tableDef}
+        prepareDDL={true}
       ></TableEditorModal>
 
       <div className="px-4 sm:px-6 lg:px-8">
@@ -75,6 +77,7 @@ export default function TableDetails() {
               </h1>
               <Cog6ToothIcon
                 onClick={() => {
+                  dbDispatch({ type: "InitScratchTable", payload: tableDef });
                   setIsEditTable(true);
                 }}
                 className="h-6 w-6 hover:bg-gray-600"

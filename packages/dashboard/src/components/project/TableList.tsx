@@ -20,9 +20,10 @@ export default function TableList() {
       <TableEditorModal
         open={isCreateTable}
         onClose={() => {
+          dispatch({ type: "DeleteScratchTable" });
           setIsCreateTable(false);
         }}
-        tableDef={null}
+        prepareDDL={false}
       ></TableEditorModal>
 
       <nav className="flex flex-col p-2" aria-label="Tables">
