@@ -2,15 +2,24 @@ import { useState, Fragment } from "react";
 import { Dialog, Transition } from "@headlessui/react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import ColumnsEditor from "~/components/project/ColumnsEditor";
-import { TableDef } from "~/components/project/DatabaseContext";
+import {
+  TableDef,
+  useDatabaseDispatch,
+  useDatabaseState,
+} from "~/components/project/DatabaseContext";
 
-type CreateTableModalProps = {
+type TableEditorProps = {
   onClose: () => void;
   open: boolean;
-  tableDef: TableDef | null;
+  prepareDDL: boolean;
 };
-export default function TableEditorModal(props: CreateTableModalProps) {
-  const { onClose, open, tableDef } = props;
+
+export default function TableEditorModal(props: TableEditorProps) {
+  const dispatch = useDatabaseDispatch();
+  const state = useDatabaseState();
+  const { onClose, open, prepareDDL } = props;
+  const tableDef = state.scratchTable;
+
   return (
     <Transition.Root show={open} as={Fragment}>
       <Dialog
@@ -101,7 +110,7 @@ export default function TableEditorModal(props: CreateTableModalProps) {
                               Columns
                             </h2>
                             <ColumnsEditor
-                              columns={tableDef?.columns ?? []}
+                              prepareDDL={prepareDDL}
                             ></ColumnsEditor>
                           </div>
                         </div>
