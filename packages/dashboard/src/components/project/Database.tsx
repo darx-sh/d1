@@ -10,7 +10,6 @@ import {
   SchemaDef,
   TableDef,
   FieldType,
-  ColumnDef,
   useDatabaseDispatch,
   DefaultValueType,
 } from "~/components/project/DatabaseContext";
@@ -19,59 +18,34 @@ import axios from "axios";
 
 type ListTableRsp = {
   tableName: string;
-  columnName: string;
-  columnType: string;
-  nullable: string;
-  defaultValue: DefaultValueType;
+  columns: {
+    columnName: string;
+    fieldType: string;
+    nullable: string;
+    defaultValue: DefaultValueType;
+    comment: string;
+  }[];
+  primaryKey: string[];
 }[];
 
 function rspToSchema(rsp: ListTableRsp): SchemaDef {
   const schema = {} as SchemaDef;
-  let lastTableName = null;
-
-  for (const {
-    tableName,
-    columnName,
-    columnType,
-    nullable,
-    defaultValue,
-  } of rsp) {
-    const newColumnDef = (
-      tableName: string,
-      columnName: string,
-      columnType: string,
-      nullable: string,
-      defaultValue: DefaultValueType
-    ): ColumnDef => {
-      return {
-        name: columnName,
-        fieldType: columnType.toLowerCase() as FieldType,
-        isNullable: nullable === "YES",
-        defaultValue: defaultValue,
-      };
+  for (const { tableName, columns, primaryKey } of rsp) {
+    const tableDef: TableDef = {
+      name: tableName,
+      columns: columns.map(
+        ({ columnName, fieldType, nullable, defaultValue }) => {
+          return {
+            name: columnName,
+            fieldType: fieldType.toLowerCase() as FieldType,
+            isNullable: nullable === "YES",
+            defaultValue,
+            isPrimary: primaryKey.includes(columnName),
+          };
+        }
+      ),
     };
-
-    if (tableName !== lastTableName) {
-      // create new TableDef
-      const tableDef: TableDef = {
-        name: tableName,
-        columns: [
-          newColumnDef(
-            tableName,
-            columnName,
-            columnType,
-            nullable,
-            defaultValue
-          ),
-        ],
-      };
-      schema[tableName] = tableDef;
-      lastTableName = tableName;
-    } else {
-      schema[tableName]!.columns.push(
-        newColumnDef(tableName, columnName, columnType, nullable, defaultValue)
-      );
-    }
+    schema[tableName] = tableDef;
   }
   return schema;
 }

@@ -9,6 +9,9 @@ export default function TableDetails() {
   const curTable = dbState.curDisplayData!.tableName;
   const tableDef = dbState.schema[curTable]!;
   const columnNames = dbState.schema[curTable]!.columns.map((c) => {
+    if (c.name === null) {
+      throw new Error("Column name cannot be null");
+    }
     return c.name;
   });
   const [isEditTable, setIsEditTable] = useState(false);
@@ -65,7 +68,6 @@ export default function TableDetails() {
           dbDispatch({ type: "DeleteScratchTable" });
           setIsEditTable(false);
         }}
-        prepareDDL={true}
       ></TableEditorModal>
 
       <div className="px-4 sm:px-6 lg:px-8">

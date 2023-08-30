@@ -11,13 +11,12 @@ import {
 type TableEditorProps = {
   onClose: () => void;
   open: boolean;
-  prepareDDL: boolean;
 };
 
 export default function TableEditorModal(props: TableEditorProps) {
   const dispatch = useDatabaseDispatch();
   const state = useDatabaseState();
-  const { onClose, open, prepareDDL } = props;
+  const { onClose, open } = props;
   const tableDef = state.scratchTable;
 
   return (
@@ -109,9 +108,7 @@ export default function TableEditorModal(props: TableEditorProps) {
                             <h2 className="text-base font-normal leading-7 text-gray-900">
                               Columns
                             </h2>
-                            <ColumnsEditor
-                              prepareDDL={prepareDDL}
-                            ></ColumnsEditor>
+                            <ColumnsEditor></ColumnsEditor>
                           </div>
                         </div>
 

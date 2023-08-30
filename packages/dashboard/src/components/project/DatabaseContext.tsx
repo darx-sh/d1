@@ -7,9 +7,8 @@ enableMapSet();
 type DatabaseState = {
   schema: SchemaDef;
   curDisplayData: { tableName: string; rows: Row[] } | null;
-  scratchTable: TableDef | null;
-  deletedScratchColumns: Set<number>;
-  ddlLogs: DDLLog[];
+  scratchTable: TableDef;
+  columnMarks: ColumnMarkMap;
 };
 
 export interface Row {
@@ -23,7 +22,7 @@ export interface SchemaDef {
 }
 
 export interface TableDef {
-  name: string;
+  name: string | null;
   columns: ColumnDef[];
 }
 
@@ -109,10 +108,27 @@ export function displayDefaultValue(v: DefaultValueType) {
 }
 
 export interface ColumnDef {
-  name: string;
-  fieldType: FieldType;
+  name: string | null;
+  fieldType: FieldType | null;
   defaultValue: DefaultValueType;
   isNullable: boolean;
+  isPrimary: boolean;
+}
+
+// - ADD COLUMN
+// - DROP COLUMN
+// - CHANGE old_col_name new_col_name data_type
+//   - renaming a column
+//   - changing a column's data type
+// - ALTER COLUMN col SET DEFAULT literal
+// - ALTER COLUMN col DROP DEFAULT
+// - MODIFY COLUMN column_name data_type NULL (making a column NULL)
+// - MODIFY COLUMN column_name data_type NOT NULL (making a column NOT NULL)
+
+type ColumnMark = "Add" | "Del" | "Update";
+
+interface ColumnMarkMap {
+  [key: number]: ColumnMark;
 }
 
 type DDLLog =
@@ -142,28 +158,11 @@ interface RenameTable {
   newTableName: string;
 }
 
-interface AddColumn {
-  tableName: string;
-  column: ColumnDef;
-}
-
-interface DropColumn {
-  tableName: string;
-  columnName: string;
-}
-
-interface RenameColumn {
-  tableName: string;
-  oldColumnName: string;
-  newColumnName: string;
-}
-
 const initialState: DatabaseState = {
   schema: {},
   curDisplayData: null,
-  scratchTable: null,
-  deletedScratchColumns: new Set<number>(),
-  ddlLogs: [],
+  scratchTable: { name: null, columns: [] },
+  columnMarks: {},
 };
 
 type DatabaseAction =
@@ -171,30 +170,24 @@ type DatabaseAction =
   | { type: "LoadData"; tableName: string; rows: Row[] }
   | { type: "InitScratchTable"; payload: TableDef }
   | { type: "DeleteScratchTable" }
-  | { type: "CreateTable"; payload: CreateTable }
-  | { type: "DropTable"; payload: DropTable }
+  | { type: "CreateTable"; payload: TableDef }
   | TableEditAction;
 
 // todo: MODIFY COLUMN
 type TableEditAction =
-  | { type: "RenameTable"; payload: RenameTable; prepareDDL: boolean }
+  | { type: "RenameTable"; oldTableName: string; newTableName: string }
   | {
       type: "AddColumn";
-      payload: AddColumn;
-      columnIndex: number;
-      prepareDDL: boolean;
+      column: ColumnDef;
     }
   | {
-      type: "DropColumn";
-      payload: DropColumn;
+      type: "DelColumn";
       columnIndex: number;
-      prepareDDL: boolean;
     }
   | {
-      type: "RenameColumn";
-      payload: RenameColumn;
+      type: "UpdateColumn";
+      column: ColumnDef;
       columnIndex: number;
-      prepareDDL: boolean;
     };
 
 const DatabaseStateContext = createContext<DatabaseState | null>(null);
@@ -239,78 +232,60 @@ function databaseReducer(
       state.scratchTable = action.payload;
       return state;
     case "DeleteScratchTable":
-      state.scratchTable = null;
+      state.scratchTable.name = null;
+      state.scratchTable.columns = [];
       return state;
     case "CreateTable":
-      if (state.ddlLogs.length !== 0) {
-        throw new Error("Cannot create table while there are pending DDLs");
+      if (state.scratchTable !== null) {
+        throw new Error("Cannot create table while there is a table");
       }
-      state.ddlLogs.push({ type: "CreateTable", payload: action.payload });
-      return state;
-    case "DropTable":
-      if (state.ddlLogs.length !== 0) {
-        throw new Error("Cannot drop table while there are pending DDLs");
-      }
-      state.ddlLogs.push({ type: "DropTable", payload: action.payload });
+      state.scratchTable = action.payload;
       return state;
     case "RenameTable":
       if (state.scratchTable === null) {
         throw new Error("Cannot rename an empty table");
       }
 
-      if (state.scratchTable.name !== action.payload.oldTableName) {
+      if (state.scratchTable.name !== action.oldTableName) {
+        const scratchTableName = state.scratchTable.name ?? "null";
         throw new Error(
-          `Invalid oldTableName: action = ${action.payload.oldTableName} scratch = ${state.scratchTable.name}`
+          `Invalid oldTableName: action = ${action.oldTableName} scratch = ${scratchTableName}`
         );
       }
 
-      state.scratchTable.name = action.payload.newTableName;
-      if (action.prepareDDL) {
-        state.ddlLogs.push({ type: "RenameTable", payload: action.payload });
-      }
+      state.scratchTable.name = action.newTableName;
       return state;
     case "AddColumn":
       if (state.scratchTable === null) {
         throw new Error("Cannot add column to an empty table");
       }
 
-      state.scratchTable.columns.push(action.payload.column);
-      if (action.prepareDDL) {
-        state.ddlLogs.push({
-          type: "AddColumn",
-          payload: { index: action.columnIndex },
-        });
-      }
+      state.scratchTable.columns.push(action.column);
+      state.columnMarks[state.scratchTable.columns.length - 1] = "Add";
       return state;
-    case "DropColumn":
+    case "DelColumn":
       if (state.scratchTable === null) {
         throw new Error("Cannot drop column to an empty table");
       }
-      state.deletedScratchColumns.add(action.columnIndex);
-      if (action.prepareDDL) {
-        state.ddlLogs.push({
-          type: "DropColumn",
-          payload: { index: action.columnIndex },
-        });
-      }
+      state.columnMarks[action.columnIndex] = "Del";
       return state;
-    case "RenameColumn":
+    case "UpdateColumn":
       if (state.scratchTable === null) {
         throw new Error("Cannot rename column to an empty table");
       }
 
-      state.scratchTable.columns = state.scratchTable.columns.map((c) => {
-        if (c.name === action.payload.oldColumnName) {
-          return { ...c, name: action.payload.newColumnName };
-        } else {
-          return c;
+      state.scratchTable.columns = state.scratchTable.columns.map(
+        (c, index) => {
+          if (index === action.columnIndex) {
+            return action.column;
+          } else {
+            return c;
+          }
         }
-      });
-      if (action.prepareDDL) {
-        state.ddlLogs.push({
-          type: "RenameColumn",
-          payload: { index: action.columnIndex },
-        });
+      );
+      const mark = state.columnMarks[action.columnIndex];
+      if (mark === undefined) {
+        state.columnMarks[action.columnIndex] = "Update";
       }
       return state;
   }
