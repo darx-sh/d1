@@ -14,7 +14,6 @@ export default function ColumnsEditor() {
   const dispatch = useDatabaseDispatch();
   const state = useDatabaseState();
 
-  const tableName = state.scratchTable.name ?? "";
   const columns = state.scratchTable.columns;
   const columnMarks = state.columnMarks;
 
