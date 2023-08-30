@@ -8,36 +8,41 @@ import {
 } from "~/components/project/DatabaseContext";
 import classNames from "classnames";
 
-interface ColumnsEditorProps {
-  prepareDDL: boolean;
-}
-
-export default function ColumnsEditor(props: ColumnsEditorProps) {
+export default function ColumnsEditor() {
   const headerClass = "px-2 text-sm font-light italic text-center";
   const rowDataClass = "px-2 py-2 text-sm font-normal text-center";
-  const { prepareDDL } = props;
   const dispatch = useDatabaseDispatch();
   const state = useDatabaseState();
 
-  const tableName = state.scratchTable?.name ?? "";
-  const columns = state.scratchTable?.columns ?? [];
-  const deletedColumns = state.deletedScratchColumns;
+  const columns = state.scratchTable.columns;
+  const columnMarks = state.columnMarks;
 
   const renderColumn = (column: ColumnDef, columnIndex: number) => {
-    if (deletedColumns.has(columnIndex)) {
+    const mark = columnMarks[columnIndex];
+    if (mark === "Del") {
       return null;
     }
+
+    const columnName = column.name ?? "Column Name";
 
     return (
       <tr className="hover:bg-gray-200" key={columnIndex}>
         <td className={rowDataClass}>
           <input
             type="text"
-            name={column.name}
-            id={column.name}
             className="block w-32 rounded-md border-0 py-1.5 pl-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
-            placeholder={column.name}
-            defaultValue={column.name}
+            placeholder={columnName}
+            value={columnName}
+            onChange={(event) => {
+              dispatch({
+                type: "UpdateColumn",
+                columnIndex: columnIndex,
+                column: {
+                  ...column,
+                  name: event.target.value,
+                },
+              });
+            }}
           />
         </td>
         <td className={classNames(rowDataClass, "w-28")}>
@@ -59,6 +64,17 @@ export default function ColumnsEditor(props: ColumnsEditorProps) {
             name="primary"
             type="checkbox"
             className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
+            checked={column.isPrimary}
+            onChange={(event) => {
+              dispatch({
+                type: "UpdateColumn",
+                columnIndex: columnIndex,
+                column: {
+                  ...column,
+                  isPrimary: event.target.checked,
+                },
+              });
+            }}
           />
         </td>
         <td className={rowDataClass}>
@@ -68,15 +84,24 @@ export default function ColumnsEditor(props: ColumnsEditorProps) {
             name="isNullable"
             type="checkbox"
             className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
+            checked={column.isNullable}
+            onChange={(event) => {
+              dispatch({
+                type: "UpdateColumn",
+                columnIndex: columnIndex,
+                column: {
+                  ...column,
+                  isNullable: event.target.checked,
+                },
+              });
+            }}
           />
         </td>
         <td
           className={rowDataClass}
           onClick={() => {
             dispatch({
-              type: "DropColumn",
-              payload: { tableName: tableName ?? "", columnName: column.name },
-              prepareDDL: prepareDDL,
+              type: "DelColumn",
               columnIndex: columnIndex,
             });
           }}
@@ -122,6 +147,18 @@ export default function ColumnsEditor(props: ColumnsEditorProps) {
       <button
         type="button"
         className="mx-auto mt-2 block w-80 rounded-md bg-gray-600 px-16 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+        onClick={() => {
+          dispatch({
+            type: "AddColumn",
+            column: {
+              name: null,
+              fieldType: null,
+              defaultValue: null,
+              isNullable: true,
+              isPrimary: false,
+            },
+          });
+        }}
       >
         Add Column
       </button>

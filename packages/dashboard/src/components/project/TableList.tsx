@@ -23,7 +23,6 @@ export default function TableList() {
           dispatch({ type: "DeleteScratchTable" });
           setIsCreateTable(false);
         }}
-        prepareDDL={false}
       ></TableEditorModal>
 
       <nav className="flex flex-col p-2" aria-label="Tables">
