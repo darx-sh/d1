@@ -1,7 +1,7 @@
 import { ArchiveBoxXMarkIcon, Bars3Icon } from "@heroicons/react/24/outline";
 import ColumnTypeSelect from "~/components/project/ColumnTypeSelect";
 import {
-  ColumnDef,
+  DxColumnType,
   displayDefaultValue,
   useDatabaseState,
   useDatabaseDispatch,
@@ -14,10 +14,10 @@ export default function ColumnsEditor() {
   const dispatch = useDatabaseDispatch();
   const state = useDatabaseState();
 
-  const columns = state.scratchTable.columns;
-  const columnMarks = state.columnMarks;
+  const columns = state.draftTable.columns;
+  const columnMarks = state.draftColumnMarks;
 
-  const renderColumn = (column: ColumnDef, columnIndex: number) => {
+  const renderColumn = (column: DxColumnType, columnIndex: number) => {
     const mark = columnMarks[columnIndex];
     if (mark === "Del") {
       return null;
@@ -46,7 +46,7 @@ export default function ColumnsEditor() {
           />
         </td>
         <td className={classNames(rowDataClass, "w-28")}>
-          <ColumnTypeSelect columnType={column.fieldType}></ColumnTypeSelect>
+          <ColumnTypeSelect fieldType={column.fieldType}></ColumnTypeSelect>
         </td>
         <td className={rowDataClass}>
           <input
@@ -59,39 +59,19 @@ export default function ColumnsEditor() {
         </td>
         <td className={rowDataClass}>
           <input
-            id="primary"
-            aria-describedby="comments-description"
-            name="primary"
-            type="checkbox"
-            className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
-            checked={column.isPrimary}
-            onChange={(event) => {
-              dispatch({
-                type: "UpdateColumn",
-                columnIndex: columnIndex,
-                column: {
-                  ...column,
-                  isPrimary: event.target.checked,
-                },
-              });
-            }}
-          />
-        </td>
-        <td className={rowDataClass}>
-          <input
             id="isNullable"
             aria-describedby="comments-description"
             name="isNullable"
             type="checkbox"
             className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
-            checked={column.isNullable}
+            checked={!column.isNullable}
             onChange={(event) => {
               dispatch({
                 type: "UpdateColumn",
                 columnIndex: columnIndex,
                 column: {
                   ...column,
-                  isNullable: event.target.checked,
+                  isNullable: !event.target.checked,
                 },
               });
             }}
@@ -119,24 +99,23 @@ export default function ColumnsEditor() {
     <div>
       <table>
         <thead>
-          <tr>
-            <th scope="col" className={headerClass}>
-              Name
-            </th>
-            <th scope="col" className={headerClass}>
-              Type
-            </th>
-            <th scope="col" className={headerClass}>
-              Default Value
-            </th>
-            <th scope="col" className={headerClass}>
-              Primary
-            </th>
-            <th scope="col" className={headerClass}>
-              Is Nullable
-            </th>
-            <th scope="col" className={headerClass}></th>
-          </tr>
+          {columns.length > 0 ? (
+            <tr>
+              <th scope="col" className={headerClass}>
+                Name
+              </th>
+              <th scope="col" className={headerClass}>
+                Type
+              </th>
+              <th scope="col" className={headerClass}>
+                Default Value
+              </th>
+              <th scope="col" className={headerClass}>
+                Not Null
+              </th>
+              <th scope="col" className={headerClass}></th>
+            </tr>
+          ) : null}
         </thead>
         <tbody>
           {columns.map((c, index) => {
@@ -155,7 +134,7 @@ export default function ColumnsEditor() {
               fieldType: null,
               defaultValue: null,
               isNullable: true,
-              isPrimary: false,
+              extra: null,
             },
           });
         }}

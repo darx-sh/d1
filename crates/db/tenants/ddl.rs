@@ -124,11 +124,8 @@ fn new_column_def(column_type: &DxColumnType) -> ColumnDef {
     DxFieldType::Bool => column_def.boolean(),
     DxFieldType::Int64 => column_def.big_integer(),
     DxFieldType::Text => column_def.text(),
-    DxFieldType::Numeric => column_def.decimal(),
     DxFieldType::Double => column_def.double(),
-    DxFieldType::Date => column_def.date(),
     DxFieldType::DateTime => column_def.date_time(),
-    DxFieldType::Json => column_def.json_binary(),
   };
 
   if column_type.is_nullable {

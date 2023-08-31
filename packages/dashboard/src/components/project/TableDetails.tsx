@@ -79,7 +79,10 @@ export default function TableDetails() {
               </h1>
               <Cog6ToothIcon
                 onClick={() => {
-                  dbDispatch({ type: "InitScratchTable", payload: tableDef });
+                  dbDispatch({
+                    type: "InitDraftFromTable",
+                    tableName: curTable,
+                  });
                   setIsEditTable(true);
                 }}
                 className="h-6 w-6 hover:bg-gray-600"

@@ -30,6 +30,7 @@ export default function TableList() {
           type="button"
           className="mb-2 block rounded bg-gray-400 px-2 py-2 text-left text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
           onClick={() => {
+            dispatch({ type: "InitDraftFromTemplate" });
             setIsCreateTable(true);
           }}
         >

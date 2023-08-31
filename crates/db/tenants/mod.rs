@@ -42,16 +42,17 @@ pub enum DxDatum {
 
 #[derive(Deserialize, Debug, PartialEq)]
 pub enum DxFieldType {
+  #[serde(rename = "bool")]
   Bool,
+  #[serde(rename = "int64")]
   Int64,
+  #[serde(rename = "text")]
   Text,
-  // Fixed point
-  Numeric,
   // Approximate numeric values
+  #[serde(rename = "float64")]
   Double,
-  Date,
+  #[serde(rename = "datetime")]
   DateTime,
-  Json,
 }
 
 #[derive(Deserialize)]
