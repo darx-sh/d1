@@ -9,7 +9,8 @@ import {
   Row,
   SchemaDef,
   TableDef,
-  FieldType,
+  MySQLFieldType,
+  columnTypesMap,
   useDatabaseDispatch,
   DefaultValueType,
 } from "~/components/project/DatabaseContext";
@@ -37,10 +38,11 @@ function rspToSchema(rsp: ListTableRsp): SchemaDef {
         ({ columnName, fieldType, nullable, defaultValue }) => {
           return {
             name: columnName,
-            fieldType: fieldType.toLowerCase() as FieldType,
+            fieldType:
+              columnTypesMap[fieldType.toLowerCase() as MySQLFieldType],
             isNullable: nullable === "YES",
             defaultValue,
-            isPrimary: primaryKey.includes(columnName),
+            extra: null,
           };
         }
       ),

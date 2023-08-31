@@ -1,23 +1,130 @@
-import { useState, Fragment } from "react";
+import { useState, useEffect, Fragment, useRef } from "react";
 import { Dialog, Transition } from "@headlessui/react";
-import { XMarkIcon } from "@heroicons/react/24/outline";
+import { XMarkIcon, ExclamationCircleIcon } from "@heroicons/react/24/outline";
 import ColumnsEditor from "~/components/project/ColumnsEditor";
 import {
+  DxColumnType,
+  ColumnError,
   TableDef,
+  TableDefError,
   useDatabaseDispatch,
   useDatabaseState,
 } from "~/components/project/DatabaseContext";
+
+type EditTableReq = AddColumnReq | DropColumnReq | RenameColumnReq;
+
+interface CreateTableReq {
+  createTable: {
+    tableName: string;
+    columns: DxColumnType[];
+  };
+}
+
+interface DropTableReq {
+  dropTable: {
+    tableName: string;
+  };
+}
+
+interface AddColumnReq {
+  addColumn: {
+    tableName: string;
+    column: DxColumnType;
+  };
+}
+
+interface DropColumnReq {
+  dropColumn: {
+    tableName: string;
+    columnName: string;
+  };
+}
+
+interface RenameColumnReq {
+  renameColumn: {
+    tableName: string;
+    oldColumnName: string;
+    newColumnName: string;
+  };
+}
 
 type TableEditorProps = {
   onClose: () => void;
   open: boolean;
 };
 
+function validateTableDef(tableDef: TableDef): TableDefError | null {
+  let hasError = false;
+  const tableDefErr: TableDefError = { nameError: null, columnsError: [] };
+
+  if (tableDef.name === null) {
+    hasError = true;
+    tableDefErr.nameError = "Table name cannot be empty";
+  }
+
+  tableDef.columns.forEach((col) => {
+    const columnError: ColumnError = { nameError: null, fieldTypeError: null };
+    if (col.name === null) {
+      hasError = true;
+      columnError.nameError = "Column name cannot be empty";
+    }
+    if (col.fieldType === null) {
+      hasError = true;
+      columnError.fieldTypeError = "Column type cannot be empty";
+    }
+    tableDefErr.columnsError.push(columnError);
+  });
+
+  if (hasError) {
+    return tableDefErr;
+  } else {
+    return null;
+  }
+}
+
+function genCreateTable(tableDef: TableDef): CreateTableReq {
+  const req = {
+    createTable: {
+      tableName: tableDef.name!,
+      columns: tableDef.columns,
+    },
+  };
+  return req;
+}
+//
+// function genEditTable(
+//   oldTableDef: TableDef,
+//   newTableDef: TableDef
+// ): [EditTableReq[], TableDefError] {}
+
 export default function TableEditorModal(props: TableEditorProps) {
   const dispatch = useDatabaseDispatch();
   const state = useDatabaseState();
   const { onClose, open } = props;
-  const tableDef = state.scratchTable;
+  const tableDef = state.draftTable;
+  const tableDefError = state.draftTableError;
+
+  const tableNameRef = useRef<HTMLInputElement>(null);
+
+  const handleCreateTable = () => {
+    const error = validateTableDef(tableDef);
+    if (error !== null) {
+      dispatch({ type: "SetDraftError", error });
+    } else {
+      const req = genCreateTable(tableDef);
+      console.log(req);
+    }
+  };
+
+  // const handleEditTable = () => {};
+
+  const handleSave = () => {
+    if (state.isCreateTable) {
+      handleCreateTable();
+    } else {
+      // handleEditTable();
+    }
+  };
 
   return (
     <Transition.Root show={open} as={Fragment}>
@@ -27,6 +134,7 @@ export default function TableEditorModal(props: TableEditorProps) {
         onClose={() => {
           onClose();
         }}
+        initialFocus={state.isCreateTable ? tableNameRef : undefined}
       >
         <Transition.Child
           as={Fragment}
@@ -86,19 +194,43 @@ export default function TableEditorModal(props: TableEditorProps) {
                                 >
                                   Table Name
                                 </label>
-                                <div className="mt-2">
-                                  <div className="flex rounded-md shadow-sm ring-1 ring-inset ring-gray-300 focus-within:ring-2 focus-within:ring-inset focus-within:ring-indigo-600 sm:max-w-md">
-                                    <input
-                                      type="text"
-                                      name="tableName"
-                                      id="tableName"
-                                      autoComplete="tableName"
-                                      className="block flex-1 border-0 bg-transparent py-1.5 pl-1 text-gray-900 placeholder:text-gray-400 focus:ring-0 sm:text-sm sm:leading-6"
-                                      placeholder={
-                                        tableDef?.name ?? "Your table name"
-                                      }
-                                    />
-                                  </div>
+                                <div className="relative mt-2 flex rounded-md shadow-sm">
+                                  <input
+                                    ref={tableNameRef}
+                                    defaultValue={tableDef.name ?? ""}
+                                    type="text"
+                                    name="tableName"
+                                    id="tableName"
+                                    autoComplete="tableName"
+                                    className={
+                                      tableDefError.nameError === null
+                                        ? "block rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
+                                        : "block rounded-md border-0 py-1.5 text-red-900 shadow-sm ring-1 ring-inset ring-red-300 placeholder:text-red-400 focus:ring-2 focus:ring-inset focus:ring-red-600"
+                                    }
+                                    onChange={(event) => {
+                                      const v = event.target.value;
+                                      dispatch({
+                                        type: "SetTableName",
+                                        tableName: v,
+                                      });
+                                    }}
+                                  />
+                                  {tableDefError.nameError === null ? null : (
+                                    <>
+                                      <div className="pointer-events-none inset-y-0 right-0 -ml-6 flex items-center pr-3">
+                                        <ExclamationCircleIcon
+                                          className="h-5 w-5 text-red-500"
+                                          aria-hidden="true"
+                                        />
+                                      </div>
+                                      <p
+                                        className="mt-2 text-sm text-red-600"
+                                        id="tableName-error"
+                                      >
+                                        Not a valid table name
+                                      </p>
+                                    </>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -120,8 +252,9 @@ export default function TableEditorModal(props: TableEditorProps) {
                             Cancel
                           </button>
                           <button
-                            type="submit"
+                            type="button"
                             className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                            onClick={handleSave}
                           >
                             Save
                           </button>

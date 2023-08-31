@@ -7,8 +7,11 @@ enableMapSet();
 type DatabaseState = {
   schema: SchemaDef;
   curDisplayData: { tableName: string; rows: Row[] } | null;
-  scratchTable: TableDef;
-  columnMarks: ColumnMarkMap;
+  // table editor's state
+  draftTable: TableDef;
+  draftTableError: TableDefError;
+  draftColumnMarks: ColumnMarkMap;
+  isCreateTable: boolean;
 };
 
 export interface Row {
@@ -23,73 +26,86 @@ export interface SchemaDef {
 
 export interface TableDef {
   name: string | null;
-  columns: ColumnDef[];
+  columns: DxColumnType[];
 }
 
-export type FieldType =
+export interface TableDefError {
+  nameError: string | null;
+  columnsError: ColumnError[];
+}
+
+export interface ColumnError {
+  nameError: string | null;
+  fieldTypeError: string | null;
+}
+
+export type DxFieldType = "int64" | "float64" | "bool" | "datetime" | "text";
+
+export type MySQLFieldType =
   // numeric data types
-  | "tinyint"
-  | "smallint"
-  | "mediumint"
-  | "int"
+  // | "tinyint"
+  // | "smallint"
+  // | "mediumint"
+  // | "int"
   | "bigint"
-  | "decimal"
-  | "numeric"
-  | "float"
+  // | "decimal"
+  // | "numeric"
+  // | "float"
   | "double"
-  | "bit"
+  // | "bit"
   // date and time data types
-  | "date"
-  | "time"
+  // | "date"
+  // | "time"
   | "datetime"
-  | "timestamp"
-  | "year"
+  // | "timestamp"
+  // | "year"
   // string data types
-  | "char"
-  | "varchar"
-  | "binary"
-  | "varbinary"
-  | "blob"
-  | "text"
-  | "enum"
-  | "set"
-  // json
-  | "json";
+  // | "char"
+  // | "varchar"
+  // | "binary"
+  // | "varbinary"
+  // | "blob"
+  | "text";
+// | "enum"
+// | "set"
+// json
+// | "json";
 
-type ColumnTypeMap = { [K in FieldType]: K };
+export type ColumnTypeMap = { [K in MySQLFieldType]: DxFieldType };
 
-const columnTypes: ColumnTypeMap = {
-  tinyint: "tinyint",
-  smallint: "smallint",
-  mediumint: "mediumint",
-  int: "int",
-  bigint: "bigint",
-  decimal: "decimal",
-  numeric: "numeric",
-  float: "float",
-  double: "double",
-  bit: "bit",
-  date: "date",
-  time: "time",
+// MySQL types -> Darx types.
+export const columnTypesMap: ColumnTypeMap = {
+  // tinyint: "tinyint",
+  // smallint: "smallint",
+  // mediumint: "mediumint",
+  // int: "int",
+  bigint: "int64",
+  // decimal: "decimal",
+  // numeric: "numeric",
+  // float: "float",
+  double: "float64",
+  // bit: "bit",
+  // date: "date",
+  // time: "time",
   datetime: "datetime",
-  timestamp: "timestamp",
-  year: "year",
-  char: "char",
-  varchar: "varchar",
-  binary: "binary",
-  varbinary: "varbinary",
-  blob: "blob",
+  // timestamp: "timestamp",
+  // year: "year",
+  // char: "char",
+  // varchar: "varchar",
+  // binary: "binary",
+  // varbinary: "varbinary",
+  // blob: "blob",
   text: "text",
-  enum: "enum",
-  set: "set",
-  json: "json",
+  // enum: "enum",
+  // set: "set",
+  // json: "json",
 };
 
-export function getAllColumnTypes(): FieldType[] {
-  return Object.values(columnTypes);
+export function getAllColumnTypes(): DxFieldType[] {
+  return Object.values(columnTypesMap);
 }
 
-export type DefaultValueType = null | string | number | boolean | object;
+export type DefaultValueType = null | string | number | boolean;
 
 export function displayDefaultValue(v: DefaultValueType) {
   if (v === null) {
@@ -102,18 +118,42 @@ export function displayDefaultValue(v: DefaultValueType) {
     return (v as number).toString();
   } else if (t === "boolean") {
     return (v as boolean).toString();
-  } else if (t === "object") {
-    return JSON.stringify(v);
   }
 }
 
-export interface ColumnDef {
+export interface DxColumnType {
   name: string | null;
-  fieldType: FieldType | null;
+  fieldType: DxFieldType | null;
   defaultValue: DefaultValueType;
   isNullable: boolean;
-  isPrimary: boolean;
+  extra: ExtraColumnOptions | null;
 }
+
+type ExtraColumnOptions = "AUTO_INCREMENT" | "ON UPDATE CURRENT_TIMESTAMP(3)";
+
+export const DefaultDxColumns: DxColumnType[] = [
+  {
+    name: "id",
+    fieldType: "int64",
+    defaultValue: 0,
+    isNullable: false,
+    extra: "AUTO_INCREMENT",
+  },
+  {
+    name: "created_at",
+    fieldType: "datetime",
+    defaultValue: "CURRENT_TIMESTAMP(3)",
+    isNullable: false,
+    extra: null,
+  },
+  {
+    name: "updated_at",
+    fieldType: "datetime",
+    defaultValue: "CURRENT_TIMESTAMP(3)",
+    isNullable: false,
+    extra: "ON UPDATE CURRENT_TIMESTAMP(3)",
+  },
+];
 
 // - ADD COLUMN
 // - DROP COLUMN
@@ -146,7 +186,7 @@ type DDLAction =
 
 interface CreateTable {
   tableName: string;
-  columns: ColumnDef[];
+  columns: DxColumnType[];
 }
 
 interface DropTable {
@@ -161,24 +201,26 @@ interface RenameTable {
 const initialState: DatabaseState = {
   schema: {},
   curDisplayData: null,
-  scratchTable: { name: null, columns: [] },
-  columnMarks: {},
+  draftTable: { name: null, columns: [] },
+  draftTableError: { nameError: null, columnsError: [] },
+  draftColumnMarks: {},
+  isCreateTable: true,
 };
 
 type DatabaseAction =
   | { type: "LoadTables"; schemaDef: SchemaDef }
   | { type: "LoadData"; tableName: string; rows: Row[] }
-  | { type: "InitScratchTable"; payload: TableDef }
+  | { type: "InitDraftFromTable"; tableName: string }
+  | { type: "InitDraftFromTemplate" }
+  | { type: "SetDraftError"; error: TableDefError }
   | { type: "DeleteScratchTable" }
-  | { type: "CreateTable"; payload: TableDef }
   | TableEditAction;
 
-// todo: MODIFY COLUMN
 type TableEditAction =
-  | { type: "RenameTable"; oldTableName: string; newTableName: string }
+  | { type: "SetTableName"; tableName: string }
   | {
       type: "AddColumn";
-      column: ColumnDef;
+      column: DxColumnType;
     }
   | {
       type: "DelColumn";
@@ -186,7 +228,7 @@ type TableEditAction =
     }
   | {
       type: "UpdateColumn";
-      column: ColumnDef;
+      column: DxColumnType;
       columnIndex: number;
     };
 
@@ -228,64 +270,84 @@ function databaseReducer(
     case "LoadData":
       state.curDisplayData = { tableName: action.tableName, rows: action.rows };
       return state;
-    case "InitScratchTable":
-      state.scratchTable = action.payload;
+    case "InitDraftFromTable":
+      const t1 = state.schema[action.tableName]!;
+      state.draftTable = t1;
+      state.isCreateTable = false;
+      return state;
+    case "InitDraftFromTemplate":
+      const t2: TableDef = {
+        name: null,
+        columns: DefaultDxColumns,
+      };
+      state.draftTable = t2;
+      state.isCreateTable = true;
+      return state;
+    case "SetDraftError":
+      state.draftTableError = action.error;
       return state;
     case "DeleteScratchTable":
-      state.scratchTable.name = null;
-      state.scratchTable.columns = [];
+      state.draftTable.name = null;
+      state.draftTable.columns = [];
+      state.draftTableError = { nameError: null, columnsError: [] };
+      state.isCreateTable = true;
       return state;
-    case "CreateTable":
-      if (state.scratchTable !== null) {
-        throw new Error("Cannot create table while there is a table");
+    // case "CreateTable":
+    //   if (state.draftTable !== null) {
+    //     throw new Error("Cannot create table while there is a table");
+    //   }
+    //   state.draftTable = action.payload;
+    //   return state;
+    // case "RenameTable":
+    //   if (state.draftTable === null) {
+    //     throw new Error("Cannot rename an empty table");
+    //   }
+    //
+    //   if (state.draftTable.name !== action.oldTableName) {
+    //     const scratchTableName = state.draftTable.name ?? "null";
+    //     throw new Error(
+    //       `Invalid oldTableName: action = ${action.oldTableName} scratch = ${scratchTableName}`
+    //     );
+    //   }
+    //
+    //   state.draftTable.name = action.newTableName;
+    //   return state;
+    case "SetTableName":
+      if (state.draftTable === null) {
+        throw new Error("Cannot set table name to an empty table");
       }
-      state.scratchTable = action.payload;
-      return state;
-    case "RenameTable":
-      if (state.scratchTable === null) {
-        throw new Error("Cannot rename an empty table");
-      }
-
-      if (state.scratchTable.name !== action.oldTableName) {
-        const scratchTableName = state.scratchTable.name ?? "null";
-        throw new Error(
-          `Invalid oldTableName: action = ${action.oldTableName} scratch = ${scratchTableName}`
-        );
-      }
-
-      state.scratchTable.name = action.newTableName;
+      state.draftTable.name = action.tableName;
+      state.draftTableError.nameError = null;
       return state;
     case "AddColumn":
-      if (state.scratchTable === null) {
+      if (state.draftTable === null) {
         throw new Error("Cannot add column to an empty table");
       }
 
-      state.scratchTable.columns.push(action.column);
-      state.columnMarks[state.scratchTable.columns.length - 1] = "Add";
+      state.draftTable.columns.push(action.column);
+      state.draftColumnMarks[state.draftTable.columns.length - 1] = "Add";
       return state;
     case "DelColumn":
-      if (state.scratchTable === null) {
+      if (state.draftTable === null) {
         throw new Error("Cannot drop column to an empty table");
       }
-      state.columnMarks[action.columnIndex] = "Del";
+      state.draftColumnMarks[action.columnIndex] = "Del";
       return state;
     case "UpdateColumn":
-      if (state.scratchTable === null) {
+      if (state.draftTable === null) {
         throw new Error("Cannot rename column to an empty table");
       }
 
-      state.scratchTable.columns = state.scratchTable.columns.map(
-        (c, index) => {
-          if (index === action.columnIndex) {
-            return action.column;
-          } else {
-            return c;
-          }
+      state.draftTable.columns = state.draftTable.columns.map((c, index) => {
+        if (index === action.columnIndex) {
+          return action.column;
+        } else {
+          return c;
         }
-      );
-      const mark = state.columnMarks[action.columnIndex];
+      });
+      const mark = state.draftColumnMarks[action.columnIndex];
       if (mark === undefined) {
-        state.columnMarks[action.columnIndex] = "Update";
+        state.draftColumnMarks[action.columnIndex] = "Update";
       }
       return state;
   }

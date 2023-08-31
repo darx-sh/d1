@@ -2,7 +2,7 @@ import { Fragment, useState } from "react";
 import { Listbox, Transition } from "@headlessui/react";
 import { CheckIcon, ChevronDownIcon } from "@heroicons/react/20/solid";
 import {
-  FieldType,
+  DxFieldType,
   getAllColumnTypes,
 } from "~/components/project/DatabaseContext";
 
@@ -20,12 +20,12 @@ function classNames(...classes: string[]) {
 }
 
 interface ColumnTypeSelectProps {
-  columnType: FieldType | null;
+  fieldType: DxFieldType | null;
 }
 
 export default function ColumnTypeSelect(props: ColumnTypeSelectProps) {
   const allColumnTypes = getAllColumnTypes();
-  const [selected, setSelected] = useState(props.columnType);
+  const [selected, setSelected] = useState(props.fieldType);
 
   return (
     <Listbox value={selected} onChange={setSelected}>
