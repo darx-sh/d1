@@ -5,7 +5,13 @@ console.log(r1);
 const r2 = await db.ddl({
   createTable: {
     tableName: "test",
-    columns: [{ name: "name", fieldType: "Text", isNullable: false }],
+    columns: [
+      {
+        name: "name",
+        fieldType: "text",
+        isNullable: false,
+      },
+    ],
   },
 });
 console.log(r2);
@@ -13,7 +19,12 @@ console.log(r2);
 const r3 = await db.ddl({
   addColumn: {
     tableName: "test",
-    column: { name: "age", fieldType: "Int64", isNullable: false },
+    column: {
+      name: "age",
+      fieldType: "int64",
+      isNullable: false,
+      defaultValue: { int64: 0 },
+    },
   },
 });
 console.log(r3);

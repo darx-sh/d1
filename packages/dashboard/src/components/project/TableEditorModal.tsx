@@ -3,22 +3,19 @@ import { Dialog, Transition } from "@headlessui/react";
 import { XMarkIcon, ExclamationCircleIcon } from "@heroicons/react/24/outline";
 import ColumnsEditor from "~/components/project/ColumnsEditor";
 import {
+  DxFieldType,
   DxColumnType,
   ColumnError,
   TableDef,
   TableDefError,
   useDatabaseDispatch,
   useDatabaseState,
+  defaultValueToJSON,
 } from "~/components/project/DatabaseContext";
+import { useProjectState } from "~/components/project/ProjectContext";
+import { invoke, type CreateTableReq } from "~/utils";
 
 type EditTableReq = AddColumnReq | DropColumnReq | RenameColumnReq;
-
-interface CreateTableReq {
-  createTable: {
-    tableName: string;
-    columns: DxColumnType[];
-  };
-}
 
 interface DropTableReq {
   dropTable: {
@@ -83,10 +80,24 @@ function validateTableDef(tableDef: TableDef): TableDefError | null {
 }
 
 function genCreateTable(tableDef: TableDef): CreateTableReq {
+  const columns = tableDef.columns.map((c) => {
+    const name = c.name!;
+    const fieldType = c.fieldType!;
+    const isNullable = c.isNullable;
+    const extra = c.extra;
+    return {
+      name,
+      fieldType,
+      isNullable,
+      defaultValue:
+        c.defaultValue === null ? null : defaultValueToJSON(c.defaultValue),
+      extra,
+    };
+  });
   const req = {
     createTable: {
       tableName: tableDef.name!,
-      columns: tableDef.columns,
+      columns: columns,
     },
   };
   return req;
@@ -98,6 +109,7 @@ function genCreateTable(tableDef: TableDef): CreateTableReq {
 // ): [EditTableReq[], TableDefError] {}
 
 export default function TableEditorModal(props: TableEditorProps) {
+  const projectState = useProjectState();
   const dispatch = useDatabaseDispatch();
   const state = useDatabaseState();
   const { onClose, open } = props;
@@ -112,6 +124,18 @@ export default function TableEditorModal(props: TableEditorProps) {
       dispatch({ type: "SetDraftError", error });
     } else {
       const req = genCreateTable(tableDef);
+      const envId = projectState.envInfo!.id;
+      invoke(
+        envId,
+        "_plugins/schema/api.ddl",
+        { req: req },
+        (rsp) => {
+          console.log(rsp);
+        },
+        (err) => {
+          console.error(err);
+        }
+      );
       console.log(req);
     }
   };

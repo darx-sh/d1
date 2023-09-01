@@ -1,6 +1,7 @@
 import { createContext, Dispatch, ReactNode, useContext } from "react";
 import { enableMapSet } from "immer";
 import { useImmerReducer } from "use-immer";
+import { DxDatumJsonType, PrimitiveTypes } from "~/utils";
 
 enableMapSet();
 
@@ -40,6 +41,66 @@ export interface ColumnError {
 }
 
 export type DxFieldType = "int64" | "float64" | "bool" | "datetime" | "text";
+
+export type DxDefaultValue =
+  | { type: "int64"; value: number }
+  | { type: "float64"; value: number }
+  | { type: "bool"; value: boolean }
+  | { type: "datetime"; value: string }
+  | { type: "text"; value: string }
+  | { type: "expr"; value: string }
+  | { type: "NULL" };
+
+export function displayDxDefaultValue(d: DxDefaultValue) {
+  if (d.type === "NULL") {
+    return "NULL";
+  }
+  return d.value.toString();
+}
+
+export function defaultValueToJSON(d: DxDefaultValue): DxDatumJsonType {
+  switch (d.type) {
+    case "NULL":
+      return "NULL";
+    case "bool":
+      return { bool: d.value };
+    case "int64":
+      return { int64: d.value };
+    case "float64":
+      return { float64: d.value };
+    case "text":
+      return { text: d.value };
+    case "datetime":
+      return { datetime: d.value };
+    case "expr":
+      return { expr: d.value };
+  }
+}
+
+export function toDxDefaultValue(
+  v: PrimitiveTypes,
+  fieldType: DxFieldType
+): DxDefaultValue {
+  if (v === null) {
+    return { type: "NULL" };
+  } else if (fieldType === "int64") {
+    return { type: "int64", value: v as number };
+  } else if (fieldType === "float64") {
+    return { type: "float64", value: v as number };
+  } else if (fieldType === "bool") {
+    return { type: "bool", value: v as boolean };
+  } else if (fieldType === "datetime") {
+    const value = v as string;
+    if (value.includes("CURRENT_TIMESTAMP") || value.includes("NOW")) {
+      return { type: "expr", value: value };
+    }
+    return { type: "datetime", value: v as string };
+  } else if (fieldType === "text") {
+    return { type: "text", value: v as string };
+  } else {
+    throw new Error(`Invalid fieldType`);
+  }
+}
 
 export type MySQLFieldType =
   // numeric data types
@@ -105,26 +166,10 @@ export function getAllColumnTypes(): DxFieldType[] {
   return Object.values(columnTypesMap);
 }
 
-export type DefaultValueType = null | string | number | boolean;
-
-export function displayDefaultValue(v: DefaultValueType) {
-  if (v === null) {
-    return "NULL";
-  }
-  const t = typeof v;
-  if (t === "string") {
-    return `${v as string}`;
-  } else if (t === "number") {
-    return (v as number).toString();
-  } else if (t === "boolean") {
-    return (v as boolean).toString();
-  }
-}
-
 export interface DxColumnType {
   name: string | null;
   fieldType: DxFieldType | null;
-  defaultValue: DefaultValueType;
+  defaultValue: DxDefaultValue | null;
   isNullable: boolean;
   extra: ExtraColumnOptions | null;
 }
@@ -135,21 +180,22 @@ export const DefaultDxColumns: DxColumnType[] = [
   {
     name: "id",
     fieldType: "int64",
-    defaultValue: 0,
+    // AUTO_INCREMENT cannot have a default 0
+    defaultValue: null,
     isNullable: false,
     extra: "AUTO_INCREMENT",
   },
   {
     name: "created_at",
     fieldType: "datetime",
-    defaultValue: "CURRENT_TIMESTAMP(3)",
+    defaultValue: { type: "expr", value: "CURRENT_TIMESTAMP(3)" },
     isNullable: false,
     extra: null,
   },
   {
     name: "updated_at",
     fieldType: "datetime",
-    defaultValue: "CURRENT_TIMESTAMP(3)",
+    defaultValue: { type: "expr", value: "CURRENT_TIMESTAMP(3)" },
     isNullable: false,
     extra: "ON UPDATE CURRENT_TIMESTAMP(3)",
   },

@@ -10,6 +10,7 @@ class DBConn {
     return core.opAsync("op_db_execute", this.rid, query, params);
   }
   ddl(req) {
+    console.log("js ddl req: ", req);
     return core.opAsync("op_ddl", this.rid, req);
   }
 }

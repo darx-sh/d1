@@ -1,5 +1,6 @@
 use crate::tenants::{
-  AddColumnReq, CreateTableReq, DropColumnReq, DropTableReq, RenameColumnReq,
+  AddColumnReq, CreateTableReq, DropColumnReq, DropTableReq, DxDefaultValue,
+  RenameColumnReq,
 };
 use crate::tenants::{DxColumnType, DxFieldType, DxIdent};
 use anyhow::Result;
@@ -52,32 +53,35 @@ use sea_query::{ColumnDef, Expr, Index, MysqlQueryBuilder, Table};
 // }
 
 pub fn create_table_sql(req: &CreateTableReq) -> Result<String> {
+  println!("create_table_sql: {:?}", req);
+
   let mut stmt = Table::create();
 
   // add default columns and indexes
-  let mut id = ColumnDef::new(DxIdent("id".to_string()));
-  id.string().string_len(255);
-  id.not_null();
-
-  // CURRENT_TIMESTAMP(3) is not supported by sea_query
-  let mut created_at = ColumnDef::new(DxIdent("created_at".to_string()));
-  created_at.custom(DxIdent("datetime(3)".to_string()));
-  created_at.not_null();
-  created_at.default(Expr::cust("CURRENT_TIMESTAMP(3)"));
-
-  let mut updated_at = ColumnDef::new(DxIdent("updated_at".to_string()));
-  updated_at.custom(DxIdent("datetime(3)".to_string()));
-  updated_at.not_null();
-  updated_at.default(Expr::cust("CURRENT_TIMESTAMP(3)"));
-  updated_at.extra("ON UPDATE CURRENT_TIMESTAMP(3)");
+  // let mut id = ColumnDef::new(DxIdent("id".to_string()));
+  // id.string().string_len(255);
+  // id.not_null();
+  //
+  // // CURRENT_TIMESTAMP(3) is not supported by sea_query
+  // let mut created_at = ColumnDef::new(DxIdent("created_at".to_string()));
+  // created_at.custom(DxIdent("datetime(3)".to_string()));
+  // created_at.not_null();
+  // created_at.default(Expr::cust("CURRENT_TIMESTAMP(3)"));
+  //
+  // let mut updated_at = ColumnDef::new(DxIdent("updated_at".to_string()));
+  // updated_at.custom(DxIdent("datetime(3)".to_string()));
+  // updated_at.not_null();
+  // updated_at.default(Expr::cust("CURRENT_TIMESTAMP(3)"));
+  // updated_at.extra("ON UPDATE CURRENT_TIMESTAMP(3)");
 
   stmt.table(DxIdent(req.table_name.clone()));
-  stmt.col(&mut id).col(&mut created_at).col(&mut updated_at);
+  // stmt.col(&mut id).col(&mut created_at).col(&mut updated_at);
   for column in &req.columns {
     let mut column_def = new_column_def(column);
     stmt.col(&mut column_def);
   }
 
+  // todo: send it from frontend.
   stmt.primary_key(Index::create().col(DxIdent("id".to_string())));
   stmt.index(
     Index::create()
@@ -124,14 +128,46 @@ fn new_column_def(column_type: &DxColumnType) -> ColumnDef {
     DxFieldType::Bool => column_def.boolean(),
     DxFieldType::Int64 => column_def.big_integer(),
     DxFieldType::Text => column_def.text(),
-    DxFieldType::Double => column_def.double(),
-    DxFieldType::DateTime => column_def.date_time(),
+    DxFieldType::Float64 => column_def.double(),
+    DxFieldType::DateTime => {
+      column_def.custom(DxIdent("datetime(3)".to_string()))
+    }
   };
 
   if column_type.is_nullable {
     column_def.null();
   } else {
     column_def.not_null();
+  }
+
+  if let Some(default_value) = &column_type.default_value {
+    match default_value {
+      DxDefaultValue::Bool(v) => {
+        column_def.default(*v);
+      }
+      DxDefaultValue::Int64(v) => {
+        column_def.default(*v);
+      }
+      DxDefaultValue::Float64(v) => {
+        column_def.default(*v);
+      }
+      DxDefaultValue::Text(v) => {
+        column_def.default(v);
+      }
+      DxDefaultValue::DateTime(v) => {
+        column_def.default(v);
+      }
+      DxDefaultValue::Expr(v) => {
+        column_def.default(Expr::cust(v.clone()));
+      }
+      DxDefaultValue::Null => {
+        // do nothing
+      }
+    }
+  }
+
+  if let Some(extra) = &column_type.extra {
+    column_def.extra(extra);
   }
   column_def
 }
@@ -144,16 +180,45 @@ mod tests {
   fn test_create_table() {
     let req = CreateTableReq {
       table_name: "test".to_string(),
-      columns: vec![DxColumnType {
-        name: "age".to_string(),
-        field_type: DxFieldType::Int64,
-        is_nullable: false,
-      }],
+      columns: vec![
+        DxColumnType {
+          name: "id".to_string(),
+          field_type: DxFieldType::Int64,
+          is_nullable: false,
+          default_value: None,
+          extra: None,
+        },
+        DxColumnType {
+          name: "created_at".to_string(),
+          field_type: DxFieldType::DateTime,
+          is_nullable: false,
+          default_value: Some(DxDefaultValue::Expr(
+            "CURRENT_TIMESTAMP(3)".to_string(),
+          )),
+          extra: None,
+        },
+        DxColumnType {
+          name: "updated_at".to_string(),
+          field_type: DxFieldType::DateTime,
+          is_nullable: false,
+          default_value: Some(DxDefaultValue::Expr(
+            "CURRENT_TIMESTAMP(3)".to_string(),
+          )),
+          extra: Some("ON UPDATE CURRENT_TIMESTAMP(3)".to_string()),
+        },
+        DxColumnType {
+          name: "age".to_string(),
+          field_type: DxFieldType::Int64,
+          is_nullable: false,
+          default_value: None,
+          extra: None,
+        },
+      ],
     };
 
     assert_eq!(
       create_table_sql(&req).unwrap(),
-      "CREATE TABLE `test` ( `id` varchar(255) NOT NULL, `created_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), `updated_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3), `age` bigint NOT NULL, PRIMARY KEY (`id`), KEY `idx_test_created_at` (`created_at`) )"
+      "CREATE TABLE `test` ( `id` bigint NOT NULL, `created_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), `updated_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3), `age` bigint NOT NULL )"
     );
   }
 
@@ -165,6 +230,8 @@ mod tests {
         name: "age".to_string(),
         field_type: DxFieldType::Int64,
         is_nullable: true,
+        default_value: None,
+        extra: None,
       },
     };
 
