@@ -12,7 +12,7 @@ import {
   MySQLFieldType,
   columnTypesMap,
   useDatabaseDispatch,
-  DefaultValueType,
+  toDxDefaultValue,
 } from "~/components/project/DatabaseContext";
 import { env } from "~/env.mjs";
 import axios from "axios";
@@ -23,7 +23,7 @@ type ListTableRsp = {
     columnName: string;
     fieldType: string;
     nullable: string;
-    defaultValue: DefaultValueType;
+    defaultValue: null | string | number | boolean;
     comment: string;
   }[];
   primaryKey: string[];
@@ -36,12 +36,13 @@ function rspToSchema(rsp: ListTableRsp): SchemaDef {
       name: tableName,
       columns: columns.map(
         ({ columnName, fieldType, nullable, defaultValue }) => {
+          const dxFieldType =
+            columnTypesMap[fieldType.toLowerCase() as MySQLFieldType];
           return {
             name: columnName,
-            fieldType:
-              columnTypesMap[fieldType.toLowerCase() as MySQLFieldType],
+            fieldType: dxFieldType,
             isNullable: nullable === "YES",
-            defaultValue,
+            defaultValue: toDxDefaultValue(defaultValue, dxFieldType),
             extra: null,
           };
         }

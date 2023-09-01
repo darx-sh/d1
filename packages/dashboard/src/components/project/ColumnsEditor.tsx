@@ -2,7 +2,7 @@ import { ArchiveBoxXMarkIcon, Bars3Icon } from "@heroicons/react/24/outline";
 import ColumnTypeSelect from "~/components/project/ColumnTypeSelect";
 import {
   DxColumnType,
-  displayDefaultValue,
+  displayDxDefaultValue,
   useDatabaseState,
   useDatabaseDispatch,
 } from "~/components/project/DatabaseContext";
@@ -54,7 +54,11 @@ export default function ColumnsEditor() {
             name="defaultValue"
             id="defaultValue"
             className="block w-28 rounded-md border-0 py-1.5 pl-2 text-xs text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
-            placeholder={displayDefaultValue(column.defaultValue)}
+            placeholder={
+              column.defaultValue === null
+                ? "NULL"
+                : displayDxDefaultValue(column.defaultValue)
+            }
           />
         </td>
         <td className={rowDataClass}>

@@ -191,7 +191,7 @@ async fn test_var() -> Result<()> {
   );
   let script_result = darx_runtime
     .js_runtime
-    .execute_script("simple", "Dx.env.someKey")?;
+    .execute_script("simple", "Darx.env.someKey")?;
   let mut handle_scope = darx_runtime.js_runtime.handle_scope();
   let script_result = v8::Local::new(&mut handle_scope, script_result);
   let script_result: serde_json::Value =
@@ -209,7 +209,7 @@ async fn test_var() -> Result<()> {
   );
   let script_result = darx_runtime
     .js_runtime
-    .execute_script("simple", "Dx.env.key1")?;
+    .execute_script("simple", "Darx.env.key1")?;
   let mut handle_scope = darx_runtime.js_runtime.handle_scope();
   let script_result = v8::Local::new(&mut handle_scope, script_result);
   let script_result: serde_json::Value =
@@ -239,7 +239,7 @@ async fn test_var_undefined_in_snapshot() -> Result<()> {
   .await;
   let script_result = isolate
     .js_runtime
-    .execute_script("simple", "Dx.env.someKey")?;
+    .execute_script("simple", "Darx.env.someKey")?;
   let mut handle_scope = isolate.js_runtime.handle_scope();
   let script_result = v8::Local::new(&mut handle_scope, script_result);
   let script_result: serde_json::Value =

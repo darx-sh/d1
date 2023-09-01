@@ -27,16 +27,21 @@ pub trait TenantConnPool {
   fn as_any(&self) -> &dyn Any;
 }
 
-#[derive(Deserialize)]
-pub enum DxDatum {
+#[derive(Deserialize, Debug)]
+pub enum DxDefaultValue {
+  #[serde(rename = "bool")]
   Bool(bool),
+  #[serde(rename = "int64")]
   Int64(i64),
+  #[serde(rename = "float64")]
+  Float64(f64),
+  #[serde(rename = "text")]
   Text(String),
-  Numeric(f64),
-  Double(f64),
-  Date(String),
+  #[serde(rename = "datetime")]
   DateTime(String),
-  Json(String),
+  #[serde(rename = "expr")]
+  Expr(String),
+  #[serde(rename = "NULL")]
   Null,
 }
 
@@ -50,18 +55,21 @@ pub enum DxFieldType {
   Text,
   // Approximate numeric values
   #[serde(rename = "float64")]
-  Double,
+  Float64,
   #[serde(rename = "datetime")]
   DateTime,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct DxColumnType {
   pub name: String,
   #[serde(rename = "fieldType")]
   pub field_type: DxFieldType,
   #[serde(rename = "isNullable")]
   pub is_nullable: bool,
+  #[serde(rename = "defaultValue")]
+  pub default_value: Option<DxDefaultValue>,
+  pub extra: Option<String>,
 }
 
 /// DxIdent is a wrapper around a string that implements Iden,
@@ -91,7 +99,7 @@ pub enum DDLReq {
   RenameColumn(RenameColumnReq),
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct CreateTableReq {
   #[serde(rename = "tableName")]
   pub table_name: String,
@@ -140,7 +148,7 @@ mod tests {
         "columns": [
           {
             "name": "id",
-            "fieldType": "Int64",
+            "fieldType": "int64",
             "isNullable": false
           }
         ]

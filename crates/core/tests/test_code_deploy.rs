@@ -35,12 +35,12 @@ async fn test_deploy_code(ctx: &mut TenantProjectContext) -> Result<()> {
     Code {
       fs_path: "functions/getEnvNone.js".to_string(),
       content:
-        r#"export default function getEnvNone() {return Dx.env.someKey}"#
+        r#"export default function getEnvNone() {return Darx.env.someKey}"#
           .to_string(),
     },
     Code {
       fs_path: "functions/getEnvKey1.js".to_string(),
-      content: r#"export default function getEnvKey1() {return Dx.env.key1}"#
+      content: r#"export default function getEnvKey1() {return Darx.env.key1}"#
         .to_string(),
     },
   ];
