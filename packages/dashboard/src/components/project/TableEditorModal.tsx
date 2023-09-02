@@ -48,60 +48,9 @@ interface RenameColumnReq {
 type TableEditorProps = {
   onClose: () => void;
   open: boolean;
+  onCreateTable: () => void;
 };
 
-function validateTableDef(tableDef: TableDef): TableDefError | null {
-  let hasError = false;
-  const tableDefErr: TableDefError = { nameError: null, columnsError: [] };
-
-  if (tableDef.name === null) {
-    hasError = true;
-    tableDefErr.nameError = "Table name cannot be empty";
-  }
-
-  tableDef.columns.forEach((col) => {
-    const columnError: ColumnError = { nameError: null, fieldTypeError: null };
-    if (col.name === null) {
-      hasError = true;
-      columnError.nameError = "Column name cannot be empty";
-    }
-    if (col.fieldType === null) {
-      hasError = true;
-      columnError.fieldTypeError = "Column type cannot be empty";
-    }
-    tableDefErr.columnsError.push(columnError);
-  });
-
-  if (hasError) {
-    return tableDefErr;
-  } else {
-    return null;
-  }
-}
-
-function genCreateTable(tableDef: TableDef): CreateTableReq {
-  const columns = tableDef.columns.map((c) => {
-    const name = c.name!;
-    const fieldType = c.fieldType!;
-    const isNullable = c.isNullable;
-    const extra = c.extra;
-    return {
-      name,
-      fieldType,
-      isNullable,
-      defaultValue:
-        c.defaultValue === null ? null : defaultValueToJSON(c.defaultValue),
-      extra,
-    };
-  });
-  const req = {
-    createTable: {
-      tableName: tableDef.name!,
-      columns: columns,
-    },
-  };
-  return req;
-}
 //
 // function genEditTable(
 //   oldTableDef: TableDef,
@@ -118,33 +67,11 @@ export default function TableEditorModal(props: TableEditorProps) {
 
   const tableNameRef = useRef<HTMLInputElement>(null);
 
-  const handleCreateTable = () => {
-    const error = validateTableDef(tableDef);
-    if (error !== null) {
-      dispatch({ type: "SetDraftError", error });
-    } else {
-      const req = genCreateTable(tableDef);
-      const envId = projectState.envInfo!.id;
-      invoke(
-        envId,
-        "_plugins/schema/api.ddl",
-        { req: req },
-        (rsp) => {
-          console.log(rsp);
-        },
-        (err) => {
-          console.error(err);
-        }
-      );
-      console.log(req);
-    }
-  };
-
   // const handleEditTable = () => {};
 
   const handleSave = () => {
-    if (state.isCreateTable) {
-      handleCreateTable();
+    if (state.draftFromTemplate) {
+      props.onCreateTable();
     } else {
       // handleEditTable();
     }
@@ -158,7 +85,7 @@ export default function TableEditorModal(props: TableEditorProps) {
         onClose={() => {
           onClose();
         }}
-        initialFocus={state.isCreateTable ? tableNameRef : undefined}
+        initialFocus={state.draftFromTemplate ? tableNameRef : undefined}
       >
         <Transition.Child
           as={Fragment}

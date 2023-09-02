@@ -2,8 +2,13 @@ import { useState } from "react";
 import { Row, useDatabaseState, useDatabaseDispatch } from "./DatabaseContext";
 import { Cog6ToothIcon } from "@heroicons/react/24/outline";
 import TableEditorModal from "~/components/project/TableEditorModal";
+import TableActions from "~/components/project/TableActions";
 
-export default function TableDetails() {
+export interface TableDetailsProps {
+  onDeleteTable: (tableName: string) => void;
+}
+
+export default function TableDetails(props: TableDetailsProps) {
   const dbState = useDatabaseState();
   const dbDispatch = useDatabaseDispatch();
   const curTable = dbState.curDisplayData!.tableName;
@@ -68,25 +73,30 @@ export default function TableDetails() {
           dbDispatch({ type: "DeleteScratchTable" });
           setIsEditTable(false);
         }}
+        onCreateTable={() => {
+          throw new Error("Not implemented");
+        }}
       ></TableEditorModal>
 
       <div className="px-4 sm:px-6 lg:px-8">
         <div className="sm:flex sm:items-center">
           <div className="sm:flex-auto">
             <div className="flex items-center">
-              <h1 className="p-2 text-base font-semibold leading-6 text-gray-900">
+              <h1 className="mr-8 p-2 text-base font-semibold leading-6 text-gray-900">
                 {curTable}
               </h1>
-              <Cog6ToothIcon
-                onClick={() => {
+              <TableActions
+                onEdit={() => {
                   dbDispatch({
                     type: "InitDraftFromTable",
                     tableName: curTable,
                   });
                   setIsEditTable(true);
                 }}
-                className="h-6 w-6 hover:bg-gray-600"
-              ></Cog6ToothIcon>
+                onDelete={() => {
+                  props.onDeleteTable(curTable);
+                }}
+              ></TableActions>
             </div>
           </div>
           <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
