@@ -1,6 +1,6 @@
 use crate::tenants::{
   AddColumnReq, CreateTableReq, DropColumnReq, DropTableReq, DxDefaultValue,
-  RenameColumnReq,
+  RenameColumnReq, RenameTableReq,
 };
 use crate::tenants::{DxColumnType, DxFieldType, DxIdent};
 use anyhow::Result;
@@ -87,6 +87,15 @@ pub fn create_table_sql(req: &CreateTableReq) -> Result<String> {
     Index::create()
       .name(format!("idx_{}_{}", req.table_name, "created_at"))
       .col(DxIdent("created_at".to_string())),
+  );
+  Ok(stmt.build(MysqlQueryBuilder))
+}
+
+pub fn rename_table_sql(req: &RenameTableReq) -> Result<String> {
+  let mut stmt = Table::rename();
+  stmt.table(
+    DxIdent(req.old_table_name.clone()),
+    DxIdent(req.new_table_name.clone()),
   );
   Ok(stmt.build(MysqlQueryBuilder))
 }

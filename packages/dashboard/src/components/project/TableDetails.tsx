@@ -6,12 +6,13 @@ import TableActions from "~/components/project/TableActions";
 
 export interface TableDetailsProps {
   onDeleteTable: (tableName: string) => void;
+  onEditTable: () => void;
 }
 
 export default function TableDetails(props: TableDetailsProps) {
   const dbState = useDatabaseState();
   const dbDispatch = useDatabaseDispatch();
-  const curTable = dbState.curDisplayData!.tableName;
+  const curTable = dbState.curWorkingTable!.tableName;
   const tableDef = dbState.schema[curTable]!;
   const columnNames = dbState.schema[curTable]!.columns.map((c) => {
     if (c.name === null) {
@@ -60,7 +61,7 @@ export default function TableDetails(props: TableDetailsProps) {
   };
 
   const renderRows = (columnNames: string[]) => {
-    return dbState.curDisplayData?.rows.map((row, idx) => {
+    return dbState.curWorkingTable?.rows.map((row, idx) => {
       return renderOneRow(row, columnNames, idx);
     });
   };
@@ -76,6 +77,7 @@ export default function TableDetails(props: TableDetailsProps) {
         onCreateTable={() => {
           throw new Error("Not implemented");
         }}
+        onEditTable={props.onEditTable}
       ></TableEditorModal>
 
       <div className="px-4 sm:px-6 lg:px-8">

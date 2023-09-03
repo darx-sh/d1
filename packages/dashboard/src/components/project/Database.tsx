@@ -21,7 +21,7 @@ import {
 import { env } from "~/env.mjs";
 import axios, { AxiosResponse } from "axios";
 import TableEditorModal from "~/components/project/TableEditorModal";
-import { CreateTableReq, invoke } from "~/utils";
+import { CreateTableReq, invoke, invokeAsync, TableEditReq } from "~/utils";
 
 type ListTableRsp = {
   tableName: string;
@@ -151,7 +151,7 @@ function Database() {
       dbDispatch({ type: "SetDraftError", error });
     } else {
       const req = genCreateTable(tableDef);
-      const envId = projectState.envInfo!.id;
+      console.log(req);
       setIsCreateTable(false);
       setIsLoading(true);
       invoke(
@@ -167,7 +167,26 @@ function Database() {
           setIsLoading(false);
         }
       );
-      console.log(req);
+    }
+  };
+
+  const editTable = async () => {
+    const curTableName = dbState.curWorkingTable!.tableName;
+    const oldTableDef = dbState.schema[curTableName]!;
+    const newTableDef = dbState.draftTable;
+    const error = validateTableDef(newTableDef);
+    if (error !== null) {
+      dbDispatch({ type: "SetDraftError", error });
+    } else {
+      const reqs = genTableEdit(oldTableDef, newTableDef);
+      console.log(reqs);
+      setIsLoading(true);
+      for (const req of reqs) {
+        await invokeAsync(envId, "_plugins/schema/api.ddl", {
+          req: req,
+        });
+      }
+      listTable();
     }
   };
 
@@ -217,12 +236,13 @@ function Database() {
             ></TableList>
           </div>
           <div className="ml-2 min-w-0 flex-1 bg-white">
-            {dbState.curDisplayData ? (
+            {dbState.curWorkingTable ? (
               <TableDetails
                 onDeleteTable={(tableName: string) => {
                   setIsLoading(true);
                   dropTable(tableName);
                 }}
+                onEditTable={editTable}
               ></TableDetails>
             ) : (
               createTableButton()
@@ -235,6 +255,7 @@ function Database() {
               setIsCreateTable(false);
             }}
             onCreateTable={createTable}
+            onEditTable={editTable}
           ></TableEditorModal>
         </div>
       )}
@@ -304,6 +325,19 @@ function genCreateTable(tableDef: TableDef): CreateTableReq {
     },
   };
   return req;
+}
+
+function genTableEdit(oldTable: TableDef, newTable: TableDef): TableEditReq[] {
+  const reqs: TableEditReq[] = [];
+  if (oldTable.name! !== newTable.name!) {
+    reqs.push({
+      renameTable: {
+        oldTableName: oldTable.name!,
+        newTableName: newTable.name!,
+      },
+    });
+  }
+  return reqs;
 }
 
 export default function DatabaseWrapper() {

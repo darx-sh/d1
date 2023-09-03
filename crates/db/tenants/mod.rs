@@ -10,7 +10,7 @@ mod pool;
 
 pub use ddl::{
   add_column_sql, create_table_sql, drop_column_sql, drop_table_sql,
-  rename_column_sql,
+  rename_column_sql, rename_table_sql,
 };
 pub use pool::{
   add_tenant_db_info, get_tenant_pool, MySqlTenantPool, TenantDBInfo,
@@ -89,6 +89,8 @@ impl Iden for DxIdent {
 pub enum DDLReq {
   #[serde(rename = "createTable")]
   CreateTable(CreateTableReq),
+  #[serde(rename = "renameTable")]
+  RenameTable(RenameTableReq),
   #[serde(rename = "dropTable")]
   DropTable(DropTableReq),
   #[serde(rename = "addColumn")]
@@ -105,6 +107,14 @@ pub struct CreateTableReq {
   pub table_name: String,
   pub columns: Vec<DxColumnType>,
   //   todo primary key, index...
+}
+
+#[derive(Deserialize, Debug)]
+pub struct RenameTableReq {
+  #[serde(rename = "oldTableName")]
+  pub old_table_name: String,
+  #[serde(rename = "newTableName")]
+  pub new_table_name: String,
 }
 
 #[derive(Deserialize)]

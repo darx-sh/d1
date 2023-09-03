@@ -27,20 +27,68 @@ export function invoke<T>(
     });
 }
 
+export async function invokeAsync<P, R>(envId: string, path: string, param: P) {
+  const functionUrl = `${env.NEXT_PUBLIC_DATA_PLANE_URL}/invoke/${path}`;
+  console.log("invoke params: ", param);
+  const response = await axios.post<R>(functionUrl, param, {
+    headers: { "Darx-Dev-Host": `${envId}.darx.sh` },
+  });
+  console.log("invoke response: ", response.data);
+  return response.data;
+}
+
 export interface CreateTableReq {
   createTable: {
     tableName: string;
-    columns: {
-      name: string;
-      fieldType: DxFieldType;
-      defaultValue: DxDatumJsonType | null;
-      isNullable: boolean;
-      extra: string | null;
-    }[];
+    columns: DxColumnType[];
   };
 }
 
-export type DxDatumJsonType =
+export type TableEditReq =
+  | RenameTableReq
+  | AddColumnReq
+  | RenameColumnReq
+  | DropColumnReq;
+
+export interface RenameTableReq {
+  renameTable: {
+    oldTableName: string;
+    newTableName: string;
+  };
+}
+
+export interface AddColumnReq {
+  addColumn: {
+    tableName: string;
+    column: DxColumnType;
+  };
+}
+
+export interface RenameColumnReq {
+  renameColumn: {
+    tableName: string;
+    oldColumnName: string;
+    newColumnName: string;
+  };
+}
+
+export interface DropColumnReq {
+  dropColumn: {
+    tableName: string;
+    columnName: string;
+  };
+}
+
+// DxColumnType corresponds to the type of the backend defined DxColumnType.
+interface DxColumnType {
+  name: string;
+  fieldType: DxFieldType;
+  defaultValue: DxDefaultJsonType | null;
+  isNullable: boolean;
+  extra: string | null;
+}
+
+export type DxDefaultJsonType =
   | { int64: number }
   | { float64: number }
   | { bool: boolean }

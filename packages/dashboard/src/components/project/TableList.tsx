@@ -18,7 +18,7 @@ export default function TableList(props: TableListProps) {
   const state = useDatabaseState();
   const dispatch = useDatabaseDispatch();
   const projectState = useProjectState();
-  const curTableName = state.curDisplayData?.tableName;
+  const curTableName = state.curWorkingTable?.tableName;
 
   const navigation = Object.keys(state.schema).map((tableName: string) => {
     return { name: tableName, href: "#", current: curTableName === tableName };

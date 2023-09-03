@@ -1,7 +1,7 @@
 import { ArchiveBoxXMarkIcon, Bars3Icon } from "@heroicons/react/24/outline";
 import ColumnTypeSelect from "~/components/project/ColumnTypeSelect";
 import {
-  DxColumnType,
+  DxColumnDraftType,
   displayDxDefaultValue,
   useDatabaseState,
   useDatabaseDispatch,
@@ -17,7 +17,7 @@ export default function ColumnsEditor() {
   const columns = state.draftTable.columns;
   const columnMarks = state.draftColumnMarks;
 
-  const renderColumn = (column: DxColumnType, columnIndex: number) => {
+  const renderColumn = (column: DxColumnDraftType, columnIndex: number) => {
     const mark = columnMarks[columnIndex];
     if (mark === "Del") {
       return null;
