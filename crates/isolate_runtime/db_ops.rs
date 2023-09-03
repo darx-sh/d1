@@ -2,7 +2,7 @@ use crate::EnvId;
 use anyhow::anyhow;
 use darx_db::{
   add_column_sql, create_table_sql, drop_column_sql, drop_table_sql,
-  get_tenant_pool, rename_column_sql, DDLReq, TenantConnPool,
+  get_tenant_pool, rename_column_sql, rename_table_sql, DDLReq, TenantConnPool,
 };
 use deno_core::error::AnyError;
 use deno_core::{op, ResourceId};
@@ -84,6 +84,7 @@ pub async fn op_ddl(
   let conn = &conn_resource.0;
   let sql = match req {
     DDLReq::CreateTable(req) => create_table_sql(&req),
+    DDLReq::RenameTable(req) => rename_table_sql(&req),
     DDLReq::DropTable(req) => drop_table_sql(&req),
     DDLReq::AddColumn(req) => add_column_sql(&req),
     DDLReq::DropColumn(req) => drop_column_sql(&req),

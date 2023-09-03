@@ -1,18 +1,18 @@
 import { createContext, Dispatch, ReactNode, useContext } from "react";
 import { enableMapSet } from "immer";
 import { useImmerReducer } from "use-immer";
-import { DxDatumJsonType, PrimitiveTypes } from "~/utils";
+import { DxDefaultJsonType, PrimitiveTypes } from "~/utils";
 
 enableMapSet();
 
 type DatabaseState = {
   schema: SchemaDef;
-  curDisplayData: { tableName: string; rows: Row[] } | null;
+  curWorkingTable: { tableName: string; rows: Row[] } | null;
   // table editor's state
   draftTable: TableDef;
   draftTableError: TableDefError;
   draftColumnMarks: ColumnMarkMap;
-  draftFromTemplate: boolean;
+  isDraftFromTemplate: boolean;
 };
 
 export interface Row {
@@ -27,7 +27,7 @@ export interface SchemaDef {
 
 export interface TableDef {
   name: string | null;
-  columns: DxColumnType[];
+  columns: DxColumnDraftType[];
 }
 
 export interface TableDefError {
@@ -58,7 +58,7 @@ export function displayDxDefaultValue(d: DxDefaultValue) {
   return d.value.toString();
 }
 
-export function defaultValueToJSON(d: DxDefaultValue): DxDatumJsonType {
+export function defaultValueToJSON(d: DxDefaultValue): DxDefaultJsonType {
   switch (d.type) {
     case "NULL":
       return "NULL";
@@ -166,7 +166,7 @@ export function getAllColumnTypes(): DxFieldType[] {
   return Object.values(columnTypesMap);
 }
 
-export interface DxColumnType {
+export interface DxColumnDraftType {
   name: string | null;
   fieldType: DxFieldType | null;
   defaultValue: DxDefaultValue | null;
@@ -176,7 +176,7 @@ export interface DxColumnType {
 
 type ExtraColumnOptions = "AUTO_INCREMENT" | "ON UPDATE CURRENT_TIMESTAMP(3)";
 
-export const DefaultDxColumns: DxColumnType[] = [
+export const DefaultDxColumns: DxColumnDraftType[] = [
   {
     name: "id",
     fieldType: "int64",
@@ -232,7 +232,7 @@ type DDLAction =
 
 interface CreateTable {
   tableName: string;
-  columns: DxColumnType[];
+  columns: DxColumnDraftType[];
 }
 
 interface DropTable {
@@ -246,11 +246,11 @@ interface RenameTable {
 
 const initialState: DatabaseState = {
   schema: {},
-  curDisplayData: null,
+  curWorkingTable: null,
   draftTable: { name: null, columns: [] },
   draftTableError: { nameError: null, columnsError: [] },
   draftColumnMarks: {},
-  draftFromTemplate: true,
+  isDraftFromTemplate: true,
 };
 
 type DatabaseAction =
@@ -266,7 +266,7 @@ type TableEditAction =
   | { type: "SetTableName"; tableName: string }
   | {
       type: "AddColumn";
-      column: DxColumnType;
+      column: DxColumnDraftType;
     }
   | {
       type: "DelColumn";
@@ -274,7 +274,7 @@ type TableEditAction =
     }
   | {
       type: "UpdateColumn";
-      column: DxColumnType;
+      column: DxColumnDraftType;
       columnIndex: number;
     };
 
@@ -312,19 +312,22 @@ function databaseReducer(
   switch (action.type) {
     case "LoadTables":
       state.schema = action.schemaDef;
-      state.curDisplayData = null;
+      state.curWorkingTable = null;
       state.draftTable = { name: null, columns: [] };
       state.draftTableError = { nameError: null, columnsError: [] };
       state.draftColumnMarks = {};
-      state.draftFromTemplate = true;
+      state.isDraftFromTemplate = true;
       return state;
     case "LoadData":
-      state.curDisplayData = { tableName: action.tableName, rows: action.rows };
+      state.curWorkingTable = {
+        tableName: action.tableName,
+        rows: action.rows,
+      };
       return state;
     case "InitDraftFromTable":
       const t1 = state.schema[action.tableName]!;
       state.draftTable = t1;
-      state.draftFromTemplate = false;
+      state.isDraftFromTemplate = false;
       return state;
     case "InitDraftFromTemplate":
       const t2: TableDef = {
@@ -332,7 +335,7 @@ function databaseReducer(
         columns: DefaultDxColumns,
       };
       state.draftTable = t2;
-      state.draftFromTemplate = true;
+      state.isDraftFromTemplate = true;
       return state;
     case "SetDraftError":
       state.draftTableError = action.error;
@@ -341,7 +344,7 @@ function databaseReducer(
       state.draftTable.name = null;
       state.draftTable.columns = [];
       state.draftTableError = { nameError: null, columnsError: [] };
-      state.draftFromTemplate = true;
+      state.isDraftFromTemplate = true;
       return state;
     // case "CreateTable":
     //   if (state.draftTable !== null) {

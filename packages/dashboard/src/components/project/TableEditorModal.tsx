@@ -4,7 +4,7 @@ import { XMarkIcon, ExclamationCircleIcon } from "@heroicons/react/24/outline";
 import ColumnsEditor from "~/components/project/ColumnsEditor";
 import {
   DxFieldType,
-  DxColumnType,
+  DxColumnDraftType,
   ColumnError,
   TableDef,
   TableDefError,
@@ -26,7 +26,7 @@ interface DropTableReq {
 interface AddColumnReq {
   addColumn: {
     tableName: string;
-    column: DxColumnType;
+    column: DxColumnDraftType;
   };
 }
 
@@ -49,31 +49,22 @@ type TableEditorProps = {
   onClose: () => void;
   open: boolean;
   onCreateTable: () => void;
+  onEditTable: () => void;
 };
 
-//
-// function genEditTable(
-//   oldTableDef: TableDef,
-//   newTableDef: TableDef
-// ): [EditTableReq[], TableDefError] {}
-
 export default function TableEditorModal(props: TableEditorProps) {
-  const projectState = useProjectState();
   const dispatch = useDatabaseDispatch();
   const state = useDatabaseState();
   const { onClose, open } = props;
   const tableDef = state.draftTable;
   const tableDefError = state.draftTableError;
-
   const tableNameRef = useRef<HTMLInputElement>(null);
 
-  // const handleEditTable = () => {};
-
   const handleSave = () => {
-    if (state.draftFromTemplate) {
+    if (state.isDraftFromTemplate) {
       props.onCreateTable();
     } else {
-      // handleEditTable();
+      props.onEditTable();
     }
   };
 
@@ -85,7 +76,7 @@ export default function TableEditorModal(props: TableEditorProps) {
         onClose={() => {
           onClose();
         }}
-        initialFocus={state.draftFromTemplate ? tableNameRef : undefined}
+        initialFocus={state.isDraftFromTemplate ? tableNameRef : undefined}
       >
         <Transition.Child
           as={Fragment}
