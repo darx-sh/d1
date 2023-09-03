@@ -182,7 +182,7 @@ function Database() {
       console.log(reqs);
       setIsLoading(true);
       for (const req of reqs) {
-        const rsp = await invokeAsync(envId, "_plugins/schema/api.ddl", {
+        await invokeAsync(envId, "_plugins/schema/api.ddl", {
           req: req,
         });
       }

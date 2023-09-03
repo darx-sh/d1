@@ -27,10 +27,10 @@ export function invoke<T>(
     });
 }
 
-export async function invokeAsync<T>(envId: string, path: string, param: T) {
+export async function invokeAsync<P, R>(envId: string, path: string, param: P) {
   const functionUrl = `${env.NEXT_PUBLIC_DATA_PLANE_URL}/invoke/${path}`;
   console.log("invoke params: ", param);
-  const response = await axios.post(functionUrl, param, {
+  const response = await axios.post<R>(functionUrl, param, {
     headers: { "Darx-Dev-Host": `${envId}.darx.sh` },
   });
   console.log("invoke response: ", response.data);
