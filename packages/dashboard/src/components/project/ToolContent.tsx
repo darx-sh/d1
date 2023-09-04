@@ -5,7 +5,7 @@ import { javascript } from "@codemirror/lang-javascript";
 import { EditorView } from "@codemirror/view";
 import { useProjectState, useProjectDispatch } from "./ProjectContext";
 import HttpEndpoints from "~/components/project/HttpEndpoints";
-import Database from "~/components/project/Database";
+import Database from "~/components/project/database/Database";
 
 const myTheme = EditorView.theme({
   "&": {

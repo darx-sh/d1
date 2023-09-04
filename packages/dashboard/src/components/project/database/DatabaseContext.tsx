@@ -12,7 +12,7 @@ type DatabaseState = {
   draftTable: TableDef;
   draftTableError: TableDefError;
   draftColumnMarks: ColumnMarkMap;
-  isDraftFromTemplate: boolean;
+  editorMod: "Create" | "Update" | "None";
 };
 
 export interface Row {
@@ -27,7 +27,7 @@ export interface SchemaDef {
 
 export interface TableDef {
   name: string | null;
-  columns: DxColumnDraftType[];
+  columns: DxColumnType[];
 }
 
 export interface TableDefError {
@@ -166,7 +166,7 @@ export function getAllColumnTypes(): DxFieldType[] {
   return Object.values(columnTypesMap);
 }
 
-export interface DxColumnDraftType {
+export interface DxColumnType {
   name: string | null;
   fieldType: DxFieldType | null;
   defaultValue: DxDefaultValue | null;
@@ -176,7 +176,7 @@ export interface DxColumnDraftType {
 
 type ExtraColumnOptions = "AUTO_INCREMENT" | "ON UPDATE CURRENT_TIMESTAMP(3)";
 
-export const DefaultDxColumns: DxColumnDraftType[] = [
+export const DefaultDxColumns: DxColumnType[] = [
   {
     name: "id",
     fieldType: "int64",
@@ -211,9 +211,9 @@ export const DefaultDxColumns: DxColumnDraftType[] = [
 // - MODIFY COLUMN column_name data_type NULL (making a column NULL)
 // - MODIFY COLUMN column_name data_type NOT NULL (making a column NOT NULL)
 
-type ColumnMark = "Add" | "Del" | "Update";
+type ColumnMark = "Add" | "Del" | "Update" | "None";
 
-interface ColumnMarkMap {
+export interface ColumnMarkMap {
   [key: number]: ColumnMark;
 }
 
@@ -232,7 +232,7 @@ type DDLAction =
 
 interface CreateTable {
   tableName: string;
-  columns: DxColumnDraftType[];
+  columns: DxColumnType[];
 }
 
 interface DropTable {
@@ -250,7 +250,7 @@ const initialState: DatabaseState = {
   draftTable: { name: null, columns: [] },
   draftTableError: { nameError: null, columnsError: [] },
   draftColumnMarks: {},
-  isDraftFromTemplate: true,
+  editorMod: "None",
 };
 
 type DatabaseAction =
@@ -266,7 +266,7 @@ type TableEditAction =
   | { type: "SetTableName"; tableName: string }
   | {
       type: "AddColumn";
-      column: DxColumnDraftType;
+      column: DxColumnType;
     }
   | {
       type: "DelColumn";
@@ -274,7 +274,7 @@ type TableEditAction =
     }
   | {
       type: "UpdateColumn";
-      column: DxColumnDraftType;
+      column: DxColumnType;
       columnIndex: number;
     };
 
@@ -316,7 +316,7 @@ function databaseReducer(
       state.draftTable = { name: null, columns: [] };
       state.draftTableError = { nameError: null, columnsError: [] };
       state.draftColumnMarks = {};
-      state.isDraftFromTemplate = true;
+      state.editorMod = "None";
       return state;
     case "LoadData":
       state.curWorkingTable = {
@@ -327,7 +327,7 @@ function databaseReducer(
     case "InitDraftFromTable":
       const t1 = state.schema[action.tableName]!;
       state.draftTable = t1;
-      state.isDraftFromTemplate = false;
+      state.editorMod = "Update";
       return state;
     case "InitDraftFromTemplate":
       const t2: TableDef = {
@@ -335,7 +335,7 @@ function databaseReducer(
         columns: DefaultDxColumns,
       };
       state.draftTable = t2;
-      state.isDraftFromTemplate = true;
+      state.editorMod = "Create";
       return state;
     case "SetDraftError":
       state.draftTableError = action.error;
@@ -344,7 +344,7 @@ function databaseReducer(
       state.draftTable.name = null;
       state.draftTable.columns = [];
       state.draftTableError = { nameError: null, columnsError: [] };
-      state.isDraftFromTemplate = true;
+      state.editorMod = "None";
       return state;
     // case "CreateTable":
     //   if (state.draftTable !== null) {
@@ -385,7 +385,11 @@ function databaseReducer(
       if (state.draftTable === null) {
         throw new Error("Cannot drop column to an empty table");
       }
-      state.draftColumnMarks[action.columnIndex] = "Del";
+      if (state.draftColumnMarks[action.columnIndex] === "Add") {
+        state.draftColumnMarks[action.columnIndex] = "None";
+      } else {
+        state.draftColumnMarks[action.columnIndex] = "Del";
+      }
       return state;
     case "UpdateColumn":
       if (state.draftTable === null) {
@@ -403,6 +407,7 @@ function databaseReducer(
       if (mark === undefined) {
         state.draftColumnMarks[action.columnIndex] = "Update";
       }
+      // ignore if the column is marked as "Add"
       return state;
   }
 }

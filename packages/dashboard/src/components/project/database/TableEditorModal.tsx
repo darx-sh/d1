@@ -1,82 +1,39 @@
 import { useState, useEffect, Fragment, useRef } from "react";
 import { Dialog, Transition } from "@headlessui/react";
 import { XMarkIcon, ExclamationCircleIcon } from "@heroicons/react/24/outline";
-import ColumnsEditor from "~/components/project/ColumnsEditor";
+import ColumnsEditor from "~/components/project/database/ColumnsEditor";
 import {
   DxFieldType,
-  DxColumnDraftType,
+  DxColumnType,
   ColumnError,
   TableDef,
   TableDefError,
   useDatabaseDispatch,
   useDatabaseState,
   defaultValueToJSON,
-} from "~/components/project/DatabaseContext";
-import { useProjectState } from "~/components/project/ProjectContext";
-import { invoke, type CreateTableReq } from "~/utils";
-
-type EditTableReq = AddColumnReq | DropColumnReq | RenameColumnReq;
-
-interface DropTableReq {
-  dropTable: {
-    tableName: string;
-  };
-}
-
-interface AddColumnReq {
-  addColumn: {
-    tableName: string;
-    column: DxColumnDraftType;
-  };
-}
-
-interface DropColumnReq {
-  dropColumn: {
-    tableName: string;
-    columnName: string;
-  };
-}
-
-interface RenameColumnReq {
-  renameColumn: {
-    tableName: string;
-    oldColumnName: string;
-    newColumnName: string;
-  };
-}
+} from "~/components/project/database/DatabaseContext";
 
 type TableEditorProps = {
-  onClose: () => void;
   open: boolean;
-  onCreateTable: () => void;
-  onEditTable: () => void;
+  handleSave: () => void;
+  handleCancel: () => void;
 };
 
 export default function TableEditorModal(props: TableEditorProps) {
   const dispatch = useDatabaseDispatch();
   const state = useDatabaseState();
-  const { onClose, open } = props;
+  const { open } = props;
   const tableDef = state.draftTable;
   const tableDefError = state.draftTableError;
   const tableNameRef = useRef<HTMLInputElement>(null);
-
-  const handleSave = () => {
-    if (state.isDraftFromTemplate) {
-      props.onCreateTable();
-    } else {
-      props.onEditTable();
-    }
-  };
 
   return (
     <Transition.Root show={open} as={Fragment}>
       <Dialog
         as="div"
         className="relative z-10"
-        onClose={() => {
-          onClose();
-        }}
-        initialFocus={state.isDraftFromTemplate ? tableNameRef : undefined}
+        onClose={props.handleCancel}
+        initialFocus={state.editorMod === "Create" ? tableNameRef : undefined}
       >
         <Transition.Child
           as={Fragment}
@@ -113,9 +70,7 @@ export default function TableEditorModal(props: TableEditorProps) {
                           <button
                             type="button"
                             className="relative rounded-md bg-white text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                            onClick={() => {
-                              onClose();
-                            }}
+                            onClick={props.handleCancel}
                           >
                             <span className="absolute -inset-2.5" />
                             <span className="sr-only">Close panel</span>
@@ -190,13 +145,16 @@ export default function TableEditorModal(props: TableEditorProps) {
                           <button
                             type="button"
                             className="text-sm font-semibold leading-6 text-gray-900"
+                            onClick={() => {
+                              props.handleCancel();
+                            }}
                           >
                             Cancel
                           </button>
                           <button
                             type="button"
                             className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-                            onClick={handleSave}
+                            onClick={props.handleSave}
                           >
                             Save
                           </button>

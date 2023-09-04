@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useEffectOnce } from "usehooks-ts";
-import TableList from "~/components/project/TableList";
-import TableDetails from "~/components/project/TableDetails";
+import TableList from "~/components/project/database/TableList";
+import TableDetails from "~/components/project/database/TableDetails";
 import Spinner from "~/components/project/Spinner";
 import { useProjectState } from "~/components/project/ProjectContext";
 import {
@@ -17,11 +17,19 @@ import {
   TableDefError,
   ColumnError,
   defaultValueToJSON,
-} from "~/components/project/DatabaseContext";
+  ColumnMarkMap,
+} from "~/components/project/database/DatabaseContext";
 import { env } from "~/env.mjs";
 import axios, { AxiosResponse } from "axios";
-import TableEditorModal from "~/components/project/TableEditorModal";
-import { CreateTableReq, invoke, invokeAsync, TableEditReq } from "~/utils";
+import TableEditorModal from "~/components/project/database/TableEditorModal";
+import CancelEditor from "~/components/project/database/CancelEditor";
+import {
+  CreateTableReq,
+  invoke,
+  invokeAsync,
+  TableEditReq,
+  columnTypeToJson,
+} from "~/utils";
 
 type ListTableRsp = {
   tableName: string;
@@ -66,7 +74,9 @@ function Database() {
   const dbState = useDatabaseState();
   const envId = projectState.envInfo!.id;
 
-  const [isCreateTable, setIsCreateTable] = useState(false);
+  // const [showCreateTable, setShowCreateTable] = useState(false);
+  // const [showEditTable, setShowEditTable] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   useEffectOnce(() => {
     listTable();
@@ -79,7 +89,6 @@ function Database() {
         className="relative mx-auto block w-1/2 rounded-lg border-2 border-dashed border-gray-300 p-12 text-center hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
         onClick={() => {
           dbDispatch({ type: "InitDraftFromTemplate" });
-          setIsCreateTable(true);
         }}
       >
         <svg
@@ -103,7 +112,7 @@ function Database() {
     );
   };
 
-  const listTable = () => {
+  const listTable = (selectTableName?: string) => {
     const req = {};
     invoke(
       envId,
@@ -113,7 +122,11 @@ function Database() {
         const rsp = response as ListTableRsp;
         const schema = rspToSchema(rsp);
         dbDispatch({ type: "LoadTables", schemaDef: schema });
-        setIsLoading(false);
+        if (selectTableName !== undefined) {
+          paginateTable(selectTableName, null, null);
+        } else {
+          setIsLoading(false);
+        }
       },
       (err) => {
         console.error(err);
@@ -144,6 +157,14 @@ function Database() {
       .catch((error) => console.log("paginateTable error: ", error));
   };
 
+  const saveEdit = async () => {
+    const mod = dbState.editorMod;
+    if (mod === "Create") {
+      createTable();
+    } else if (mod === "Update") {
+      await updateTable();
+    }
+  };
   const createTable = () => {
     const tableDef = dbState.draftTable;
     const error = validateTableDef(tableDef);
@@ -152,7 +173,6 @@ function Database() {
     } else {
       const req = genCreateTable(tableDef);
       console.log(req);
-      setIsCreateTable(false);
       setIsLoading(true);
       invoke(
         envId,
@@ -170,24 +190,29 @@ function Database() {
     }
   };
 
-  const editTable = async () => {
+  const updateTable = async () => {
     const curTableName = dbState.curWorkingTable!.tableName;
     const oldTableDef = dbState.schema[curTableName]!;
     const newTableDef = dbState.draftTable;
+    const marks = dbState.draftColumnMarks;
     const error = validateTableDef(newTableDef);
     if (error !== null) {
       dbDispatch({ type: "SetDraftError", error });
     } else {
-      const reqs = genTableEdit(oldTableDef, newTableDef);
-      console.log(reqs);
+      const reqs = genTableEdit(oldTableDef, newTableDef, marks);
       setIsLoading(true);
       for (const req of reqs) {
         await invokeAsync(envId, "_plugins/schema/api.ddl", {
           req: req,
         });
       }
-      listTable();
+      listTable(curTableName);
     }
+  };
+
+  const cancelEdit = () => {
+    //   pop up
+    setShowCancelConfirm(true);
   };
 
   const dropTable = (tableName: string) => {
@@ -224,7 +249,6 @@ function Database() {
               className="ml-2 mt-2 block rounded bg-gray-400 px-2 py-2 text-left text-sm font-semibold text-white shadow-sm hover:bg-indigo-400"
               onClick={() => {
                 dbDispatch({ type: "InitDraftFromTemplate" });
-                setIsCreateTable(true);
               }}
             >
               Create Table
@@ -238,25 +262,32 @@ function Database() {
           <div className="ml-2 min-w-0 flex-1 bg-white">
             {dbState.curWorkingTable ? (
               <TableDetails
-                onDeleteTable={(tableName: string) => {
+                handleDeleteTable={(tableName: string) => {
                   setIsLoading(true);
                   dropTable(tableName);
                 }}
-                onEditTable={editTable}
+                handleSave={saveEdit}
+                handleCancel={cancelEdit}
               ></TableDetails>
             ) : (
               createTableButton()
             )}
           </div>
           <TableEditorModal
-            open={isCreateTable}
-            onClose={() => {
-              dbDispatch({ type: "DeleteScratchTable" });
-              setIsCreateTable(false);
-            }}
-            onCreateTable={createTable}
-            onEditTable={editTable}
+            open={dbState.editorMod === "Create"}
+            handleSave={saveEdit}
+            handleCancel={cancelEdit}
           ></TableEditorModal>
+          <CancelEditor
+            open={showCancelConfirm}
+            onYes={() => {
+              setShowCancelConfirm(false);
+              dbDispatch({ type: "DeleteScratchTable" });
+            }}
+            onNo={() => {
+              setShowCancelConfirm(false);
+            }}
+          ></CancelEditor>
         </div>
       )}
     </>
@@ -327,7 +358,11 @@ function genCreateTable(tableDef: TableDef): CreateTableReq {
   return req;
 }
 
-function genTableEdit(oldTable: TableDef, newTable: TableDef): TableEditReq[] {
+function genTableEdit(
+  oldTable: TableDef,
+  newTable: TableDef,
+  marks: ColumnMarkMap
+): TableEditReq[] {
   const reqs: TableEditReq[] = [];
   if (oldTable.name! !== newTable.name!) {
     reqs.push({
@@ -336,6 +371,50 @@ function genTableEdit(oldTable: TableDef, newTable: TableDef): TableEditReq[] {
         newTableName: newTable.name!,
       },
     });
+  }
+
+  console.assert(
+    newTable.columns.length >= oldTable.columns.length,
+    "new table should have more columns than old table"
+  );
+
+  for (let i = 0; i < newTable.columns.length; i++) {
+    // handle "add", "delete", "update"; ignore none.
+    switch (marks[i]) {
+      case undefined:
+        break;
+      case "None":
+        break;
+      case "Add":
+        reqs.push({
+          addColumn: {
+            tableName: newTable.name!,
+            column: columnTypeToJson(newTable.columns[i]!),
+          },
+        });
+        break;
+      case "Update":
+        // Can only rename column name now.
+        // Other properties like column type, default value, nullable cannot be changed after table is created.
+        if (oldTable.columns[i]!.name! !== newTable.columns[i]!.name!) {
+          reqs.push({
+            renameColumn: {
+              tableName: newTable.name!,
+              oldColumnName: oldTable.columns[i]!.name!,
+              newColumnName: newTable.columns[i]!.name!,
+            },
+          });
+        }
+        break;
+      case "Del":
+        reqs.push({
+          dropColumn: {
+            tableName: newTable.name!,
+            columnName: newTable.columns[i]!.name!,
+          },
+        });
+        break;
+    }
   }
   return reqs;
 }

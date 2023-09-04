@@ -4,23 +4,13 @@ import { CheckIcon, ChevronDownIcon } from "@heroicons/react/20/solid";
 import {
   DxFieldType,
   getAllColumnTypes,
-} from "~/components/project/DatabaseContext";
-
-// const columnOptions = [
-//   {
-//     columnType: "BIGINT",
-//     description: "64 bit (8 bytes) integer",
-//     current: true,
-//   },
-//   { columnType: "TEXT", description: "character strings", current: false },
-// ];
-
-function classNames(...classes: string[]) {
-  return classes.filter(Boolean).join(" ");
-}
+} from "~/components/project/database/DatabaseContext";
+import className from "classnames";
 
 interface ColumnTypeSelectProps {
+  disabled: boolean;
   fieldType: DxFieldType | null;
+  onSelect: (d: DxFieldType) => void;
 }
 
 export default function ColumnTypeSelect(props: ColumnTypeSelectProps) {
@@ -28,7 +18,14 @@ export default function ColumnTypeSelect(props: ColumnTypeSelectProps) {
   const [selected, setSelected] = useState(props.fieldType);
 
   return (
-    <Listbox value={selected} onChange={setSelected}>
+    <Listbox
+      value={selected}
+      onChange={(t: DxFieldType) => {
+        setSelected(t);
+        props.onSelect(t);
+      }}
+      disabled={props.disabled}
+    >
       {({ open }) => (
         <>
           <div className="relative rounded-md border shadow-md">
@@ -36,12 +33,14 @@ export default function ColumnTypeSelect(props: ColumnTypeSelectProps) {
               <div className="flex-1 gap-x-1.5 px-3 py-1.5">
                 <p className="text-sm text-gray-400">{selected}</p>
               </div>
-              <Listbox.Button className="w-8 bg-gray-400 p-2 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 focus:ring-offset-gray-50">
-                <ChevronDownIcon
-                  className="h-3 w-3 text-white"
-                  aria-hidden="true"
-                />
-              </Listbox.Button>
+              {props.disabled ? null : (
+                <Listbox.Button className="w-8 bg-gray-400 p-2 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 focus:ring-offset-gray-50">
+                  <ChevronDownIcon
+                    className="h-3 w-3 text-white"
+                    aria-hidden="true"
+                  />
+                </Listbox.Button>
+              )}
             </div>
 
             <Transition
@@ -52,16 +51,16 @@ export default function ColumnTypeSelect(props: ColumnTypeSelectProps) {
               leaveTo="opacity-0"
             >
               <Listbox.Options className="absolute left-0 z-10 mt-2 w-36 origin-top-right divide-y divide-gray-200 overflow-hidden rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-                {allColumnTypes.map((c) => (
+                {allColumnTypes.map((dxFieldType) => (
                   <Listbox.Option
-                    key={c}
+                    key={dxFieldType}
                     className={({ active }) =>
-                      classNames(
+                      className(
                         active ? "bg-gray-400 text-white" : "text-gray-900",
                         "cursor-default select-none p-4 text-sm"
                       )
                     }
-                    value={c}
+                    value={dxFieldType}
                   >
                     {({ selected, active }) => (
                       <div className="flex flex-col">
@@ -71,7 +70,7 @@ export default function ColumnTypeSelect(props: ColumnTypeSelectProps) {
                               selected ? "font-semibold" : "font-normal"
                             }
                           >
-                            {c}
+                            {dxFieldType}
                           </p>
                           {selected ? (
                             <span
@@ -86,14 +85,6 @@ export default function ColumnTypeSelect(props: ColumnTypeSelectProps) {
                             </span>
                           ) : null}
                         </div>
-                        {/*<p*/}
-                        {/*  className={classNames(*/}
-                        {/*    active ? "text-indigo-200" : "text-gray-500",*/}
-                        {/*    "mt-2"*/}
-                        {/*  )}*/}
-                        {/*>*/}
-                        {/*  {option.description}*/}
-                        {/*</p>*/}
                       </div>
                     )}
                   </Listbox.Option>
