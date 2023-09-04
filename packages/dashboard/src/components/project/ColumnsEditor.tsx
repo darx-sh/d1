@@ -18,6 +18,15 @@ export default function ColumnsEditor() {
   const columns = state.draftTable.columns;
   const columnMarks = state.draftColumnMarks;
 
+  const disableColumnProperties = (columnIndex: number) => {
+    const mark = columnMarks[columnIndex];
+    if (mark === "Add") {
+      return false;
+    } else {
+      return true;
+    }
+  };
+
   const renderColumn = (column: DxColumnType, columnIndex: number) => {
     const mark = columnMarks[columnIndex];
     if (mark === "Del" || mark === "None") {
@@ -59,6 +68,7 @@ export default function ColumnsEditor() {
                 },
               });
             }}
+            disabled={disableColumnProperties(columnIndex)}
           ></ColumnTypeSelect>
         </td>
         <td className={rowDataClass}>
@@ -72,6 +82,7 @@ export default function ColumnsEditor() {
                 ? "NULL"
                 : displayDxDefaultValue(column.defaultValue)
             }
+            disabled={disableColumnProperties(columnIndex) ? true : false}
           />
         </td>
         <td className={rowDataClass}>
@@ -92,6 +103,7 @@ export default function ColumnsEditor() {
                 },
               });
             }}
+            disabled={disableColumnProperties(columnIndex) ? true : false}
           />
         </td>
         <td

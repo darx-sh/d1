@@ -8,6 +8,7 @@ import {
 import className from "classnames";
 
 interface ColumnTypeSelectProps {
+  disabled: boolean;
   fieldType: DxFieldType | null;
   onSelect: (d: DxFieldType) => void;
 }
@@ -23,6 +24,7 @@ export default function ColumnTypeSelect(props: ColumnTypeSelectProps) {
         setSelected(t);
         props.onSelect(t);
       }}
+      disabled={props.disabled}
     >
       {({ open }) => (
         <>
@@ -31,12 +33,14 @@ export default function ColumnTypeSelect(props: ColumnTypeSelectProps) {
               <div className="flex-1 gap-x-1.5 px-3 py-1.5">
                 <p className="text-sm text-gray-400">{selected}</p>
               </div>
-              <Listbox.Button className="w-8 bg-gray-400 p-2 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 focus:ring-offset-gray-50">
-                <ChevronDownIcon
-                  className="h-3 w-3 text-white"
-                  aria-hidden="true"
-                />
-              </Listbox.Button>
+              {props.disabled ? null : (
+                <Listbox.Button className="w-8 bg-gray-400 p-2 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 focus:ring-offset-gray-50">
+                  <ChevronDownIcon
+                    className="h-3 w-3 text-white"
+                    aria-hidden="true"
+                  />
+                </Listbox.Button>
+              )}
             </div>
 
             <Transition

@@ -407,6 +407,7 @@ function databaseReducer(
       if (mark === undefined) {
         state.draftColumnMarks[action.columnIndex] = "Update";
       }
+      // ignore if the column is marked as "Add"
       return state;
   }
 }

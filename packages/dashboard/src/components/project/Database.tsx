@@ -110,7 +110,7 @@ function Database() {
     );
   };
 
-  const listTable = () => {
+  const listTable = (selectTableName?: string) => {
     const req = {};
     invoke(
       envId,
@@ -120,7 +120,11 @@ function Database() {
         const rsp = response as ListTableRsp;
         const schema = rspToSchema(rsp);
         dbDispatch({ type: "LoadTables", schemaDef: schema });
-        setIsLoading(false);
+        if (selectTableName !== undefined) {
+          paginateTable(selectTableName, null, null);
+        } else {
+          setIsLoading(false);
+        }
       },
       (err) => {
         console.error(err);
@@ -178,7 +182,6 @@ function Database() {
   };
 
   const editTable = async () => {
-    console.log("edit table");
     const curTableName = dbState.curWorkingTable!.tableName;
     const oldTableDef = dbState.schema[curTableName]!;
     const newTableDef = dbState.draftTable;
@@ -188,14 +191,13 @@ function Database() {
       dbDispatch({ type: "SetDraftError", error });
     } else {
       const reqs = genTableEdit(oldTableDef, newTableDef, marks);
-      console.log(reqs);
       setIsLoading(true);
       for (const req of reqs) {
         await invokeAsync(envId, "_plugins/schema/api.ddl", {
           req: req,
         });
       }
-      listTable();
+      listTable(curTableName);
     }
   };
 
@@ -372,6 +374,17 @@ function genTableEdit(
         });
         break;
       case "Update":
+        // Can only rename column name now.
+        // Other properties like column type, default value, nullable cannot be changed after table is created.
+        if (oldTable.columns[i]!.name! !== newTable.columns[i]!.name!) {
+          reqs.push({
+            renameColumn: {
+              tableName: newTable.name!,
+              oldColumnName: oldTable.columns[i]!.name!,
+              newColumnName: newTable.columns[i]!.name!,
+            },
+          });
+        }
         break;
       case "Del":
         reqs.push({
