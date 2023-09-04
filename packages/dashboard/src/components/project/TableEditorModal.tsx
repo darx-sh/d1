@@ -4,7 +4,7 @@ import { XMarkIcon, ExclamationCircleIcon } from "@heroicons/react/24/outline";
 import ColumnsEditor from "~/components/project/ColumnsEditor";
 import {
   DxFieldType,
-  DxColumnDraftType,
+  DxColumnType,
   ColumnError,
   TableDef,
   TableDefError,
@@ -26,7 +26,7 @@ interface DropTableReq {
 interface AddColumnReq {
   addColumn: {
     tableName: string;
-    column: DxColumnDraftType;
+    column: DxColumnType;
   };
 }
 

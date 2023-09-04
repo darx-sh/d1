@@ -17,11 +17,18 @@ import {
   TableDefError,
   ColumnError,
   defaultValueToJSON,
+  ColumnMarkMap,
 } from "~/components/project/DatabaseContext";
 import { env } from "~/env.mjs";
 import axios, { AxiosResponse } from "axios";
 import TableEditorModal from "~/components/project/TableEditorModal";
-import { CreateTableReq, invoke, invokeAsync, TableEditReq } from "~/utils";
+import {
+  CreateTableReq,
+  invoke,
+  invokeAsync,
+  TableEditReq,
+  columnTypeToJson,
+} from "~/utils";
 
 type ListTableRsp = {
   tableName: string;
@@ -171,14 +178,16 @@ function Database() {
   };
 
   const editTable = async () => {
+    console.log("edit table");
     const curTableName = dbState.curWorkingTable!.tableName;
     const oldTableDef = dbState.schema[curTableName]!;
     const newTableDef = dbState.draftTable;
+    const marks = dbState.draftColumnMarks;
     const error = validateTableDef(newTableDef);
     if (error !== null) {
       dbDispatch({ type: "SetDraftError", error });
     } else {
-      const reqs = genTableEdit(oldTableDef, newTableDef);
+      const reqs = genTableEdit(oldTableDef, newTableDef, marks);
       console.log(reqs);
       setIsLoading(true);
       for (const req of reqs) {
@@ -327,7 +336,11 @@ function genCreateTable(tableDef: TableDef): CreateTableReq {
   return req;
 }
 
-function genTableEdit(oldTable: TableDef, newTable: TableDef): TableEditReq[] {
+function genTableEdit(
+  oldTable: TableDef,
+  newTable: TableDef,
+  marks: ColumnMarkMap
+): TableEditReq[] {
   const reqs: TableEditReq[] = [];
   if (oldTable.name! !== newTable.name!) {
     reqs.push({
@@ -336,6 +349,39 @@ function genTableEdit(oldTable: TableDef, newTable: TableDef): TableEditReq[] {
         newTableName: newTable.name!,
       },
     });
+  }
+
+  console.assert(
+    newTable.columns.length >= oldTable.columns.length,
+    "new table should have more columns than old table"
+  );
+
+  for (let i = 0; i < newTable.columns.length; i++) {
+    // handle "add", "delete", "update"; ignore none.
+    switch (marks[i]) {
+      case undefined:
+        break;
+      case "None":
+        break;
+      case "Add":
+        reqs.push({
+          addColumn: {
+            tableName: newTable.name!,
+            column: columnTypeToJson(newTable.columns[i]!),
+          },
+        });
+        break;
+      case "Update":
+        break;
+      case "Del":
+        reqs.push({
+          dropColumn: {
+            tableName: newTable.name!,
+            columnName: newTable.columns[i]!.name!,
+          },
+        });
+        break;
+    }
   }
   return reqs;
 }

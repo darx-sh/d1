@@ -1,10 +1,11 @@
 import { ArchiveBoxXMarkIcon, Bars3Icon } from "@heroicons/react/24/outline";
 import ColumnTypeSelect from "~/components/project/ColumnTypeSelect";
 import {
-  DxColumnDraftType,
+  DxColumnType,
   displayDxDefaultValue,
   useDatabaseState,
   useDatabaseDispatch,
+  DxFieldType,
 } from "~/components/project/DatabaseContext";
 import classNames from "classnames";
 
@@ -17,9 +18,9 @@ export default function ColumnsEditor() {
   const columns = state.draftTable.columns;
   const columnMarks = state.draftColumnMarks;
 
-  const renderColumn = (column: DxColumnDraftType, columnIndex: number) => {
+  const renderColumn = (column: DxColumnType, columnIndex: number) => {
     const mark = columnMarks[columnIndex];
-    if (mark === "Del") {
+    if (mark === "Del" || mark === "None") {
       return null;
     }
 
@@ -46,7 +47,19 @@ export default function ColumnsEditor() {
           />
         </td>
         <td className={classNames(rowDataClass, "w-28")}>
-          <ColumnTypeSelect fieldType={column.fieldType}></ColumnTypeSelect>
+          <ColumnTypeSelect
+            fieldType={column.fieldType}
+            onSelect={(t: DxFieldType) => {
+              dispatch({
+                type: "UpdateColumn",
+                columnIndex,
+                column: {
+                  ...column,
+                  fieldType: t,
+                },
+              });
+            }}
+          ></ColumnTypeSelect>
         </td>
         <td className={rowDataClass}>
           <input
