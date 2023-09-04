@@ -1,7 +1,7 @@
 import { useState, useEffect, Fragment, useRef } from "react";
 import { Dialog, Transition } from "@headlessui/react";
 import { XMarkIcon, ExclamationCircleIcon } from "@heroicons/react/24/outline";
-import ColumnsEditor from "~/components/project/ColumnsEditor";
+import ColumnsEditor from "~/components/project/database/ColumnsEditor";
 import {
   DxFieldType,
   DxColumnType,
@@ -11,7 +11,7 @@ import {
   useDatabaseDispatch,
   useDatabaseState,
   defaultValueToJSON,
-} from "~/components/project/DatabaseContext";
+} from "~/components/project/database/DatabaseContext";
 import { useProjectState } from "~/components/project/ProjectContext";
 import { invoke, type CreateTableReq } from "~/utils";
 
@@ -50,6 +50,7 @@ type TableEditorProps = {
   open: boolean;
   onCreateTable: () => void;
   onEditTable: () => void;
+  onCancel: () => void;
 };
 
 export default function TableEditorModal(props: TableEditorProps) {
@@ -190,6 +191,9 @@ export default function TableEditorModal(props: TableEditorProps) {
                           <button
                             type="button"
                             className="text-sm font-semibold leading-6 text-gray-900"
+                            onClick={() => {
+                              props.onCancel();
+                            }}
                           >
                             Cancel
                           </button>

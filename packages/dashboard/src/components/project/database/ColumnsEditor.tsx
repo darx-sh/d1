@@ -1,12 +1,12 @@
 import { ArchiveBoxXMarkIcon, Bars3Icon } from "@heroicons/react/24/outline";
-import ColumnTypeSelect from "~/components/project/ColumnTypeSelect";
+import ColumnTypeSelect from "~/components/project/database/ColumnTypeSelect";
 import {
   DxColumnType,
   displayDxDefaultValue,
   useDatabaseState,
   useDatabaseDispatch,
   DxFieldType,
-} from "~/components/project/DatabaseContext";
+} from "~/components/project/database/DatabaseContext";
 import classNames from "classnames";
 
 export default function ColumnsEditor() {

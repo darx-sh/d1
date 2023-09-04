@@ -4,7 +4,7 @@ import {
   defaultValueToJSON,
   DxColumnType,
   DxFieldType,
-} from "~/components/project/DatabaseContext";
+} from "~/components/project/database/DatabaseContext";
 
 export function classNames(...classes: any[]) {
   return classes.filter(Boolean).join(" ");

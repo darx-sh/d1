@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useEffectOnce } from "usehooks-ts";
-import TableList from "~/components/project/TableList";
-import TableDetails from "~/components/project/TableDetails";
+import TableList from "~/components/project/database/TableList";
+import TableDetails from "~/components/project/database/TableDetails";
 import Spinner from "~/components/project/Spinner";
 import { useProjectState } from "~/components/project/ProjectContext";
 import {
@@ -18,10 +18,10 @@ import {
   ColumnError,
   defaultValueToJSON,
   ColumnMarkMap,
-} from "~/components/project/DatabaseContext";
+} from "~/components/project/database/DatabaseContext";
 import { env } from "~/env.mjs";
 import axios, { AxiosResponse } from "axios";
-import TableEditorModal from "~/components/project/TableEditorModal";
+import TableEditorModal from "~/components/project/database/TableEditorModal";
 import {
   CreateTableReq,
   invoke,
@@ -201,6 +201,10 @@ function Database() {
     }
   };
 
+  const cancelEdit = () => {
+    //   pop up
+  };
+
   const dropTable = (tableName: string) => {
     console.log("drop table: ", tableName);
     const req = {
@@ -254,6 +258,7 @@ function Database() {
                   dropTable(tableName);
                 }}
                 onEditTable={editTable}
+                onCancel={cancelEdit}
               ></TableDetails>
             ) : (
               createTableButton()
@@ -267,6 +272,7 @@ function Database() {
             }}
             onCreateTable={createTable}
             onEditTable={editTable}
+            onCancel={cancelEdit}
           ></TableEditorModal>
         </div>
       )}

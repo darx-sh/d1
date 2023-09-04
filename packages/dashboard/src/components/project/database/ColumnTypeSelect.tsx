@@ -4,7 +4,7 @@ import { CheckIcon, ChevronDownIcon } from "@heroicons/react/20/solid";
 import {
   DxFieldType,
   getAllColumnTypes,
-} from "~/components/project/DatabaseContext";
+} from "~/components/project/database/DatabaseContext";
 import className from "classnames";
 
 interface ColumnTypeSelectProps {

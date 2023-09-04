@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { Row, useDatabaseState, useDatabaseDispatch } from "./DatabaseContext";
 import { Cog6ToothIcon } from "@heroicons/react/24/outline";
-import TableEditorModal from "~/components/project/TableEditorModal";
-import TableActions from "~/components/project/TableActions";
+import TableEditorModal from "~/components/project/database/TableEditorModal";
+import TableActions from "~/components/project/database/TableActions";
 
 export interface TableDetailsProps {
   onDeleteTable: (tableName: string) => void;
   onEditTable: () => void;
+  onCancel: () => void;
 }
 
 export default function TableDetails(props: TableDetailsProps) {
@@ -78,6 +79,7 @@ export default function TableDetails(props: TableDetailsProps) {
           throw new Error("Not implemented");
         }}
         onEditTable={props.onEditTable}
+        onCancel={props.onCancel}
       ></TableEditorModal>
 
       <div className="px-4 sm:px-6 lg:px-8">

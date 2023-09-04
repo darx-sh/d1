@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useDatabaseState, useDatabaseDispatch, Row } from "./DatabaseContext";
-import TableEditorModal from "~/components/project/TableEditorModal";
+import TableEditorModal from "~/components/project/database/TableEditorModal";
 import { env } from "~/env.mjs";
 import axios from "axios";
 import { useProjectState } from "~/components/project/ProjectContext";
@@ -39,9 +39,9 @@ export default function TableList(props: TableListProps) {
                 href={item.href}
                 className={classNames(
                   item.current
-                    ? "bg-gray-50 text-indigo-600"
+                    ? "bg-gray-200 text-indigo-600"
                     : "text-gray-700 hover:bg-gray-50 hover:text-indigo-600",
-                  "group flex gap-x-3 rounded-md p-2 pl-3 text-sm font-semibold leading-6"
+                  "group flex gap-x-3 rounded-sm p-2 pl-3 text-sm font-semibold leading-6"
                 )}
               >
                 {item.name}
