@@ -22,6 +22,7 @@ import {
 import { env } from "~/env.mjs";
 import axios, { AxiosResponse } from "axios";
 import TableEditorModal from "~/components/project/database/TableEditorModal";
+import CancelEditor from "~/components/project/database/CancelEditor";
 import {
   CreateTableReq,
   invoke,
@@ -73,7 +74,9 @@ function Database() {
   const dbState = useDatabaseState();
   const envId = projectState.envInfo!.id;
 
-  const [isCreateTable, setIsCreateTable] = useState(false);
+  // const [showCreateTable, setShowCreateTable] = useState(false);
+  // const [showEditTable, setShowEditTable] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   useEffectOnce(() => {
     listTable();
@@ -86,7 +89,6 @@ function Database() {
         className="relative mx-auto block w-1/2 rounded-lg border-2 border-dashed border-gray-300 p-12 text-center hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
         onClick={() => {
           dbDispatch({ type: "InitDraftFromTemplate" });
-          setIsCreateTable(true);
         }}
       >
         <svg
@@ -155,6 +157,14 @@ function Database() {
       .catch((error) => console.log("paginateTable error: ", error));
   };
 
+  const saveEdit = async () => {
+    const mod = dbState.editorMod;
+    if (mod === "Create") {
+      createTable();
+    } else if (mod === "Update") {
+      await updateTable();
+    }
+  };
   const createTable = () => {
     const tableDef = dbState.draftTable;
     const error = validateTableDef(tableDef);
@@ -163,7 +173,6 @@ function Database() {
     } else {
       const req = genCreateTable(tableDef);
       console.log(req);
-      setIsCreateTable(false);
       setIsLoading(true);
       invoke(
         envId,
@@ -181,7 +190,7 @@ function Database() {
     }
   };
 
-  const editTable = async () => {
+  const updateTable = async () => {
     const curTableName = dbState.curWorkingTable!.tableName;
     const oldTableDef = dbState.schema[curTableName]!;
     const newTableDef = dbState.draftTable;
@@ -203,6 +212,7 @@ function Database() {
 
   const cancelEdit = () => {
     //   pop up
+    setShowCancelConfirm(true);
   };
 
   const dropTable = (tableName: string) => {
@@ -239,7 +249,6 @@ function Database() {
               className="ml-2 mt-2 block rounded bg-gray-400 px-2 py-2 text-left text-sm font-semibold text-white shadow-sm hover:bg-indigo-400"
               onClick={() => {
                 dbDispatch({ type: "InitDraftFromTemplate" });
-                setIsCreateTable(true);
               }}
             >
               Create Table
@@ -253,27 +262,32 @@ function Database() {
           <div className="ml-2 min-w-0 flex-1 bg-white">
             {dbState.curWorkingTable ? (
               <TableDetails
-                onDeleteTable={(tableName: string) => {
+                handleDeleteTable={(tableName: string) => {
                   setIsLoading(true);
                   dropTable(tableName);
                 }}
-                onEditTable={editTable}
-                onCancel={cancelEdit}
+                handleSave={saveEdit}
+                handleCancel={cancelEdit}
               ></TableDetails>
             ) : (
               createTableButton()
             )}
           </div>
           <TableEditorModal
-            open={isCreateTable}
-            onClose={() => {
-              dbDispatch({ type: "DeleteScratchTable" });
-              setIsCreateTable(false);
-            }}
-            onCreateTable={createTable}
-            onEditTable={editTable}
-            onCancel={cancelEdit}
+            open={dbState.editorMod === "Create"}
+            handleSave={saveEdit}
+            handleCancel={cancelEdit}
           ></TableEditorModal>
+          <CancelEditor
+            open={showCancelConfirm}
+            onYes={() => {
+              setShowCancelConfirm(false);
+              dbDispatch({ type: "DeleteScratchTable" });
+            }}
+            onNo={() => {
+              setShowCancelConfirm(false);
+            }}
+          ></CancelEditor>
         </div>
       )}
     </>

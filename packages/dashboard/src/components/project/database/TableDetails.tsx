@@ -5,9 +5,9 @@ import TableEditorModal from "~/components/project/database/TableEditorModal";
 import TableActions from "~/components/project/database/TableActions";
 
 export interface TableDetailsProps {
-  onDeleteTable: (tableName: string) => void;
-  onEditTable: () => void;
-  onCancel: () => void;
+  handleDeleteTable: (tableName: string) => void;
+  handleSave: () => void;
+  handleCancel: () => void;
 }
 
 export default function TableDetails(props: TableDetailsProps) {
@@ -21,7 +21,6 @@ export default function TableDetails(props: TableDetailsProps) {
     }
     return c.name;
   });
-  const [isEditTable, setIsEditTable] = useState(false);
 
   const renderColumnNames = (columnNames: string[]) => {
     return (
@@ -70,16 +69,9 @@ export default function TableDetails(props: TableDetailsProps) {
   return (
     <>
       <TableEditorModal
-        open={isEditTable}
-        onClose={() => {
-          dbDispatch({ type: "DeleteScratchTable" });
-          setIsEditTable(false);
-        }}
-        onCreateTable={() => {
-          throw new Error("Not implemented");
-        }}
-        onEditTable={props.onEditTable}
-        onCancel={props.onCancel}
+        open={dbState.editorMod === "Update"}
+        handleSave={props.handleSave}
+        handleCancel={props.handleCancel}
       ></TableEditorModal>
 
       <div className="px-4 sm:px-6 lg:px-8">
@@ -95,10 +87,9 @@ export default function TableDetails(props: TableDetailsProps) {
                     type: "InitDraftFromTable",
                     tableName: curTable,
                   });
-                  setIsEditTable(true);
                 }}
                 onDelete={() => {
-                  props.onDeleteTable(curTable);
+                  props.handleDeleteTable(curTable);
                 }}
               ></TableActions>
             </div>

@@ -12,7 +12,7 @@ type DatabaseState = {
   draftTable: TableDef;
   draftTableError: TableDefError;
   draftColumnMarks: ColumnMarkMap;
-  isDraftFromTemplate: boolean;
+  editorMod: "Create" | "Update" | "None";
 };
 
 export interface Row {
@@ -250,7 +250,7 @@ const initialState: DatabaseState = {
   draftTable: { name: null, columns: [] },
   draftTableError: { nameError: null, columnsError: [] },
   draftColumnMarks: {},
-  isDraftFromTemplate: true,
+  editorMod: "None",
 };
 
 type DatabaseAction =
@@ -316,7 +316,7 @@ function databaseReducer(
       state.draftTable = { name: null, columns: [] };
       state.draftTableError = { nameError: null, columnsError: [] };
       state.draftColumnMarks = {};
-      state.isDraftFromTemplate = true;
+      state.editorMod = "None";
       return state;
     case "LoadData":
       state.curWorkingTable = {
@@ -327,7 +327,7 @@ function databaseReducer(
     case "InitDraftFromTable":
       const t1 = state.schema[action.tableName]!;
       state.draftTable = t1;
-      state.isDraftFromTemplate = false;
+      state.editorMod = "Update";
       return state;
     case "InitDraftFromTemplate":
       const t2: TableDef = {
@@ -335,7 +335,7 @@ function databaseReducer(
         columns: DefaultDxColumns,
       };
       state.draftTable = t2;
-      state.isDraftFromTemplate = true;
+      state.editorMod = "Create";
       return state;
     case "SetDraftError":
       state.draftTableError = action.error;
@@ -344,7 +344,7 @@ function databaseReducer(
       state.draftTable.name = null;
       state.draftTable.columns = [];
       state.draftTableError = { nameError: null, columnsError: [] };
-      state.isDraftFromTemplate = true;
+      state.editorMod = "None";
       return state;
     // case "CreateTable":
     //   if (state.draftTable !== null) {
