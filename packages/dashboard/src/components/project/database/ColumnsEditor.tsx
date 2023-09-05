@@ -35,12 +35,23 @@ export default function ColumnsEditor() {
 
     const columnName = column.name ?? "Column Name";
 
+    const columnReadOnly = disableColumnProperties(columnIndex);
+
     return (
-      <tr className="hover:bg-gray-200" key={columnIndex}>
+      <tr
+        className={classNames(
+          columnReadOnly ? "bg-gray-100" : "hover:bg-gray-200",
+          ""
+        )}
+        key={columnIndex}
+      >
         <td className={rowDataClass}>
           <input
             type="text"
-            className="block w-32 rounded-md border-0 py-1.5 pl-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
+            className={classNames(
+              columnReadOnly ? "" : "",
+              "block w-32 rounded-md border-0 py-1.5 pl-2  text-sm text-gray-400 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
+            )}
             placeholder={columnName}
             value={columnName}
             onChange={(event) => {
@@ -53,9 +64,10 @@ export default function ColumnsEditor() {
                 },
               });
             }}
+            disabled={columnReadOnly}
           />
         </td>
-        <td className={classNames(rowDataClass, "w-28")}>
+        <td className={classNames(rowDataClass, "w-44")}>
           <ColumnTypeSelect
             fieldType={column.fieldType}
             onSelect={(t: DxFieldType) => {
@@ -68,7 +80,7 @@ export default function ColumnsEditor() {
                 },
               });
             }}
-            disabled={disableColumnProperties(columnIndex)}
+            disabled={columnReadOnly}
           ></ColumnTypeSelect>
         </td>
         <td className={rowDataClass}>
@@ -76,13 +88,12 @@ export default function ColumnsEditor() {
             type="text"
             name="defaultValue"
             id="defaultValue"
-            className="block w-28 rounded-md border-0 py-1.5 pl-2 text-xs text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
-            placeholder={
-              column.defaultValue === null
-                ? "NULL"
-                : displayDxDefaultValue(column.defaultValue)
-            }
-            disabled={disableColumnProperties(columnIndex) ? true : false}
+            className="block w-44 rounded-md border-0 py-1.5 pl-2 text-xs text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
+            placeholder={displayDxDefaultValue(
+              column.fieldType,
+              column.defaultValue
+            )}
+            disabled={columnReadOnly ? true : false}
           />
         </td>
         <td className={rowDataClass}>
@@ -103,23 +114,25 @@ export default function ColumnsEditor() {
                 },
               });
             }}
-            disabled={disableColumnProperties(columnIndex) ? true : false}
+            disabled={columnReadOnly ? true : false}
           />
         </td>
-        <td
-          className={rowDataClass}
-          onClick={() => {
-            dispatch({
-              type: "DelColumn",
-              columnIndex: columnIndex,
-            });
-          }}
-        >
-          <ArchiveBoxXMarkIcon
-            className="-mt-2 h-6 w-6 hover:bg-gray-500"
-            aria-hidden="true"
-          />
-        </td>
+        {columnReadOnly ? null : (
+          <td
+            className={rowDataClass}
+            onClick={() => {
+              dispatch({
+                type: "DelColumn",
+                columnIndex: columnIndex,
+              });
+            }}
+          >
+            <ArchiveBoxXMarkIcon
+              className="-mt-2 h-6 w-6 hover:bg-gray-500"
+              aria-hidden="true"
+            />
+          </td>
+        )}
       </tr>
     );
   };
@@ -154,7 +167,7 @@ export default function ColumnsEditor() {
       </table>
       <button
         type="button"
-        className="mx-auto mt-2 block w-80 rounded-md bg-gray-600 px-16 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+        className="mx-auto mt-8 block w-80 rounded-md bg-gray-600 px-16 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
         onClick={() => {
           dispatch({
             type: "AddColumn",

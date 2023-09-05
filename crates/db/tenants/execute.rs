@@ -87,8 +87,10 @@ impl Serialize for XRow {
     for column in columns {
       let name = column.name();
       let type_info = column.type_info();
-
       let type_name = type_info.name();
+
+      println!("name: {}, type_name: {}", name, type_name);
+
       match type_name {
         "BOOLEAN" => {
           let v: Option<bool> = self.0.try_get(name).unwrap();
@@ -155,6 +157,7 @@ impl Serialize for XRow {
         }
         "CHAR" | "VARCHAR" | "TEXT" | "LONGTEXT" => {
           let v: Option<String> = self.0.try_get(name).unwrap();
+          println!("v = {:?}", v);
           map.serialize_entry(name, &v)?;
         }
         other => unimplemented!("{}", other),

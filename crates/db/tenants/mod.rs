@@ -51,6 +51,8 @@ pub enum DxFieldType {
   Bool,
   #[serde(rename = "int64")]
   Int64,
+  #[serde(rename = "int64_identity")]
+  Int64Identity,
   #[serde(rename = "text")]
   Text,
   // Approximate numeric values

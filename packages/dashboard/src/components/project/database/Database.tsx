@@ -10,7 +10,7 @@ import {
   SchemaDef,
   TableDef,
   MySQLFieldType,
-  columnTypesMap,
+  mysqlToDxFieldType,
   useDatabaseDispatch,
   useDatabaseState,
   toDxDefaultValue,
@@ -18,6 +18,8 @@ import {
   ColumnError,
   defaultValueToJSON,
   ColumnMarkMap,
+  tableChanged,
+  DefaultTableTemplate,
 } from "~/components/project/database/DatabaseContext";
 import { env } from "~/env.mjs";
 import axios, { AxiosResponse } from "axios";
@@ -39,6 +41,7 @@ type ListTableRsp = {
     nullable: string;
     defaultValue: null | string | number | boolean;
     comment: string;
+    extra: string;
   }[];
   primaryKey: string[];
 }[];
@@ -49,9 +52,12 @@ function rspToSchema(rsp: ListTableRsp): SchemaDef {
     const tableDef: TableDef = {
       name: tableName,
       columns: columns.map(
-        ({ columnName, fieldType, nullable, defaultValue }) => {
-          const dxFieldType =
-            columnTypesMap[fieldType.toLowerCase() as MySQLFieldType];
+        ({ columnName, fieldType, nullable, defaultValue, extra }) => {
+          const dxFieldType = mysqlToDxFieldType(
+            fieldType as MySQLFieldType,
+            extra
+          );
+          // columnTypesMap[fieldType.toLowerCase() as MySQLFieldType];
           return {
             name: columnName,
             fieldType: dxFieldType,
@@ -73,9 +79,6 @@ function Database() {
   const dbDispatch = useDatabaseDispatch();
   const dbState = useDatabaseState();
   const envId = projectState.envInfo!.id;
-
-  // const [showCreateTable, setShowCreateTable] = useState(false);
-  // const [showEditTable, setShowEditTable] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   useEffectOnce(() => {
@@ -165,6 +168,7 @@ function Database() {
       await updateTable();
     }
   };
+
   const createTable = () => {
     const tableDef = dbState.draftTable;
     const error = validateTableDef(tableDef);
@@ -211,8 +215,26 @@ function Database() {
   };
 
   const cancelEdit = () => {
-    //   pop up
-    setShowCancelConfirm(true);
+    const marks = dbState.draftColumnMarks;
+    if (dbState.curWorkingTable === null) {
+      // new table creation.
+      if (tableChanged(DefaultTableTemplate, dbState.draftTable, marks)) {
+        setShowCancelConfirm(true);
+        return;
+      } else {
+        dbDispatch({ type: "DeleteScratchTable" });
+        return;
+      }
+    }
+
+    const tableName = dbState.curWorkingTable.tableName;
+    const oldTable = dbState.schema[tableName]!;
+    const newTable = dbState.draftTable;
+    if (tableChanged(oldTable, newTable, marks)) {
+      setShowCancelConfirm(true);
+    } else {
+      dbDispatch({ type: "DeleteScratchTable" });
+    }
   };
 
   const dropTable = (tableName: string) => {

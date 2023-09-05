@@ -23,7 +23,8 @@ export async function listTable() {
     DATA_TYPE AS fieldType, \
     IS_NULLABLE AS nullable, \
     COLUMN_DEFAULT AS defaultValue, \
-    COLUMN_COMMENT AS comment \
+    COLUMN_COMMENT AS comment, \
+    EXTRA as extra \
   FROM \
     INFORMATION_SCHEMA.COLUMNS \
   WHERE \
@@ -50,6 +51,7 @@ WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND CONSTRAINT_NAME = 'PRIMARY'
         return p.columnName;
       }),
     };
+    console.log("tableDef: ", tableDef);
     schema.push(tableDef);
   }
 

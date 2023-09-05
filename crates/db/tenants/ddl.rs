@@ -82,12 +82,11 @@ pub fn create_table_sql(req: &CreateTableReq) -> Result<String> {
   }
 
   // todo: send it from frontend.
-  stmt.primary_key(Index::create().col(DxIdent("id".to_string())));
-  stmt.index(
-    Index::create()
-      .name(format!("idx_{}_{}", req.table_name, "created_at"))
-      .col(DxIdent("created_at".to_string())),
-  );
+  // stmt.index(
+  //   Index::create()
+  //     .name(format!("idx_{}_{}", req.table_name, "created_at"))
+  //     .col(DxIdent("created_at".to_string())),
+  // );
   Ok(stmt.build(MysqlQueryBuilder))
 }
 
@@ -134,12 +133,25 @@ pub fn drop_column_sql(req: &DropColumnReq) -> Result<String> {
 fn new_column_def(column_type: &DxColumnType) -> ColumnDef {
   let mut column_def = ColumnDef::new(DxIdent(column_type.name.clone()));
   match column_type.field_type {
-    DxFieldType::Bool => column_def.boolean(),
-    DxFieldType::Int64 => column_def.big_integer(),
-    DxFieldType::Text => column_def.text(),
-    DxFieldType::Float64 => column_def.double(),
+    DxFieldType::Bool => {
+      column_def.boolean();
+    }
+    DxFieldType::Int64 => {
+      column_def.big_integer();
+    }
+    DxFieldType::Int64Identity => {
+      column_def.big_integer();
+      column_def.auto_increment();
+      column_def.primary_key();
+    }
+    DxFieldType::Text => {
+      column_def.text();
+    }
+    DxFieldType::Float64 => {
+      column_def.double();
+    }
     DxFieldType::DateTime => {
-      column_def.custom(DxIdent("datetime(3)".to_string()))
+      column_def.custom(DxIdent("datetime(3)".to_string()));
     }
   };
 
