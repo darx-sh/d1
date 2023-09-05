@@ -101,6 +101,8 @@ export function displayDxDefaultValue(
   fieldType: DxFieldType | null,
   d: DxDefaultValue | null
 ) {
+  // AUTO_INCREMENT type has a NULL default value, but
+  // it cannot have a default value.
   if (fieldType === "int64_identity") {
     return "";
   }
@@ -109,6 +111,7 @@ export function displayDxDefaultValue(
     return "NULL";
   }
 
+  // todo: clarify this
   if (d.type === "NULL") {
     return "NULL";
   }
