@@ -10,7 +10,7 @@ import {
   SchemaDef,
   TableDef,
   MySQLFieldType,
-  columnTypesMap,
+  mysqlToDxFieldType,
   useDatabaseDispatch,
   useDatabaseState,
   toDxDefaultValue,
@@ -19,6 +19,7 @@ import {
   defaultValueToJSON,
   ColumnMarkMap,
   tableChanged,
+  DefaultTableTemplate,
 } from "~/components/project/database/DatabaseContext";
 import { env } from "~/env.mjs";
 import axios, { AxiosResponse } from "axios";
@@ -40,6 +41,7 @@ type ListTableRsp = {
     nullable: string;
     defaultValue: null | string | number | boolean;
     comment: string;
+    extra: string;
   }[];
   primaryKey: string[];
 }[];
@@ -50,9 +52,12 @@ function rspToSchema(rsp: ListTableRsp): SchemaDef {
     const tableDef: TableDef = {
       name: tableName,
       columns: columns.map(
-        ({ columnName, fieldType, nullable, defaultValue }) => {
-          const dxFieldType =
-            columnTypesMap[fieldType.toLowerCase() as MySQLFieldType];
+        ({ columnName, fieldType, nullable, defaultValue, extra }) => {
+          const dxFieldType = mysqlToDxFieldType(
+            fieldType as MySQLFieldType,
+            extra
+          );
+          // columnTypesMap[fieldType.toLowerCase() as MySQLFieldType];
           return {
             name: columnName,
             fieldType: dxFieldType,
@@ -210,10 +215,21 @@ function Database() {
   };
 
   const cancelEdit = () => {
-    const tableName = dbState.curWorkingTable!.tableName;
+    const marks = dbState.draftColumnMarks;
+    if (dbState.curWorkingTable === null) {
+      // new table creation.
+      if (tableChanged(DefaultTableTemplate, dbState.draftTable, marks)) {
+        setShowCancelConfirm(true);
+        return;
+      } else {
+        dbDispatch({ type: "DeleteScratchTable" });
+        return;
+      }
+    }
+
+    const tableName = dbState.curWorkingTable.tableName;
     const oldTable = dbState.schema[tableName]!;
     const newTable = dbState.draftTable;
-    const marks = dbState.draftColumnMarks;
     if (tableChanged(oldTable, newTable, marks)) {
       setShowCancelConfirm(true);
     } else {

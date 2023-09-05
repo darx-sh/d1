@@ -3,7 +3,9 @@ import { Listbox, Transition } from "@headlessui/react";
 import { CheckIcon, ChevronDownIcon } from "@heroicons/react/20/solid";
 import {
   DxFieldType,
-  getAllColumnTypes,
+  SELECTABLE_DX_FIELD_TYPES,
+  displayDxFieldType,
+  toDxFieldType,
 } from "~/components/project/database/DatabaseContext";
 import className from "classnames";
 
@@ -14,15 +16,16 @@ interface ColumnTypeSelectProps {
 }
 
 export default function ColumnTypeSelect(props: ColumnTypeSelectProps) {
-  const allColumnTypes = getAllColumnTypes();
   const [selected, setSelected] = useState(props.fieldType);
 
   return (
     <Listbox
       value={selected}
-      onChange={(t: DxFieldType) => {
-        setSelected(t);
-        props.onSelect(t);
+      onChange={(t: string) => {
+        console.log("select: ", t);
+        const f = toDxFieldType(t);
+        setSelected(f);
+        props.onSelect(f);
       }}
       disabled={props.disabled}
     >
@@ -31,7 +34,9 @@ export default function ColumnTypeSelect(props: ColumnTypeSelectProps) {
           <div className="relative rounded-md border shadow-md">
             <div className="flex divide-x divide-indigo-700">
               <div className="flex-1 gap-x-1.5 px-3 py-1.5">
-                <p className="text-sm text-gray-400">{selected}</p>
+                <p className="text-sm text-gray-400">
+                  {selected === null ? "---" : displayDxFieldType(selected)}
+                </p>
               </div>
               {props.disabled ? null : (
                 <Listbox.Button className="w-8 bg-gray-400 p-2 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 focus:ring-offset-gray-50">
@@ -50,8 +55,8 @@ export default function ColumnTypeSelect(props: ColumnTypeSelectProps) {
               leaveFrom="opacity-100"
               leaveTo="opacity-0"
             >
-              <Listbox.Options className="absolute left-0 z-10 mt-2 w-36 origin-top-right divide-y divide-gray-200 overflow-hidden rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-                {allColumnTypes.map((dxFieldType) => (
+              <Listbox.Options className="absolute left-0 z-10 mt-2 w-48 origin-top-right divide-y divide-gray-200 overflow-hidden rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                {SELECTABLE_DX_FIELD_TYPES.map((dxFieldType) => (
                   <Listbox.Option
                     key={dxFieldType}
                     className={({ active }) =>
@@ -60,7 +65,7 @@ export default function ColumnTypeSelect(props: ColumnTypeSelectProps) {
                         "cursor-default select-none p-4 text-sm"
                       )
                     }
-                    value={dxFieldType}
+                    value={displayDxFieldType(dxFieldType)}
                   >
                     {({ selected, active }) => (
                       <div className="flex flex-col">
@@ -70,7 +75,7 @@ export default function ColumnTypeSelect(props: ColumnTypeSelectProps) {
                               selected ? "font-semibold" : "font-normal"
                             }
                           >
-                            {dxFieldType}
+                            {displayDxFieldType(dxFieldType)}
                           </p>
                           {selected ? (
                             <span

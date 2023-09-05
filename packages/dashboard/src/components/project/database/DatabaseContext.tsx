@@ -40,7 +40,53 @@ export interface ColumnError {
   fieldTypeError: string | null;
 }
 
-export type DxFieldType = "int64" | "float64" | "bool" | "datetime" | "text";
+export type DxFieldType =
+  | "int64"
+  | "int64_identity"
+  | "float64"
+  | "bool"
+  | "datetime"
+  | "varchar"
+  | "text";
+
+export const SELECTABLE_DX_FIELD_TYPES: DxFieldType[] = [
+  "int64",
+  "float64",
+  "bool",
+  "datetime",
+  "varchar",
+  "text",
+];
+
+export function displayDxFieldType(t: DxFieldType) {
+  switch (t) {
+    case "int64_identity":
+      return "int64 Identity";
+    default:
+      return t;
+  }
+}
+
+export function toDxFieldType(t: string): DxFieldType {
+  switch (t) {
+    case "int64":
+      return "int64";
+    case "int64 Identity":
+      return "int64_identity";
+    case "float64":
+      return "float64";
+    case "bool":
+      return "bool";
+    case "datetime":
+      return "datetime";
+    case "varchar":
+      return "varchar";
+    case "text":
+      return "text";
+    default:
+      throw new Error(`Invalid type: ${t}`);
+  }
+}
 
 export type DxDefaultValue =
   | { type: "int64"; value: number }
@@ -51,10 +97,22 @@ export type DxDefaultValue =
   | { type: "expr"; value: string }
   | { type: "NULL" };
 
-export function displayDxDefaultValue(d: DxDefaultValue) {
+export function displayDxDefaultValue(
+  fieldType: DxFieldType | null,
+  d: DxDefaultValue | null
+) {
+  if (fieldType === "int64_identity") {
+    return "";
+  }
+
+  if (d === null) {
+    return "NULL";
+  }
+
   if (d.type === "NULL") {
     return "NULL";
   }
+
   return d.value.toString();
 }
 
@@ -104,7 +162,7 @@ export function toDxDefaultValue(
 
 export type MySQLFieldType =
   // numeric data types
-  // | "tinyint"
+  | "tinyint"
   // | "smallint"
   // | "mediumint"
   // | "int"
@@ -122,7 +180,7 @@ export type MySQLFieldType =
   // | "year"
   // string data types
   // | "char"
-  // | "varchar"
+  | "varchar"
   // | "binary"
   // | "varbinary"
   // | "blob"
@@ -132,38 +190,28 @@ export type MySQLFieldType =
 // json
 // | "json";
 
-export type ColumnTypeMap = { [K in MySQLFieldType]: DxFieldType };
-
-// MySQL types -> Darx types.
-export const columnTypesMap: ColumnTypeMap = {
-  // tinyint: "tinyint",
-  // smallint: "smallint",
-  // mediumint: "mediumint",
-  // int: "int",
-  bigint: "int64",
-  // decimal: "decimal",
-  // numeric: "numeric",
-  // float: "float",
-  double: "float64",
-  // bit: "bit",
-  // date: "date",
-  // time: "time",
-  datetime: "datetime",
-  // timestamp: "timestamp",
-  // year: "year",
-  // char: "char",
-  // varchar: "varchar",
-  // binary: "binary",
-  // varbinary: "varbinary",
-  // blob: "blob",
-  text: "text",
-  // enum: "enum",
-  // set: "set",
-  // json: "json",
-};
-
-export function getAllColumnTypes(): DxFieldType[] {
-  return Object.values(columnTypesMap);
+export function mysqlToDxFieldType(
+  t: MySQLFieldType,
+  extra: string
+): DxFieldType {
+  switch (t) {
+    case "bigint":
+      if (extra.toUpperCase() === "AUTO_INCREMENT") {
+        return "int64_identity";
+      } else {
+        return "int64";
+      }
+    case "tinyint":
+      return "bool";
+    case "double":
+      return "float64";
+    case "datetime":
+      return "datetime";
+    case "varchar":
+      return "varchar";
+    case "text":
+      return "text";
+  }
 }
 
 export interface DxColumnType {
@@ -176,10 +224,10 @@ export interface DxColumnType {
 
 type ExtraColumnOptions = "AUTO_INCREMENT" | "ON UPDATE CURRENT_TIMESTAMP(3)";
 
-export const DefaultDxColumns: DxColumnType[] = [
+const DefaultDxColumns: DxColumnType[] = [
   {
     name: "id",
-    fieldType: "int64",
+    fieldType: "int64_identity",
     // AUTO_INCREMENT cannot have a default 0
     defaultValue: null,
     isNullable: false,
@@ -200,6 +248,11 @@ export const DefaultDxColumns: DxColumnType[] = [
     extra: "ON UPDATE CURRENT_TIMESTAMP(3)",
   },
 ];
+
+export const DefaultTableTemplate: TableDef = {
+  name: null,
+  columns: DefaultDxColumns,
+};
 
 // - ADD COLUMN
 // - DROP COLUMN
@@ -303,11 +356,8 @@ function databaseReducer(
       state.editorMod = "Update";
       return state;
     case "InitDraftFromTemplate":
-      const t2: TableDef = {
-        name: null,
-        columns: DefaultDxColumns,
-      };
-      state.draftTable = t2;
+      console.log("init draft from template: ", DefaultTableTemplate);
+      state.draftTable = DefaultTableTemplate;
       state.editorMod = "Create";
       return state;
     case "SetDraftError":
@@ -317,6 +367,7 @@ function databaseReducer(
       state.draftTable.name = null;
       state.draftTable.columns = [];
       state.draftTableError = { nameError: null, columnsError: [] };
+      state.draftColumnMarks = {};
       state.editorMod = "None";
       return state;
     case "SetTableName":
@@ -366,11 +417,11 @@ function databaseReducer(
 }
 
 export function tableChanged(
-  oldTable: TableDef,
-  newTable: TableDef,
+  oldTable: TableDef | null,
+  newTable: TableDef | null,
   mark: ColumnMarkMap
 ): boolean {
-  if (oldTable.name !== newTable.name) {
+  if (oldTable?.name !== newTable?.name) {
     return true;
   }
 

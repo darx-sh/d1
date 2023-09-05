@@ -1,0 +1,3 @@
+[submodule "crates/db/nanoid-mysql-mariadb"]
+	path = crates/db/nanoid-mysql-mariadb
+	url = https://github.com/viascom/nanoid-mysql-mariadb.git
