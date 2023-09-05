@@ -217,33 +217,6 @@ export interface ColumnMarkMap {
   [key: number]: ColumnMark;
 }
 
-type DDLLog =
-  | { type: "CreateTable"; payload: CreateTable }
-  | { type: "DropTable"; payload: DropTable }
-  | { type: "RenameTable"; payload: RenameTable }
-  | { type: "AddColumn"; payload: { index: number } }
-  | { type: "DropColumn"; payload: { index: number } }
-  | { type: "RenameColumn"; payload: { index: number } };
-
-type DDLAction =
-  | { type: "CreateTable"; payload: CreateTable }
-  | { type: "DropTable"; payload: DropTable }
-  | TableEditAction;
-
-interface CreateTable {
-  tableName: string;
-  columns: DxColumnType[];
-}
-
-interface DropTable {
-  tableName: string;
-}
-
-interface RenameTable {
-  oldTableName: string;
-  newTableName: string;
-}
-
 const initialState: DatabaseState = {
   schema: {},
   curWorkingTable: null,
@@ -346,26 +319,6 @@ function databaseReducer(
       state.draftTableError = { nameError: null, columnsError: [] };
       state.editorMod = "None";
       return state;
-    // case "CreateTable":
-    //   if (state.draftTable !== null) {
-    //     throw new Error("Cannot create table while there is a table");
-    //   }
-    //   state.draftTable = action.payload;
-    //   return state;
-    // case "RenameTable":
-    //   if (state.draftTable === null) {
-    //     throw new Error("Cannot rename an empty table");
-    //   }
-    //
-    //   if (state.draftTable.name !== action.oldTableName) {
-    //     const scratchTableName = state.draftTable.name ?? "null";
-    //     throw new Error(
-    //       `Invalid oldTableName: action = ${action.oldTableName} scratch = ${scratchTableName}`
-    //     );
-    //   }
-    //
-    //   state.draftTable.name = action.newTableName;
-    //   return state;
     case "SetTableName":
       if (state.draftTable === null) {
         throw new Error("Cannot set table name to an empty table");
@@ -410,4 +363,21 @@ function databaseReducer(
       // ignore if the column is marked as "Add"
       return state;
   }
+}
+
+export function tableChanged(
+  oldTable: TableDef,
+  newTable: TableDef,
+  mark: ColumnMarkMap
+): boolean {
+  if (oldTable.name !== newTable.name) {
+    return true;
+  }
+
+  for (const [_, v] of Object.entries(mark)) {
+    if (v !== "None") {
+      return true;
+    }
+  }
+  return false;
 }

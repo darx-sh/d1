@@ -18,6 +18,7 @@ import {
   ColumnError,
   defaultValueToJSON,
   ColumnMarkMap,
+  tableChanged,
 } from "~/components/project/database/DatabaseContext";
 import { env } from "~/env.mjs";
 import axios, { AxiosResponse } from "axios";
@@ -73,9 +74,6 @@ function Database() {
   const dbDispatch = useDatabaseDispatch();
   const dbState = useDatabaseState();
   const envId = projectState.envInfo!.id;
-
-  // const [showCreateTable, setShowCreateTable] = useState(false);
-  // const [showEditTable, setShowEditTable] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   useEffectOnce(() => {
@@ -165,6 +163,7 @@ function Database() {
       await updateTable();
     }
   };
+
   const createTable = () => {
     const tableDef = dbState.draftTable;
     const error = validateTableDef(tableDef);
@@ -211,8 +210,15 @@ function Database() {
   };
 
   const cancelEdit = () => {
-    //   pop up
-    setShowCancelConfirm(true);
+    const tableName = dbState.curWorkingTable!.tableName;
+    const oldTable = dbState.schema[tableName]!;
+    const newTable = dbState.draftTable;
+    const marks = dbState.draftColumnMarks;
+    if (tableChanged(oldTable, newTable, marks)) {
+      setShowCancelConfirm(true);
+    } else {
+      dbDispatch({ type: "DeleteScratchTable" });
+    }
   };
 
   const dropTable = (tableName: string) => {

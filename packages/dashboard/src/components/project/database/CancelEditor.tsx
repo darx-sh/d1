@@ -80,7 +80,7 @@ export default function CancelEditor(props: CancelEditorProps) {
                     onClick={onNo}
                     ref={cancelButtonRef}
                   >
-                    Cancel
+                    No
                   </button>
                 </div>
               </Dialog.Panel>
