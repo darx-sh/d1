@@ -2,11 +2,15 @@ import { ArchiveBoxXMarkIcon, Bars3Icon } from "@heroicons/react/24/outline";
 import ColumnTypeSelect from "~/components/project/database/ColumnTypeSelect";
 import {
   DxColumnType,
-  displayDxDefaultValue,
   useDatabaseState,
   useDatabaseDispatch,
-  DxFieldType,
 } from "~/components/project/database/DatabaseContext";
+import {
+  displayDefaultValue,
+  FieldType,
+  stringToDefaultValue,
+} from "~/utils/types";
+
 import classNames from "classnames";
 
 export default function ColumnsEditor() {
@@ -18,24 +22,118 @@ export default function ColumnsEditor() {
   const columns = state.draftTable.columns;
   const columnMarks = state.draftColumnMarks;
 
-  const disableColumnProperties = (columnIndex: number) => {
-    const mark = columnMarks[columnIndex];
-    if (mark === "Add") {
-      return false;
-    } else {
-      return true;
-    }
+  const columnIsReadOnly = (columnIndex: number) => {
+    return ["id", "created_at", "updated_at"].includes(
+      columns[columnIndex]!.name
+    );
   };
 
+  const columnCanEdit = (columnIndex: number) => {
+    return columnMarks[columnIndex] === "Add";
+  };
+
+  const renderNotNull = (
+    column: DxColumnType,
+    columnIndex: number,
+    isReadOnly: boolean
+  ) => {
+    return (
+      <td
+        className={classNames(
+          column.fieldType === null ? "pointer-events-none invisible" : "",
+          rowDataClass
+        )}
+      >
+        <input
+          id="isNullable"
+          aria-describedby="comments-description"
+          name="isNullable"
+          type="checkbox"
+          className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
+          checked={!column.isNullable}
+          onChange={(event) => {
+            dispatch({
+              type: "UpdateColumn",
+              columnIndex: columnIndex,
+              column: {
+                ...column,
+                isNullable: !event.target.checked,
+              },
+            });
+          }}
+          disabled={isReadOnly ? true : false}
+        />
+      </td>
+    );
+  };
+
+  const renderDefaultValue = (
+    column: DxColumnType,
+    columnIndex: number,
+    isReadOnly: boolean
+  ) => {
+    return (
+      <td
+        className={classNames(
+          column.fieldType === null ? "pointer-events-none invisible" : "",
+          rowDataClass
+        )}
+      >
+        <input
+          type="text"
+          name="defaultValue"
+          id="defaultValue"
+          className="block w-44 rounded-md border-0 py-1.5 pl-2 text-xs text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
+          placeholder={displayDefaultValue(column.defaultValue)}
+          onChange={(event) => {
+            dispatch({
+              type: "UpdateColumn",
+              columnIndex,
+              column: {
+                ...column,
+                defaultValue: stringToDefaultValue(
+                  column.fieldType,
+                  event.target.value
+                ),
+              },
+            });
+          }}
+          disabled={isReadOnly || column.fieldType === null ? true : false}
+        />
+      </td>
+    );
+  };
+
+  const renderDelete = (
+    column: DxColumnType,
+    columnIndex: number,
+    isReadOnly: boolean
+  ) => {
+    return isReadOnly ? null : (
+      <td
+        className={rowDataClass}
+        onClick={() => {
+          dispatch({
+            type: "DelColumn",
+            columnIndex: columnIndex,
+          });
+        }}
+      >
+        <ArchiveBoxXMarkIcon
+          className="-mt-2 h-6 w-6 hover:bg-gray-500"
+          aria-hidden="true"
+        />
+      </td>
+    );
+  };
   const renderColumn = (column: DxColumnType, columnIndex: number) => {
     const mark = columnMarks[columnIndex];
     if (mark === "Del" || mark === "None") {
       return null;
     }
 
-    const columnName = column.name ?? "Column Name";
-
-    const columnReadOnly = disableColumnProperties(columnIndex);
+    const columnName = column.name ?? "";
+    const columnReadOnly = columnIsReadOnly(columnIndex);
 
     return (
       <tr
@@ -70,7 +168,7 @@ export default function ColumnsEditor() {
         <td className={classNames(rowDataClass, "w-44")}>
           <ColumnTypeSelect
             fieldType={column.fieldType}
-            onSelect={(t: DxFieldType) => {
+            onSelect={(t: FieldType) => {
               dispatch({
                 type: "UpdateColumn",
                 columnIndex,
@@ -83,56 +181,10 @@ export default function ColumnsEditor() {
             disabled={columnReadOnly}
           ></ColumnTypeSelect>
         </td>
-        <td className={rowDataClass}>
-          <input
-            type="text"
-            name="defaultValue"
-            id="defaultValue"
-            className="block w-44 rounded-md border-0 py-1.5 pl-2 text-xs text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
-            placeholder={displayDxDefaultValue(
-              column.fieldType,
-              column.defaultValue
-            )}
-            disabled={columnReadOnly ? true : false}
-          />
-        </td>
-        <td className={rowDataClass}>
-          <input
-            id="isNullable"
-            aria-describedby="comments-description"
-            name="isNullable"
-            type="checkbox"
-            className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
-            checked={!column.isNullable}
-            onChange={(event) => {
-              dispatch({
-                type: "UpdateColumn",
-                columnIndex: columnIndex,
-                column: {
-                  ...column,
-                  isNullable: !event.target.checked,
-                },
-              });
-            }}
-            disabled={columnReadOnly ? true : false}
-          />
-        </td>
-        {columnReadOnly ? null : (
-          <td
-            className={rowDataClass}
-            onClick={() => {
-              dispatch({
-                type: "DelColumn",
-                columnIndex: columnIndex,
-              });
-            }}
-          >
-            <ArchiveBoxXMarkIcon
-              className="-mt-2 h-6 w-6 hover:bg-gray-500"
-              aria-hidden="true"
-            />
-          </td>
-        )}
+
+        {renderNotNull(column, columnIndex, columnReadOnly)}
+        {renderDefaultValue(column, columnIndex, columnReadOnly)}
+        {renderDelete(column, columnIndex, columnReadOnly)}
       </tr>
     );
   };
@@ -150,10 +202,10 @@ export default function ColumnsEditor() {
                 Type
               </th>
               <th scope="col" className={headerClass}>
-                Default Value
+                Not Null
               </th>
               <th scope="col" className={headerClass}>
-                Not Null
+                Default Value
               </th>
               <th scope="col" className={headerClass}></th>
             </tr>
@@ -172,9 +224,9 @@ export default function ColumnsEditor() {
           dispatch({
             type: "AddColumn",
             column: {
-              name: null,
-              fieldType: null,
-              defaultValue: null,
+              name: "",
+              fieldType: "NotDefined",
+              defaultValue: { typ: "NotDefined", value: "" },
               isNullable: true,
               extra: null,
             },

@@ -9,14 +9,10 @@ import {
   Row,
   SchemaDef,
   TableDef,
-  MySQLFieldType,
-  mysqlToDxFieldType,
   useDatabaseDispatch,
   useDatabaseState,
-  toDxDefaultValue,
   TableDefError,
   ColumnError,
-  defaultValueToJSON,
   ColumnMarkMap,
   tableChanged,
   DefaultTableTemplate,
@@ -30,8 +26,13 @@ import {
   invoke,
   invokeAsync,
   TableEditReq,
-  columnTypeToJson,
-} from "~/utils";
+} from "~/utils/index";
+
+import {
+  MySQLFieldType,
+  mysqlToFieldType,
+  primitiveToDefaultValue,
+} from "~/utils/types";
 
 type ListTableRsp = {
   tableName: string;
@@ -53,16 +54,20 @@ function rspToSchema(rsp: ListTableRsp): SchemaDef {
       name: tableName,
       columns: columns.map(
         ({ columnName, fieldType, nullable, defaultValue, extra }) => {
-          const dxFieldType = mysqlToDxFieldType(
+          const dxFieldType = mysqlToFieldType(
             fieldType as MySQLFieldType,
             extra
           );
-          // columnTypesMap[fieldType.toLowerCase() as MySQLFieldType];
+          const isNullable = nullable === "YES";
           return {
             name: columnName,
             fieldType: dxFieldType,
-            isNullable: nullable === "YES",
-            defaultValue: toDxDefaultValue(defaultValue, dxFieldType),
+            isNullable,
+            defaultValue: primitiveToDefaultValue(
+              defaultValue,
+              dxFieldType,
+              isNullable
+            ),
             extra: null,
           };
         }
@@ -210,7 +215,7 @@ function Database() {
           req: req,
         });
       }
-      listTable(curTableName);
+      listTable(newTableDef.name!);
     }
   };
 
@@ -320,7 +325,7 @@ function validateTableDef(tableDef: TableDef): TableDefError | null {
   let hasError = false;
   const tableDefErr: TableDefError = { nameError: null, columnsError: [] };
 
-  if (tableDef.name === null) {
+  if (tableDef.name === null || tableDef.name === "") {
     hasError = true;
     tableDefErr.nameError = "Table name cannot be empty";
   }
@@ -330,11 +335,11 @@ function validateTableDef(tableDef: TableDef): TableDefError | null {
       nameError: null,
       fieldTypeError: null,
     };
-    if (col.name === null) {
+    if (col.name === "") {
       hasError = true;
       columnError.nameError = "Column name cannot be empty";
     }
-    if (col.fieldType === null) {
+    if (col.fieldType === "NotDefined") {
       hasError = true;
       columnError.fieldTypeError = "Column type cannot be empty";
     }
@@ -358,16 +363,15 @@ function validateTableDef(tableDef: TableDef): TableDefError | null {
 
 function genCreateTable(tableDef: TableDef): CreateTableReq {
   const columns = tableDef.columns.map((c) => {
-    const name = c.name!;
-    const fieldType = c.fieldType!;
+    const name = c.name;
+    const fieldType = c.fieldType;
     const isNullable = c.isNullable;
     const extra = c.extra;
     return {
       name,
       fieldType,
       isNullable,
-      defaultValue:
-        c.defaultValue === null ? null : defaultValueToJSON(c.defaultValue),
+      defaultValue: c.defaultValue,
       extra,
     };
   });
@@ -411,19 +415,19 @@ function genTableEdit(
         reqs.push({
           addColumn: {
             tableName: newTable.name!,
-            column: columnTypeToJson(newTable.columns[i]!),
+            column: newTable.columns[i]!,
           },
         });
         break;
       case "Update":
         // Can only rename column name now.
         // Other properties like column type, default value, nullable cannot be changed after table is created.
-        if (oldTable.columns[i]!.name! !== newTable.columns[i]!.name!) {
+        if (oldTable.columns[i]!.name !== newTable.columns[i]!.name) {
           reqs.push({
             renameColumn: {
               tableName: newTable.name!,
-              oldColumnName: oldTable.columns[i]!.name!,
-              newColumnName: newTable.columns[i]!.name!,
+              oldColumnName: oldTable.columns[i]!.name,
+              newColumnName: newTable.columns[i]!.name,
             },
           });
         }
@@ -432,7 +436,7 @@ function genTableEdit(
         reqs.push({
           dropColumn: {
             tableName: newTable.name!,
-            columnName: newTable.columns[i]!.name!,
+            columnName: newTable.columns[i]!.name,
           },
         });
         break;

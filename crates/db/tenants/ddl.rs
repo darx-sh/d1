@@ -1,6 +1,6 @@
 use crate::tenants::{
   AddColumnReq, CreateTableReq, DropColumnReq, DropTableReq, DxDefaultValue,
-  RenameColumnReq, RenameTableReq,
+  DxDefaultValueTyp, RenameColumnReq, RenameTableReq,
 };
 use crate::tenants::{DxColumnType, DxFieldType, DxIdent};
 use anyhow::Result;
@@ -77,7 +77,7 @@ pub fn create_table_sql(req: &CreateTableReq) -> Result<String> {
   stmt.table(DxIdent(req.table_name.clone()));
   // stmt.col(&mut id).col(&mut created_at).col(&mut updated_at);
   for column in &req.columns {
-    let mut column_def = new_column_def(column);
+    let mut column_def = new_column_def(column)?;
     stmt.col(&mut column_def);
   }
 
@@ -108,7 +108,7 @@ pub fn drop_table_sql(req: &DropTableReq) -> Result<String> {
 pub fn add_column_sql(req: &AddColumnReq) -> Result<String> {
   let mut stmt = Table::alter();
   stmt.table(DxIdent(req.table_name.clone()));
-  let mut column_def = new_column_def(&req.column);
+  let mut column_def = new_column_def(&req.column)?;
   stmt.add_column(&mut column_def);
   Ok(stmt.build(MysqlQueryBuilder))
 }
@@ -130,7 +130,7 @@ pub fn drop_column_sql(req: &DropColumnReq) -> Result<String> {
   Ok(stmt.build(MysqlQueryBuilder))
 }
 
-fn new_column_def(column_type: &DxColumnType) -> ColumnDef {
+fn new_column_def(column_type: &DxColumnType) -> Result<ColumnDef> {
   let mut column_def = ColumnDef::new(DxIdent(column_type.name.clone()));
   match column_type.field_type {
     DxFieldType::Bool => {
@@ -143,6 +143,10 @@ fn new_column_def(column_type: &DxColumnType) -> ColumnDef {
       column_def.big_integer();
       column_def.auto_increment();
       column_def.primary_key();
+    }
+    DxFieldType::Varchar255 => {
+      column_def.string();
+      column_def.string_len(255);
     }
     DxFieldType::Text => {
       column_def.text();
@@ -161,36 +165,39 @@ fn new_column_def(column_type: &DxColumnType) -> ColumnDef {
     column_def.not_null();
   }
 
-  if let Some(default_value) = &column_type.default_value {
-    match default_value {
-      DxDefaultValue::Bool(v) => {
-        column_def.default(*v);
-      }
-      DxDefaultValue::Int64(v) => {
-        column_def.default(*v);
-      }
-      DxDefaultValue::Float64(v) => {
-        column_def.default(*v);
-      }
-      DxDefaultValue::Text(v) => {
-        column_def.default(v);
-      }
-      DxDefaultValue::DateTime(v) => {
-        column_def.default(v);
-      }
-      DxDefaultValue::Expr(v) => {
-        column_def.default(Expr::cust(v.clone()));
-      }
-      DxDefaultValue::Null => {
-        // do nothing
-      }
+  match column_type.default_value.typ {
+    DxDefaultValueTyp::Int64 => {
+      let v = column_type.default_value.value.parse::<i64>()?;
+      column_def.default(v);
+    }
+    DxDefaultValueTyp::Float64 => {
+      let v = column_type.default_value.value.parse::<f64>()?;
+      column_def.default(v);
+    }
+    DxDefaultValueTyp::DateTime => {
+      let v = &column_type.default_value.value;
+      column_def.default(v);
+    }
+    DxDefaultValueTyp::Varchar => {
+      let v = &column_type.default_value.value;
+      column_def.default(v);
+    }
+    DxDefaultValueTyp::Expr => {
+      let v = &column_type.default_value.value;
+      column_def.default(Expr::cust(v.clone()));
+    }
+    DxDefaultValueTyp::Null => {
+      // do nothing
+    }
+    DxDefaultValueTyp::NotDefined => {
+      // do nothing
     }
   }
 
   if let Some(extra) = &column_type.extra {
     column_def.extra(extra);
   }
-  column_def
+  Ok(column_def)
 }
 
 #[cfg(test)]
@@ -206,32 +213,40 @@ mod tests {
           name: "id".to_string(),
           field_type: DxFieldType::Int64,
           is_nullable: false,
-          default_value: None,
+          default_value: DxDefaultValue {
+            typ: DxDefaultValueTyp::NotDefined,
+            value: "".to_string(),
+          },
           extra: None,
         },
         DxColumnType {
           name: "created_at".to_string(),
           field_type: DxFieldType::DateTime,
           is_nullable: false,
-          default_value: Some(DxDefaultValue::Expr(
-            "CURRENT_TIMESTAMP(3)".to_string(),
-          )),
+          default_value: DxDefaultValue {
+            typ: DxDefaultValueTyp::Expr,
+            value: "CURRENT_TIMESTAMP(3)".to_string(),
+          },
           extra: None,
         },
         DxColumnType {
           name: "updated_at".to_string(),
           field_type: DxFieldType::DateTime,
           is_nullable: false,
-          default_value: Some(DxDefaultValue::Expr(
-            "CURRENT_TIMESTAMP(3)".to_string(),
-          )),
+          default_value: DxDefaultValue {
+            typ: DxDefaultValueTyp::Expr,
+            value: "CURRENT_TIMESTAMP(3)".to_string(),
+          },
           extra: Some("ON UPDATE CURRENT_TIMESTAMP(3)".to_string()),
         },
         DxColumnType {
           name: "age".to_string(),
           field_type: DxFieldType::Int64,
           is_nullable: false,
-          default_value: None,
+          default_value: DxDefaultValue {
+            typ: DxDefaultValueTyp::NotDefined,
+            value: "".to_string(),
+          },
           extra: None,
         },
       ],
@@ -251,7 +266,10 @@ mod tests {
         name: "age".to_string(),
         field_type: DxFieldType::Int64,
         is_nullable: true,
-        default_value: None,
+        default_value: DxDefaultValue {
+          typ: DxDefaultValueTyp::NotDefined,
+          value: "".to_string(),
+        },
         extra: None,
       },
     };

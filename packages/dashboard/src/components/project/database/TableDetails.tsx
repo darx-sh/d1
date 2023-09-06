@@ -1,8 +1,12 @@
-import { useState } from "react";
-import { Row, useDatabaseState, useDatabaseDispatch } from "./DatabaseContext";
-import { Cog6ToothIcon } from "@heroicons/react/24/outline";
+import {
+  Row,
+  useDatabaseState,
+  useDatabaseDispatch,
+  TableDef,
+} from "./DatabaseContext";
 import TableEditorModal from "~/components/project/database/TableEditorModal";
 import TableActions from "~/components/project/database/TableActions";
+import { FieldType } from "~/utils/types";
 
 export interface TableDetailsProps {
   handleDeleteTable: (tableName: string) => void;
@@ -43,7 +47,37 @@ export default function TableDetails(props: TableDetailsProps) {
     );
   };
 
-  const renderOneRow = (row: Row, columnNames: string[], ridx: number) => {
+  const displayColumnValue = (v: any, fieldType: FieldType) => {
+    if (v === null) {
+      return "NULL";
+    }
+
+    switch (fieldType) {
+      case "int64":
+        return (v as number).toString();
+      case "int64Identity":
+        return (v as number).toString();
+      case "float64":
+        return (v as number).toString();
+      case "bool":
+        return (v as boolean).toString();
+      case "datetime":
+        return v as string;
+      case "varchar(255)":
+        return v as string;
+      case "text":
+        return v as string;
+      case "NotDefined":
+        throw new Error("Field type is not defined");
+    }
+  };
+
+  const renderOneRow = (
+    row: Row,
+    columnNames: string[],
+    ridx: number,
+    tableDef: TableDef
+  ) => {
     return (
       <tr key={ridx}>
         {columnNames.map((name, idx) => {
@@ -52,7 +86,7 @@ export default function TableDetails(props: TableDetailsProps) {
               key={idx}
               className="whitespace-nowrap border px-4 py-4 text-sm text-gray-500"
             >
-              {row[name]}
+              {displayColumnValue(row[name]!, tableDef.columns[idx]!.fieldType)}
             </td>
           );
         })}
@@ -60,9 +94,9 @@ export default function TableDetails(props: TableDetailsProps) {
     );
   };
 
-  const renderRows = (columnNames: string[]) => {
+  const renderRows = (columnNames: string[], tableDef: TableDef) => {
     return dbState.curWorkingTable?.rows.map((row, idx) => {
-      return renderOneRow(row, columnNames, idx);
+      return renderOneRow(row, columnNames, idx, tableDef);
     });
   };
 
@@ -107,7 +141,7 @@ export default function TableDetails(props: TableDetailsProps) {
         <div className="overflow-auto py-2 align-middle">
           <table>
             <thead>{renderColumnNames(columnNames)}</thead>
-            <tbody>{renderRows(columnNames)}</tbody>
+            <tbody>{renderRows(columnNames, tableDef)}</tbody>
           </table>
         </div>
       </div>

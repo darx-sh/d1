@@ -84,79 +84,78 @@ impl Serialize for XRow {
   {
     let columns = self.0.columns();
     let mut map = serializer.serialize_map(Some(columns.len()))?;
-    for column in columns {
+    for (idx, column) in columns.iter().enumerate() {
       let name = column.name();
       let type_info = column.type_info();
       let type_name = type_info.name();
 
-      println!("name: {}, type_name: {}", name, type_name);
-
+      // There is an issue whe use try_get(name): https://github.com/launchbadge/sqlx/issues/2206
+      // which leads to "ColumnNotFound", so we use try_get(idx) instead.
       match type_name {
         "BOOLEAN" => {
-          let v: Option<bool> = self.0.try_get(name).unwrap();
+          let v: Option<bool> = self.0.try_get(idx).unwrap();
           map.serialize_entry(name, &v)?;
         }
         "TINYINT UNSIGNED" | "SMALLINT UNSIGNED" | "INT UNSIGNED"
         | "MEDIUMINT UNSIGNED" | "BIGINT UNSIGNED" => {
-          let v: Option<u64> = self.0.try_get(name).unwrap();
+          let v: Option<u64> = self.0.try_get(idx).unwrap();
           map.serialize_entry(name, &v)?;
         }
         "TINYINT" | "SMALLINT" | "INT" | "MEDIUMINT" | "BIGINT" => {
-          let v: Option<i64> = self.0.try_get(name).unwrap();
+          let v: Option<i64> = self.0.try_get(idx).unwrap();
           map.serialize_entry(name, &v)?;
         }
         "FLOAT" => {
-          let v: Option<f32> = self.0.try_get(name).unwrap();
+          let v: Option<f32> = self.0.try_get(idx).unwrap();
           map.serialize_entry(name, &v)?;
         }
         "DOUBLE" => {
-          let v: Option<f64> = self.0.try_get(name).unwrap();
+          let v: Option<f64> = self.0.try_get(idx).unwrap();
           map.serialize_entry(name, &v)?;
         }
         "DECIMAL" => {
           // todo: why?
-          let v: Option<sqlx::types::BigDecimal> =
-            self.0.try_get(name).unwrap();
+          let v: Option<sqlx::types::BigDecimal> = self.0.try_get(idx).unwrap();
           let v = v.map(|v| format!("{}", v));
           map.serialize_entry(name, &v)?;
         }
         "NULL" => {
-          let v: Option<String> = self.0.try_get(name).unwrap();
+          let v: Option<String> = self.0.try_get(idx).unwrap();
           map.serialize_entry(name, &v)?;
         }
         "TIMESTAMP" | "DATETIME" => {
-          let v: Option<time::OffsetDateTime> = self.0.try_get(name).unwrap();
+          let v: Option<time::OffsetDateTime> = self.0.try_get(idx).unwrap();
           let v = v.map(|v| format!("{}", v));
           map.serialize_entry(name, &v)?;
         }
         "DATE" => {
-          let v: Option<time::Date> = self.0.try_get(name).unwrap();
+          let v: Option<time::Date> = self.0.try_get(idx).unwrap();
           let v = v.map(|v| format!("{}", v));
           map.serialize_entry(name, &v)?;
         }
         "TIME" => {
-          let v: Option<time::Time> = self.0.try_get(name).unwrap();
+          let v: Option<time::Time> = self.0.try_get(idx).unwrap();
           let v = v.map(|v| format!("{}", v));
           map.serialize_entry(name, &v)?;
         }
         "YEAR" => {
-          let v: Option<String> = self.0.try_get(name).unwrap();
+          let v: Option<String> = self.0.try_get(idx).unwrap();
           map.serialize_entry(name, &v)?;
         }
         "BIT" => {
-          let v: Option<Vec<u8>> = self.0.try_get(name).unwrap();
+          let v: Option<Vec<u8>> = self.0.try_get(idx).unwrap();
           map.serialize_entry(name, &v)?;
         }
         "ENUM" => {
-          let v: Option<String> = self.0.try_get(name).unwrap();
+          let v: Option<String> = self.0.try_get(idx).unwrap();
           map.serialize_entry(name, &v)?;
         }
         "SET" => {
-          let v: Option<String> = self.0.try_get(name).unwrap();
+          let v: Option<String> = self.0.try_get(idx).unwrap();
           map.serialize_entry(name, &v)?;
         }
         "CHAR" | "VARCHAR" | "TEXT" | "LONGTEXT" => {
-          let v: Option<String> = self.0.try_get(name).unwrap();
+          let v: Option<String> = self.0.try_get(idx).unwrap();
           println!("v = {:?}", v);
           map.serialize_entry(name, &v)?;
         }

@@ -32,7 +32,7 @@ export async function paginateTable(tableName, prevCreatedAt, prevIds, limit) {
   };
 
   const whereFragment = whereCreated(prevCreatedAt) + whereIds(prevIds);
-  const sql = `SELECT * FROM ${tableName} ${whereFragment} ORDER BY created_at DESC LIMIT ?`;
+  const sql = `SELECT * FROM ${tableName} ${whereFragment} ORDER BY created_at ASC LIMIT ?`;
   const params = [...paramCreated(prevCreatedAt), ...paramIds(prevIds), limit];
   const db = await useDB();
   const { rows } = await db.execute(sql, ...params);
