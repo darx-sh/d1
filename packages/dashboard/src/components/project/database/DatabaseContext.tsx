@@ -46,7 +46,7 @@ export type DxFieldType =
   | "float64"
   | "bool"
   | "datetime"
-  | "varchar"
+  | "varchar(255)"
   | "text";
 
 export const SELECTABLE_DX_FIELD_TYPES: DxFieldType[] = [
@@ -54,7 +54,7 @@ export const SELECTABLE_DX_FIELD_TYPES: DxFieldType[] = [
   "float64",
   "bool",
   "datetime",
-  "varchar",
+  "varchar(255)",
   "text",
 ];
 
@@ -79,8 +79,8 @@ export function toDxFieldType(t: string): DxFieldType {
       return "bool";
     case "datetime":
       return "datetime";
-    case "varchar":
-      return "varchar";
+    case "varchar(255)":
+      return "varchar(255)";
     case "text":
       return "text";
     default:
@@ -211,7 +211,7 @@ export function mysqlToDxFieldType(
     case "datetime":
       return "datetime";
     case "varchar":
-      return "varchar";
+      return "varchar(255)";
     case "text":
       return "text";
   }

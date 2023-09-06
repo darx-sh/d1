@@ -53,6 +53,8 @@ pub enum DxFieldType {
   Int64,
   #[serde(rename = "int64_identity")]
   Int64Identity,
+  #[serde(rename = "varchar(255)")]
+  Varchar255,
   #[serde(rename = "text")]
   Text,
   // Approximate numeric values

@@ -22,7 +22,6 @@ export default function ColumnTypeSelect(props: ColumnTypeSelectProps) {
     <Listbox
       value={selected}
       onChange={(t: string) => {
-        console.log("select: ", t);
         const f = toDxFieldType(t);
         setSelected(f);
         props.onSelect(f);

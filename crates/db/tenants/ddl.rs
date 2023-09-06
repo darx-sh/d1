@@ -144,6 +144,10 @@ fn new_column_def(column_type: &DxColumnType) -> ColumnDef {
       column_def.auto_increment();
       column_def.primary_key();
     }
+    DxFieldType::Varchar255 => {
+      column_def.string();
+      column_def.string_len(255);
+    }
     DxFieldType::Text => {
       column_def.text();
     }
