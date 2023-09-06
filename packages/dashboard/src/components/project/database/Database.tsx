@@ -221,24 +221,31 @@ function Database() {
 
   const cancelEdit = () => {
     const marks = dbState.draftColumnMarks;
-    if (dbState.curWorkingTable === null) {
-      // new table creation.
-      if (tableChanged(DefaultTableTemplate, dbState.draftTable, marks)) {
-        setShowCancelConfirm(true);
-        return;
-      } else {
-        dbDispatch({ type: "DeleteScratchTable" });
-        return;
-      }
+    let hasChanged = false;
+    switch (dbState.editorMod) {
+      case "Create":
+        if (tableChanged(DefaultTableTemplate, dbState.draftTable, marks)) {
+          hasChanged = true;
+        }
+        break;
+      case "Update":
+        const tableName = dbState.curWorkingTable!.tableName;
+        if (
+          tableChanged(dbState.schema[tableName]!, dbState.draftTable, marks)
+        ) {
+          hasChanged = true;
+        }
+        break;
+      case "None":
+        throw new Error("cancel editor in non-edit mode");
     }
 
-    const tableName = dbState.curWorkingTable.tableName;
-    const oldTable = dbState.schema[tableName]!;
-    const newTable = dbState.draftTable;
-    if (tableChanged(oldTable, newTable, marks)) {
+    if (hasChanged) {
       setShowCancelConfirm(true);
+      return;
     } else {
       dbDispatch({ type: "DeleteScratchTable" });
+      return;
     }
   };
 

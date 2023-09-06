@@ -181,7 +181,6 @@ function databaseReducer(
       state.editorMod = "Update";
       return state;
     case "InitDraftFromTemplate":
-      console.log("init draft from template: ", DefaultTableTemplate);
       state.draftTable = DefaultTableTemplate;
       state.editorMod = "Create";
       return state;
