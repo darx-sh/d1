@@ -91,6 +91,8 @@ impl Serialize for XRow {
 
       println!("name: {}, type_name: {}", name, type_name);
 
+      // There is an issue whe use try_get(name): https://github.com/launchbadge/sqlx/issues/2206
+      // which leads to "ColumnNotFound", so we use try_get(idx) instead.
       match type_name {
         "BOOLEAN" => {
           let v: Option<bool> = self.0.try_get(idx).unwrap();
