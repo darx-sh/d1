@@ -1,16 +1,10 @@
-import { useState, useEffect, Fragment, useRef } from "react";
+import { Fragment, useRef } from "react";
 import { Dialog, Transition } from "@headlessui/react";
 import { XMarkIcon, ExclamationCircleIcon } from "@heroicons/react/24/outline";
 import ColumnsEditor from "~/components/project/database/ColumnsEditor";
 import {
-  DxFieldType,
-  DxColumnType,
-  ColumnError,
-  TableDef,
-  TableDefError,
   useDatabaseDispatch,
   useDatabaseState,
-  defaultValueToJSON,
 } from "~/components/project/database/DatabaseContext";
 
 type TableEditorProps = {

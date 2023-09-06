@@ -13,8 +13,6 @@ export async function listTable() {
     Darx.env.DX_DB_NAME
   );
 
-  console.log(rTableNames);
-
   for (const { tableName } of rTableNames) {
     // Get column names
     const { rows: rColumns } = await db.execute(

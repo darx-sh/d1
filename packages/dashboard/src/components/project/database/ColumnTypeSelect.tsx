@@ -2,17 +2,17 @@ import { Fragment, useState } from "react";
 import { Listbox, Transition } from "@headlessui/react";
 import { CheckIcon, ChevronDownIcon } from "@heroicons/react/20/solid";
 import {
-  DxFieldType,
-  SELECTABLE_DX_FIELD_TYPES,
-  displayDxFieldType,
-  toDxFieldType,
-} from "~/components/project/database/DatabaseContext";
+  FieldType,
+  USER_FIELD_TYPES,
+  displayFieldType,
+  displayToFieldType,
+} from "~/utils/types";
 import className from "classnames";
 
 interface ColumnTypeSelectProps {
   disabled: boolean;
-  fieldType: DxFieldType | null;
-  onSelect: (d: DxFieldType) => void;
+  fieldType: FieldType | null;
+  onSelect: (d: FieldType) => void;
 }
 
 export default function ColumnTypeSelect(props: ColumnTypeSelectProps) {
@@ -22,7 +22,7 @@ export default function ColumnTypeSelect(props: ColumnTypeSelectProps) {
     <Listbox
       value={selected}
       onChange={(t: string) => {
-        const f = toDxFieldType(t);
+        const f = displayToFieldType(t);
         setSelected(f);
         props.onSelect(f);
       }}
@@ -34,7 +34,7 @@ export default function ColumnTypeSelect(props: ColumnTypeSelectProps) {
             <div className="flex divide-x divide-indigo-700">
               <div className="flex-1 gap-x-1.5 px-3 py-1.5">
                 <p className="text-sm text-gray-400">
-                  {selected === null ? "---" : displayDxFieldType(selected)}
+                  {selected === null ? "---" : displayFieldType(selected)}
                 </p>
               </div>
               {props.disabled ? null : (
@@ -55,7 +55,7 @@ export default function ColumnTypeSelect(props: ColumnTypeSelectProps) {
               leaveTo="opacity-0"
             >
               <Listbox.Options className="absolute left-0 z-10 mt-2 w-48 origin-top-right divide-y divide-gray-200 overflow-hidden rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-                {SELECTABLE_DX_FIELD_TYPES.map((dxFieldType) => (
+                {USER_FIELD_TYPES.map((dxFieldType) => (
                   <Listbox.Option
                     key={dxFieldType}
                     className={({ active }) =>
@@ -64,7 +64,7 @@ export default function ColumnTypeSelect(props: ColumnTypeSelectProps) {
                         "cursor-default select-none p-4 text-sm"
                       )
                     }
-                    value={displayDxFieldType(dxFieldType)}
+                    value={displayFieldType(dxFieldType)}
                   >
                     {({ selected, active }) => (
                       <div className="flex flex-col">
@@ -74,7 +74,7 @@ export default function ColumnTypeSelect(props: ColumnTypeSelectProps) {
                               selected ? "font-semibold" : "font-normal"
                             }
                           >
-                            {displayDxFieldType(dxFieldType)}
+                            {displayFieldType(dxFieldType)}
                           </p>
                           {selected ? (
                             <span

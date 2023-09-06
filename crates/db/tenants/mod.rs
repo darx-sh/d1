@@ -27,22 +27,37 @@ pub trait TenantConnPool {
   fn as_any(&self) -> &dyn Any;
 }
 
-#[derive(Deserialize, Debug)]
-pub enum DxDefaultValue {
-  #[serde(rename = "bool")]
-  Bool(bool),
+pub enum DxDefaultValueType {
+  Int64,
+  Float64,
+  Bool,
+  Varchar,
+  Expr,
+  Null,
+  Empty,
+}
+
+#[derive(Deserialize, Debug, PartialEq)]
+pub enum DxDefaultValueTyp {
   #[serde(rename = "int64")]
-  Int64(i64),
+  Int64,
   #[serde(rename = "float64")]
-  Float64(f64),
-  #[serde(rename = "text")]
-  Text(String),
+  Float64,
+  #[serde(rename = "varchar(255)")]
+  Varchar,
   #[serde(rename = "datetime")]
-  DateTime(String),
+  DateTime,
   #[serde(rename = "expr")]
-  Expr(String),
+  Expr,
   #[serde(rename = "NULL")]
   Null,
+  NotDefined,
+}
+
+#[derive(Deserialize, Debug, PartialEq)]
+pub struct DxDefaultValue {
+  pub typ: DxDefaultValueTyp,
+  pub value: String,
 }
 
 #[derive(Deserialize, Debug, PartialEq)]
@@ -51,7 +66,7 @@ pub enum DxFieldType {
   Bool,
   #[serde(rename = "int64")]
   Int64,
-  #[serde(rename = "int64_identity")]
+  #[serde(rename = "int64Identity")]
   Int64Identity,
   #[serde(rename = "varchar(255)")]
   Varchar255,
@@ -72,7 +87,7 @@ pub struct DxColumnType {
   #[serde(rename = "isNullable")]
   pub is_nullable: bool,
   #[serde(rename = "defaultValue")]
-  pub default_value: Option<DxDefaultValue>,
+  pub default_value: DxDefaultValue,
   pub extra: Option<String>,
 }
 

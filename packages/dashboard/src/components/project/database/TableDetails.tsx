@@ -1,14 +1,12 @@
-import { useState } from "react";
 import {
   Row,
   useDatabaseState,
   useDatabaseDispatch,
   TableDef,
-  DxFieldType,
 } from "./DatabaseContext";
-import { Cog6ToothIcon } from "@heroicons/react/24/outline";
 import TableEditorModal from "~/components/project/database/TableEditorModal";
 import TableActions from "~/components/project/database/TableActions";
+import { FieldType } from "~/utils/types";
 
 export interface TableDetailsProps {
   handleDeleteTable: (tableName: string) => void;
@@ -49,11 +47,7 @@ export default function TableDetails(props: TableDetailsProps) {
     );
   };
 
-  const displayColumnValue = (v: any | undefined, fieldType: DxFieldType) => {
-    if (v === undefined) {
-      return "NULL";
-    }
-
+  const displayColumnValue = (v: any, fieldType: FieldType) => {
     if (v === null) {
       return "NULL";
     }
@@ -61,7 +55,7 @@ export default function TableDetails(props: TableDetailsProps) {
     switch (fieldType) {
       case "int64":
         return (v as number).toString();
-      case "int64_identity":
+      case "int64Identity":
         return (v as number).toString();
       case "float64":
         return (v as number).toString();
@@ -73,6 +67,8 @@ export default function TableDetails(props: TableDetailsProps) {
         return v as string;
       case "text":
         return v as string;
+      case "NotDefined":
+        throw new Error("Field type is not defined");
     }
   };
 
@@ -82,17 +78,15 @@ export default function TableDetails(props: TableDetailsProps) {
     ridx: number,
     tableDef: TableDef
   ) => {
-    console.log("row: ", row);
     return (
       <tr key={ridx}>
         {columnNames.map((name, idx) => {
-          console.log("name: ", name, " value: ", row[name]);
           return (
             <td
               key={idx}
               className="whitespace-nowrap border px-4 py-4 text-sm text-gray-500"
             >
-              {displayColumnValue(row[name], tableDef.columns[idx]!.fieldType!)}
+              {displayColumnValue(row[name]!, tableDef.columns[idx]!.fieldType)}
             </td>
           );
         })}
