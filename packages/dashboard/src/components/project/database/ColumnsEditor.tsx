@@ -33,7 +33,7 @@ export default function ColumnsEditor() {
       return null;
     }
 
-    const columnName = column.name ?? "Column Name";
+    const columnName = column.name ?? "";
 
     const columnReadOnly = disableColumnProperties(columnIndex);
 

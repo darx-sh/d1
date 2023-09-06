@@ -210,7 +210,7 @@ function Database() {
           req: req,
         });
       }
-      listTable(curTableName);
+      listTable(newTableDef.name!);
     }
   };
 
