@@ -1,5 +1,5 @@
-import { DDLReq, invoke, invokeAsync } from "~/utils";
 import {
+  DxColumnType,
   SchemaDef,
   TableDef,
 } from "~/components/project/database/DatabaseContext";
@@ -9,6 +9,8 @@ import {
   primitiveToDefaultValue,
 } from "~/utils/types";
 import { Row } from "~/components/project/database/DatabaseContext";
+import { env } from "~/env.mjs";
+import axios from "axios";
 
 export async function loadSchema(envId: string) {
   const req = {};
@@ -60,6 +62,50 @@ type ListTableRsp = {
   primaryKey: string[];
 }[];
 
+export type DDLReq = CreateTableReq | TableEditReq;
+
+export interface CreateTableReq {
+  createTable: {
+    tableName: string;
+    columns: DxColumnType[];
+  };
+}
+
+export type TableEditReq =
+  | RenameTableReq
+  | AddColumnReq
+  | RenameColumnReq
+  | DropColumnReq;
+
+export interface RenameTableReq {
+  renameTable: {
+    oldTableName: string;
+    newTableName: string;
+  };
+}
+
+export interface AddColumnReq {
+  addColumn: {
+    tableName: string;
+    column: DxColumnType;
+  };
+}
+
+export interface RenameColumnReq {
+  renameColumn: {
+    tableName: string;
+    oldColumnName: string;
+    newColumnName: string;
+  };
+}
+
+export interface DropColumnReq {
+  dropColumn: {
+    tableName: string;
+    columnName: string;
+  };
+}
+
 function rspToSchema(rsp: ListTableRsp): SchemaDef {
   const schema = {} as SchemaDef;
   for (const { tableName, columns, primaryKey } of rsp) {
@@ -89,4 +135,32 @@ function rspToSchema(rsp: ListTableRsp): SchemaDef {
     schema[tableName] = tableDef;
   }
   return schema;
+}
+
+function invoke<T>(
+  envId: string,
+  path: string,
+  param: T,
+  success: (data: any) => void,
+  error: (e: any) => void
+) {
+  const functionUrl = `${env.NEXT_PUBLIC_DATA_PLANE_URL}/invoke/${path}`;
+  axios
+    .post(functionUrl, param, {
+      headers: { "Darx-Dev-Host": `${envId}.darx.sh` },
+    })
+    .then((response) => {
+      success(response.data);
+    })
+    .catch((e) => {
+      error(e);
+    });
+}
+
+async function invokeAsync<P, R>(envId: string, path: string, param: P) {
+  const functionUrl = `${env.NEXT_PUBLIC_DATA_PLANE_URL}/invoke/${path}`;
+  const response = await axios.post<R>(functionUrl, param, {
+    headers: { "Darx-Dev-Host": `${envId}.darx.sh` },
+  });
+  return response.data;
 }

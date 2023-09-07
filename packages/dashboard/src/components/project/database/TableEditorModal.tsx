@@ -6,7 +6,6 @@ import {
   useDatabaseDispatch,
   useDatabaseState,
 } from "~/components/project/database/DatabaseContext";
-import { CreateTableReq, TableEditReq } from "~/utils";
 import {
   ColumnError,
   ColumnMarkMap,
@@ -15,7 +14,12 @@ import {
   TableDef,
   TableDefError,
 } from "~/components/project/database/DatabaseContext";
-import { ddl, loadSchema } from "~/components/project/database/Api";
+import {
+  ddl,
+  loadSchema,
+  CreateTableReq,
+  TableEditReq,
+} from "~/components/project/database/Api";
 import CancelEditor from "~/components/project/database/CancelEditor";
 
 type TableEditorProps = {

@@ -1,9 +1,9 @@
-import { DatabaseProvider } from "~/components/project/database/DatabaseContext";
+import { useDatabaseState } from "~/components/project/database/DatabaseContext";
 import { useProjectState } from "~/components/project/ProjectContext";
 import DatabaseNav from "~/components/project/database/DatabaseNav";
 import DatabaseDetails from "~/components/project/database/DatabaseDetails";
 
-function Database() {
+export default function Database() {
   const projectState = useProjectState();
   const envId = projectState.envInfo!.id;
 
@@ -16,13 +16,5 @@ function Database() {
         <DatabaseDetails envId={envId} />
       </div>
     </div>
-  );
-}
-
-export default function DatabaseWrapper() {
-  return (
-    <DatabaseProvider>
-      <Database />
-    </DatabaseProvider>
   );
 }
