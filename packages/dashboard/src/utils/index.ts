@@ -34,6 +34,8 @@ export async function invokeAsync<P, R>(envId: string, path: string, param: P) {
   return response.data;
 }
 
+export type DDLReq = CreateTableReq | TableEditReq;
+
 export interface CreateTableReq {
   createTable: {
     tableName: string;
