@@ -83,7 +83,6 @@ type ProjectAction =
   | { type: "RenameDirectory"; oldFsPath: string; newFsPath: string }
   | { type: "DeleteJsFile"; fsPath: string }
   | { type: "DeleteDirectory"; fsPath: string }
-  | { type: "DoubleClickJsFile"; fsPath: string }
   | { type: "CloseJsTab"; fsPath: string }
   | { type: "SelectTab"; tabIdx: number }
   | { type: "UpdatePostParam"; httpRoute: HttpRoute; param: string }

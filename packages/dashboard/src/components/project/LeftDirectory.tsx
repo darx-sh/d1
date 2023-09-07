@@ -74,13 +74,13 @@ export default function LeftDirectory() {
   const projectDispatch = useProjectDispatch();
 
   const handleNodeSelect = (nodeSelectProps: ITreeViewOnNodeSelectProps) => {
-    const { element } = nodeSelectProps;
-    if (!element.isBranch) {
-      projectDispatch({
-        type: "OpenJsFile",
-        nodeId: element.id,
-      });
-    }
+    // const { element } = nodeSelectProps;
+    // if (!element.isBranch) {
+    //   projectDispatch({
+    //     type: "OpenJsFile",
+    //     nodeId: element.id,
+    //   });
+    // }
   };
 
   return (
@@ -121,6 +121,7 @@ export default function LeftDirectory() {
           isExpanded,
           getNodeProps,
           level,
+          handleSelect,
         }) => {
           return (
             <div
@@ -139,6 +140,15 @@ export default function LeftDirectory() {
                     element.isBranch,
                     element.id
                   );
+                }}
+                onClick={(e) => {
+                  if (!isBranch) {
+                    projectDispatch({
+                      type: "OpenJsFile",
+                      nodeId: element.id,
+                    });
+                  }
+                  handleSelect(e);
                 }}
               >
                 {isBranch && isExpanded ? (
