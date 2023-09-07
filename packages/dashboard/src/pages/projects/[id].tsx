@@ -14,6 +14,7 @@ import {
 import axios from "axios";
 import axiosRetry from "axios-retry";
 import { useInterval } from "usehooks-ts";
+import { DatabaseProvider } from "~/components/project/database/DatabaseContext";
 
 function ProjectDetail() {
   const router = useRouter();
@@ -181,7 +182,9 @@ function ProjectDetail() {
 function ProjectDetailWrapper() {
   return (
     <ProjectProvider>
-      <ProjectDetail></ProjectDetail>
+      <DatabaseProvider>
+        <ProjectDetail></ProjectDetail>
+      </DatabaseProvider>
     </ProjectProvider>
   );
 }

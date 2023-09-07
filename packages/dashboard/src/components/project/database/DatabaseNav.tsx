@@ -6,7 +6,7 @@ export default function DatabaseNav() {
   const dispatch = useDatabaseDispatch();
 
   let curTableName: string | null = null;
-  if (state.curNav.typ == "Table") {
+  if (state.curNav.typ === "Table") {
     curTableName = state.curNav.tableName;
   }
 

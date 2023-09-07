@@ -14,8 +14,9 @@ export default function SchemaDetails(props: SchemaDetailsProps) {
   const state = useDatabaseState();
   const dispatch = useDatabaseDispatch();
   const [isLoading, setIsLoading] = useState(true);
-
+  console.log("schema details");
   useEffect(() => {
+    console.log("schema details effect");
     const fetchData = async () => {
       const schema = await loadSchema(props.envId);
       dispatch({ type: "LoadSchema", schemaDef: schema });
