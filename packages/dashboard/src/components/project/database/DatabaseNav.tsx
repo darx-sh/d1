@@ -1,24 +1,14 @@
-import { useState } from "react";
 import { useDatabaseState, useDatabaseDispatch, Row } from "./DatabaseContext";
-import TableEditorModal from "~/components/project/database/TableEditorModal";
-import { env } from "~/env.mjs";
-import axios from "axios";
-import { useProjectState } from "~/components/project/ProjectContext";
-import Spinner from "~/components/project/Spinner";
+import classNames from "classnames";
 
-function classNames(...classes: string[]) {
-  return classes.filter(Boolean).join(" ");
-}
-
-interface TableListProps {
-  onSelectTable: (tableName: string) => void;
-}
-
-export default function TableList(props: TableListProps) {
+export default function DatabaseNav() {
   const state = useDatabaseState();
   const dispatch = useDatabaseDispatch();
-  const projectState = useProjectState();
-  const curTableName = state.curWorkingTable?.tableName;
+
+  let curTableName: string | null = null;
+  if (state.curNav.typ == "Table") {
+    curTableName = state.curNav.tableName;
+  }
 
   const navigation = Object.keys(state.schema).map((tableName: string) => {
     return { name: tableName, href: "#", current: curTableName === tableName };
@@ -26,13 +16,21 @@ export default function TableList(props: TableListProps) {
 
   return (
     <>
+      <nav className="flex flex-col p-2">
+        <ul>
+          <li>Schema</li>
+        </ul>
+      </nav>
       <nav className="flex flex-col p-2" aria-label="Tables">
         <ul role="list" className="space-y-1">
           {navigation.map((item) => (
             <li
               key={item.name}
               onClick={() => {
-                props.onSelectTable(item.name);
+                dispatch({
+                  type: "SetNav",
+                  nav: { typ: "Table", tableName: item.name },
+                });
               }}
             >
               <a

@@ -7,13 +7,16 @@ enableMapSet();
 
 type DatabaseState = {
   schema: SchemaDef;
-  curWorkingTable: { tableName: string; rows: Row[] } | null;
+  curNav: NavDef;
   // table editor's state
   draftTable: TableDef;
   draftTableError: TableDefError;
   draftColumnMarks: ColumnMarkMap;
   editorMod: "Create" | "Update" | "None";
+  draftOriginalTable: string | null;
 };
+
+export type NavDef = { typ: "Schema" } | { typ: "Table"; tableName: string };
 
 export interface Row {
   [key: string]: any[];
@@ -97,16 +100,17 @@ export interface ColumnMarkMap {
 
 const initialState: DatabaseState = {
   schema: {},
-  curWorkingTable: null,
+  curNav: { typ: "Schema" },
   draftTable: { name: null, columns: [] },
   draftTableError: { nameError: null, columnsError: [] },
   draftColumnMarks: {},
   editorMod: "None",
+  draftOriginalTable: null,
 };
 
 type DatabaseAction =
-  | { type: "LoadTables"; schemaDef: SchemaDef }
-  | { type: "LoadData"; tableName: string; rows: Row[] }
+  | { type: "LoadSchema"; schemaDef: SchemaDef }
+  | { type: "SetNav"; nav: NavDef }
   | { type: "InitDraftFromTable"; tableName: string }
   | { type: "InitDraftFromTemplate" }
   | { type: "SetDraftError"; error: TableDefError }
@@ -161,28 +165,27 @@ function databaseReducer(
   action: DatabaseAction
 ): DatabaseState {
   switch (action.type) {
-    case "LoadTables":
+    case "LoadSchema":
       state.schema = action.schemaDef;
-      state.curWorkingTable = null;
       state.draftTable = { name: null, columns: [] };
       state.draftTableError = { nameError: null, columnsError: [] };
       state.draftColumnMarks = {};
       state.editorMod = "None";
+      state.draftOriginalTable = null;
       return state;
-    case "LoadData":
-      state.curWorkingTable = {
-        tableName: action.tableName,
-        rows: action.rows,
-      };
+    case "SetNav":
+      state.curNav = action.nav;
       return state;
     case "InitDraftFromTable":
       const t1 = state.schema[action.tableName]!;
       state.draftTable = t1;
       state.editorMod = "Update";
+      state.draftOriginalTable = action.tableName;
       return state;
     case "InitDraftFromTemplate":
       state.draftTable = DefaultTableTemplate;
       state.editorMod = "Create";
+      state.draftOriginalTable = null;
       return state;
     case "SetDraftError":
       state.draftTableError = action.error;
@@ -193,6 +196,7 @@ function databaseReducer(
       state.draftTableError = { nameError: null, columnsError: [] };
       state.draftColumnMarks = {};
       state.editorMod = "None";
+      state.draftOriginalTable = null;
       return state;
     case "SetTableName":
       if (state.draftTable === null) {
