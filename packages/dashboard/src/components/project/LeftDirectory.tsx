@@ -7,7 +7,7 @@ import {
   useProjectDispatch,
 } from "~/components/project/ProjectContext";
 import { ITreeViewOnNodeSelectProps } from "~/components/react-tree-view";
-import { classNames } from "~/utils";
+import classNames from "classnames";
 
 type MenuPosition = {
   coord: { x: number; y: number } | null;

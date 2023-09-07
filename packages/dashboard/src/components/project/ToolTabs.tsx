@@ -2,8 +2,7 @@ import {
   useProjectState,
   useProjectDispatch,
 } from "~/components/project/ProjectContext";
-
-import { classNames } from "~/utils";
+import classNames from "classnames";
 import { CircleStackIcon } from "@heroicons/react/24/outline";
 
 export default function ToolTabs() {
