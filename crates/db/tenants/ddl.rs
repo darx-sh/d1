@@ -53,8 +53,6 @@ use sea_query::{ColumnDef, Expr, Index, MysqlQueryBuilder, Table};
 // }
 
 pub fn create_table_sql(req: &CreateTableReq) -> Result<String> {
-  println!("create_table_sql: {:?}", req);
-
   let mut stmt = Table::create();
 
   // add default columns and indexes
