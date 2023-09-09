@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import FileMenu from "~/components/project/FileMenu";
 import TreeView, { type NodeId } from "~/components/react-tree-view";
+import { DocumentIcon } from "@heroicons/react/24/outline";
 import { FolderIcon, FolderOpenIcon } from "@heroicons/react/24/solid";
 import {
   useProjectState,
@@ -152,11 +153,14 @@ export default function LeftDirectory() {
                 }}
               >
                 {isBranch && isExpanded ? (
-                  <FolderOpenIcon className="mr-1 h-4 w-4" />
+                  <FolderOpenIcon className="mr-1 h-4 w-4 text-blue-500" />
                 ) : null}
                 {isBranch && !isExpanded ? (
-                  <FolderIcon className="mr-1 h-4 w-4" />
+                  <FolderIcon className="mr-1 h-4 w-4 text-blue-500" />
                 ) : null}
+                {!isBranch && (
+                  <DocumentIcon className="mr-1 h-4 w-4"></DocumentIcon>
+                )}
                 <span className="-mb-0.5">{element.name}</span>
               </div>
               {newFileParent != null &&

@@ -12,7 +12,7 @@ export default function Database() {
       <div className="absolute bottom-0 left-0 top-10 w-40 flex-none border-r">
         <DatabaseNav></DatabaseNav>
       </div>
-      <div className="absolute bottom-0 left-40 right-0 top-10 min-w-0  overflow-auto">
+      <div className="absolute bottom-0 left-40 right-0 top-10 min-w-0 overflow-auto">
         <DatabaseDetails envId={envId} />
       </div>
     </>
