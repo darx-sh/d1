@@ -17,30 +17,25 @@ export default function DatabaseNav() {
 
   return (
     <>
-      <div className="mx-2 mt-6 rounded bg-gray-200 px-2 py-3">
+      <a href="#">
         <div
           className={classNames(
-            state.curNav.typ === "Schema"
-              ? "text-indigo-600"
-              : "text-gray-700 hover:bg-gray-50 hover:text-indigo-600",
-            "flex items-center justify-center py-3"
+            state.curNav.typ === "Schema" ? "bg-gray-200 text-indigo-600" : "",
+            "mx-2 mt-4 flex items-center justify-center border p-2 py-3 text-gray-700 hover:bg-gray-50 hover:text-indigo-600"
           )}
           onClick={() => {
             dispatch({ type: "SetNav", nav: { typ: "Schema" } });
           }}
         >
           <ShareIcon className="h-5 w-5" />
-          <div className="px-2 text-sm font-semibold leading-6">Schema</div>
+          <div className="px-2 text-sm">Schema</div>
         </div>
-      </div>
+      </a>
 
-      <div className="mx-2 mt-6 rounded bg-gray-200 py-4">
-        <div className="px-2 text-xs">Tables</div>
+      <div className="mx-2 mt-6 rounded py-4">
+        {/*<div className="px-2 text-xs">Tables</div>*/}
         <nav className="flex flex-col px-2" aria-label="Tables">
-          <ul
-            role="list"
-            className="space-y-1 divide-y-2 border-b-2 border-t-2"
-          >
+          <ul role="list" className="space-y-1">
             {navigation.map((item) => (
               <li
                 key={item.name}
@@ -57,7 +52,7 @@ export default function DatabaseNav() {
                     item.current
                       ? "bg-gray-200 text-indigo-600"
                       : "text-gray-700 hover:bg-gray-50 hover:text-indigo-600",
-                    "group flex gap-x-3 rounded-sm p-2 pl-3 text-sm font-semibold leading-6"
+                    "group flex gap-x-3 rounded-sm border p-2 pl-3 text-sm"
                   )}
                 >
                   <div className="flex items-center">
