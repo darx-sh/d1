@@ -4,9 +4,7 @@ import ToolContent from "~/components/project/ToolContent";
 export default function RightContainer() {
   return (
     <div className="relative flex h-full flex-col">
-      <div className="bg-gray-100">
-        <ToolTabs></ToolTabs>
-      </div>
+      <ToolTabs></ToolTabs>
       <ToolContent></ToolContent>
     </div>
   );
