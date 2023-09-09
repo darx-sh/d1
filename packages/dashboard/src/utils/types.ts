@@ -73,7 +73,7 @@ export const USER_FIELD_TYPES: UserFieldType[] = [
 export function displayFieldType(t: FieldType) {
   switch (t) {
     case "int64Identity":
-      return "int64 Identity";
+      return "Identity";
     default:
       return t;
   }

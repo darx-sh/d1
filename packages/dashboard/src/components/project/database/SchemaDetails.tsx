@@ -7,7 +7,18 @@ import {
   TableDef,
 } from "~/components/project/database/DatabaseContext";
 import Spinner from "~/components/project/Spinner";
-import { displayDefaultValue } from "~/utils/types";
+import { displayFieldType } from "~/utils/types";
+import {
+  CalendarDaysIcon,
+  PlusSmallIcon,
+  TableCellsIcon,
+  DocumentTextIcon,
+  FingerPrintIcon,
+  MinusIcon,
+  PencilIcon,
+  PencilSquareIcon,
+} from "@heroicons/react/20/solid";
+import className from "classnames";
 
 interface SchemaDetailsProps {
   envId: string;
@@ -28,20 +39,53 @@ export default function SchemaDetails(props: SchemaDetailsProps) {
   }, []);
 
   const renderColumn = (column: DxColumnType) => {
-    return <div key={column.name}>{column.name}</div>;
+    const iconClass = "h-6 w-6 text-gray-400";
+    const renderIcon = () => {
+      return null;
+      // switch (column.fieldType) {
+      //   case "datetime":
+      //     return <CalendarDaysIcon className={iconClass}></CalendarDaysIcon>;
+      //   case "text":
+      //     return <DocumentTextIcon className={iconClass}></DocumentTextIcon>;
+      //   case "int64Identity":
+      //     return <FingerPrintIcon className={iconClass}></FingerPrintIcon>;
+      //   default:
+      //     return <MinusIcon className={iconClass}></MinusIcon>;
+      // }
+    };
+
+    return (
+      <div key={column.name} className="flex items-center p-2.5">
+        {renderIcon()}
+        <div className="px-2 text-sm"> {column.name}</div>
+        <div className="ml-auto flex items-center">
+          <PencilSquareIcon
+            className={className(iconClass, "mr-6")}
+          ></PencilSquareIcon>
+          <div className="w-20 rounded-lg bg-gray-200 p-1 text-center text-xs">
+            {displayFieldType(column.fieldType)}
+          </div>
+        </div>
+      </div>
+    );
   };
   const renderTable = (tableDef: TableDef) => {
     return (
       <div
-        className="w-56 divide-y divide-gray-200 overflow-hidden rounded-lg bg-gray-50 shadow"
+        className="divide-y divide-gray-200 rounded border shadow"
         key={tableDef.name}
       >
-        <div className="px-4 py-5 sm:p-6">{tableDef.name}</div>
-        <div className="px-4 py-4 sm:px-6">
-          {tableDef.columns.map((column) => {
-            return renderColumn(column);
-          })}
+        <div className="flex items-center bg-gray-100 px-2 py-2 text-base font-medium text-gray-900">
+          <TableCellsIcon className="h-6 w-6 text-indigo-300"></TableCellsIcon>
+          <div className="px-2">{tableDef.name}</div>
         </div>
+        {tableDef.columns.map((column) => {
+          return renderColumn(column);
+        })}
+        <a className="flex items-center py-2 text-indigo-400">
+          <PlusSmallIcon className="h-6 w-6">Add Column</PlusSmallIcon>
+          <div className=""> Add Column</div>
+        </a>
       </div>
     );
   };
@@ -50,7 +94,13 @@ export default function SchemaDetails(props: SchemaDetailsProps) {
     const a = Object.entries(state.schema);
     return (
       <>
-        <div className="flex flex-wrap gap-x-8 gap-y-8 px-40 py-10">
+        <button
+          type="button"
+          className="ml-10 mt-2 rounded-md bg-indigo-500 px-10 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+        >
+          New Table
+        </button>
+        <div className="grid grid-cols-3 gap-x-6 gap-y-8 px-10 py-5">
           {Object.entries(state.schema).map(([_, tableDef]) => {
             return renderTable(tableDef);
           })}

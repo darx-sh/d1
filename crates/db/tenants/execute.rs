@@ -156,7 +156,6 @@ impl Serialize for XRow {
         }
         "CHAR" | "VARCHAR" | "TEXT" | "LONGTEXT" => {
           let v: Option<String> = self.0.try_get(idx).unwrap();
-          println!("v = {:?}", v);
           map.serialize_entry(name, &v)?;
         }
         other => unimplemented!("{}", other),
