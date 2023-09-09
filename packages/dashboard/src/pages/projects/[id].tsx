@@ -162,13 +162,13 @@ function ProjectDetail() {
         </>
       ) : (
         <>
-          <div className="fixed left-0 right-0 top-0 h-16 bg-gray-100">
+          <div className="fixed left-0 right-0 top-0 h-14 bg-gray-100">
             <TopNav></TopNav>
           </div>
-          <div className="fixed bottom-0 left-0 top-16 w-48">
+          <div className="fixed bottom-0 left-0 top-14 w-48 bg-gray-100">
             <LeftContainer></LeftContainer>
           </div>
-          <div className="fixed bottom-0 left-48 right-0 top-16 min-w-0 bg-white shadow-lg">
+          <div className="fixed bottom-0 left-48 right-0 top-14 min-w-0  border bg-white">
             <RightContainer></RightContainer>
           </div>
         </>

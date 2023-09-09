@@ -46,15 +46,15 @@ export default function ToolTabs() {
   });
 
   return (
-    <nav className="flex divide-x-2" aria-label="Tabs">
+    <nav className="flex border-b px-4" aria-label="Tabs">
       {tabs.map((tab, tabIdx) => (
         <a
           key={tab.name}
           href={tab.href}
           className={classNames(
             tab.current
-              ? "border-b-2 border-b-blue-300 bg-white text-gray-900 shadow"
-              : "text-gray-500 hover:text-gray-700",
+              ? "border-x border-b-2 border-b-blue-300 text-gray-900"
+              : " text-gray-500 hover:text-gray-700",
             "px-4 py-2 text-center text-xs focus:z-10"
           )}
           aria-current={tab.current ? "page" : undefined}
