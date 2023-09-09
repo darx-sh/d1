@@ -21,6 +21,7 @@ import {
 } from "@heroicons/react/20/solid";
 import className from "classnames";
 import TableEditorModal from "~/components/project/database/TableEditorModal";
+import ColumnActionDropDown from "~/components/project/database/ColumnActionDropdown";
 
 interface SchemaDetailsProps {
   envId: string;
@@ -47,9 +48,7 @@ export default function SchemaDetails(props: SchemaDetailsProps) {
       <div key={column.name} className="flex items-center p-2.5">
         <div className="px-2 text-sm"> {column.name}</div>
         <div className="ml-auto flex items-center">
-          <EllipsisHorizontalIcon
-            className={className(iconClass, "mr-6")}
-          ></EllipsisHorizontalIcon>
+          <ColumnActionDropDown></ColumnActionDropDown>
           <div className="w-20 rounded-lg bg-blue-50 p-1 text-center text-xs">
             {displayFieldType(column.fieldType)}
           </div>
