@@ -161,19 +161,17 @@ function ProjectDetail() {
           <Spinner></Spinner>
         </>
       ) : (
-        <div className="flex h-screen flex-col bg-gray-100">
-          <div className="h-16">
+        <>
+          <div className="fixed left-0 right-0 top-0 h-16 bg-gray-100">
             <TopNav></TopNav>
           </div>
-          <div className="flex flex-1 space-x-2">
-            <div className="w-48 flex-none border-r-2 border-t-2 border-gray-300 bg-gray-50">
-              <LeftContainer></LeftContainer>
-            </div>
-            <div className="mb-2 min-w-0 flex-1 rounded border-2 border-gray-300 bg-white shadow-lg">
-              <RightContainer></RightContainer>
-            </div>
+          <div className="fixed bottom-0 left-0 top-16 w-48">
+            <LeftContainer></LeftContainer>
           </div>
-        </div>
+          <div className="fixed bottom-0 left-48 right-0 top-16 min-w-0 bg-white shadow-lg">
+            <RightContainer></RightContainer>
+          </div>
+        </>
       )}
     </>
   );

@@ -8,13 +8,13 @@ export default function Database() {
   const envId = projectState.envInfo!.id;
 
   return (
-    <div className="flex border-2 pt-2">
-      <div className="w-40 flex-none bg-white">
+    <>
+      <div className="absolute bottom-0 left-0 top-10 w-40 flex-none border-r bg-white">
         <DatabaseNav></DatabaseNav>
       </div>
-      <div className="ml-2 h-full min-w-0 flex-1 overflow-auto bg-white">
+      <div className="absolute bottom-0 left-40 right-0 top-10 min-w-0  overflow-auto bg-white">
         <DatabaseDetails envId={envId} />
       </div>
-    </div>
+    </>
   );
 }
