@@ -5,11 +5,12 @@ import {
   useDatabaseDispatch,
   TableDef,
 } from "./DatabaseContext";
-import TableEditorModal from "~/components/project/database/TableEditorModal";
-import TableActions from "~/components/project/database/TableActions";
+import SchemaEditorModal from "~/components/project/database/SchemaEditorModal";
 import { FieldType } from "~/utils/types";
 import { paginateTable, loadSchema } from "~/components/project/database/Api";
 import Spinner from "~/components/project/Spinner";
+import RowEditor from "~/components/project/database/RowEditor";
+import DangerActionConfirm from "~/components/project/database/DangerActionConfirm";
 
 export interface TableDetailsProps {
   envId: string;
@@ -22,6 +23,8 @@ export default function TableDetails(props: TableDetailsProps) {
   const tableDef = state.schema[props.tableName]!;
   const [isLoading, setIsLoading] = useState(true);
   const [rows, setRows] = useState<Row[]>([]);
+  const [showCancelInsertConfirm, setShowCancelInsertConfirm] = useState(false);
+
   const columnNames = tableDef.columns.map((c) => {
     if (c.name === null) {
       throw new Error("Column name cannot be null");
@@ -121,7 +124,7 @@ export default function TableDetails(props: TableDetailsProps) {
   const renderContent = () => {
     return (
       <>
-        <TableEditorModal
+        <SchemaEditorModal
           open={state.editorMod === "Update"}
           envId={props.envId}
           beforeSave={() => {
@@ -141,13 +144,36 @@ export default function TableDetails(props: TableDetailsProps) {
               setIsLoading(false);
             })().catch(console.error);
           }}
-        ></TableEditorModal>
+        ></SchemaEditorModal>
+        <RowEditor
+          open={state.draftRowMod !== "None"}
+          envId={props.envId}
+          tableName={props.tableName}
+          beforeSave={() => {
+            console.log("beforeSave");
+          }}
+          afterSave={() => {
+            console.log("afterSave");
+          }}
+        ></RowEditor>
+        <DangerActionConfirm
+          message={"Do you want to discard the row"}
+          open={showCancelInsertConfirm}
+          onYes={() => {
+            dispatch({ type: "DeleteRowEditor" });
+            setShowCancelInsertConfirm(false);
+          }}
+          onNo={() => setShowCancelInsertConfirm(false)}
+        ></DangerActionConfirm>
 
         <div className="px-8">
           <div className="mt-2 flex justify-between">
             <button
               type="button"
-              className="rounded-md bg-gray-300 px-10 py-2 text-sm font-normal  shadow-sm hover:bg-gray-400"
+              className="rounded-md border bg-gray-100 px-10 py-2 text-sm font-normal text-gray-900 shadow-sm hover:bg-gray-300"
+              onClick={() => {
+                dispatch({ type: "InitRowEditorFromTemplate" });
+              }}
             >
               New Record
             </button>

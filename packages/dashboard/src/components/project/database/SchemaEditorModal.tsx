@@ -20,7 +20,7 @@ import {
   CreateTableReq,
   TableEditReq,
 } from "~/components/project/database/Api";
-import CancelEditor from "~/components/project/database/CancelEditor";
+import DangerActionConfirm from "~/components/project/database/DangerActionConfirm";
 
 type TableEditorProps = {
   envId: string;
@@ -29,7 +29,7 @@ type TableEditorProps = {
   afterSave: () => void;
 };
 
-export default function TableEditorModal(props: TableEditorProps) {
+export default function SchemaEditorModal(props: TableEditorProps) {
   const dispatch = useDatabaseDispatch();
   const state = useDatabaseState();
   const { open } = props;
@@ -146,27 +146,35 @@ export default function TableEditorModal(props: TableEditorProps) {
                     leaveTo="translate-x-full"
                   >
                     <Dialog.Panel className="pointer-events-auto w-screen max-w-2xl">
+                      <Transition.Child
+                        as={Fragment}
+                        enter="ease-in-out duration-250"
+                        enterFrom="opacity-0"
+                        enterTo="opacity-100"
+                        leave="ease-in-out duration-250"
+                        leaveFrom="opacity-100"
+                        leaveTo="opacity-0"
+                      >
+                        <div className="absolute left-0 top-0 -ml-8 flex pr-2 pt-4 sm:-ml-10 sm:pr-4">
+                          <button
+                            type="button"
+                            className="relative rounded-md text-gray-300 hover:text-white focus:outline-none focus:ring-2 focus:ring-white"
+                            onClick={handleCancel}
+                          >
+                            <span className="absolute -inset-2.5" />
+                            <span className="sr-only">Close panel</span>
+                            <XMarkIcon className="h-6 w-6" aria-hidden="true" />
+                          </button>
+                        </div>
+                      </Transition.Child>
                       <div className="flex h-full flex-col overflow-y-scroll bg-white py-6 shadow-xl">
-                        <div className="px-4 sm:px-6">
-                          <div className="flex items-start justify-between">
-                            <Dialog.Title className="text-base font-semibold leading-6 text-gray-900">
-                              Table Editor
-                            </Dialog.Title>
-                            <div className="ml-3 flex h-7 items-center">
-                              <button
-                                type="button"
-                                className="relative rounded-md bg-white text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                                onClick={handleCancel}
-                              >
-                                <span className="absolute -inset-2.5" />
-                                <span className="sr-only">Close panel</span>
-                                <XMarkIcon
-                                  className="h-6 w-6"
-                                  aria-hidden="true"
-                                />
-                              </button>
-                            </div>
-                          </div>
+                        <div className="flex items-start justify-between">
+                          <Dialog.Title className="ml-3 text-lg font-normal leading-6 text-gray-900">
+                            {state.editorMod === "Create" &&
+                              "Create a new table"}
+                            {state.editorMod === "Update" &&
+                              "Update an existing table"}
+                          </Dialog.Title>
                         </div>
                         <div className="relative flex-1 px-4">
                           <form>
@@ -190,8 +198,8 @@ export default function TableEditorModal(props: TableEditorProps) {
                                         autoComplete="tableName"
                                         className={
                                           tableDefError.nameError === null
-                                            ? "block rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
-                                            : "block rounded-md border-0 py-1.5 text-red-900 shadow-sm ring-1 ring-inset ring-red-300 placeholder:text-red-400 focus:ring-2 focus:ring-inset focus:ring-red-600"
+                                            ? "block rounded-md border-0 px-1.5 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-gray-400"
+                                            : "block rounded-md border-0 px-1.5 py-1.5 text-red-900 shadow-sm ring-1 ring-inset ring-red-300 placeholder:text-red-400 focus:ring-2 focus:ring-inset focus:ring-red-600"
                                         }
                                         onChange={(event) => {
                                           const v = event.target.value;
@@ -223,8 +231,8 @@ export default function TableEditorModal(props: TableEditorProps) {
                                 </div>
                               </div>
 
-                              <div className="border-b border-gray-900/10 pb-12">
-                                <h2 className="text-base font-normal leading-7 text-gray-900">
+                              <div className="rounded-md border border-b border-gray-900/10 p-2 pb-12 shadow-sm ring-1 ring-inset ring-gray-300">
+                                <h2 className=" mb-3 text-base font-normal leading-7 text-gray-900">
                                   Columns
                                 </h2>
                                 <ColumnsEditor></ColumnsEditor>
@@ -243,7 +251,7 @@ export default function TableEditorModal(props: TableEditorProps) {
                               </button>
                               <button
                                 type="button"
-                                className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                                className="rounded-md bg-gray-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-600"
                                 onClick={handleSave}
                               >
                                 Save
@@ -259,8 +267,11 @@ export default function TableEditorModal(props: TableEditorProps) {
             </div>
           </Dialog>
         </Transition.Root>
-        <CancelEditor
+        <DangerActionConfirm
           open={showCancelConfirm}
+          message={
+            "There is unsaved changes. Do you want to discard the changes?"
+          }
           onYes={() => {
             setShowCancelConfirm(false);
             dispatch({ type: "DeleteScratchTable" });
@@ -268,7 +279,7 @@ export default function TableEditorModal(props: TableEditorProps) {
           onNo={() => {
             setShowCancelConfirm(false);
           }}
-        ></CancelEditor>
+        ></DangerActionConfirm>
       </>
     );
   };

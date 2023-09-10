@@ -19,35 +19,35 @@ export default function LeftTools() {
   };
 
   const toolClass = (typ: string) => {
-    const defaultClass =
-      "flex h-20 w-20 flex-col items-center rounded bg-gray-50 p-4 shadow";
-    const highlightClass = "outline outline-blue-300";
+    const commonClass =
+      "flex h-20 w-20 flex flex-col items-center border rounded p-4 hover:bg-gray-100 cursor-pointer";
+    const highlightClass = "outline outline-blue-300 shadow bg-gray-100";
     if (curTab()?.type == typ) {
-      return className(defaultClass, highlightClass);
+      return className(commonClass, highlightClass);
     } else {
-      return className(defaultClass, "");
+      return className(commonClass, "");
     }
   };
 
   return (
-    <div className="ml-2 mt-6 flex flex-wrap gap-x-2 gap-y-2">
+    <div className="mt-6 flex flex-wrap justify-evenly gap-x-2 gap-y-2">
       <div
         className={toolClass("Database")}
         onClick={() => dispatch({ type: "OpenDatabase" })}
       >
-        <CircleStackIcon className="h-6 w-6" />
-        <div>Database</div>
+        <CircleStackIcon className="h-5 w-5" />
+        <div className="text-sm">Database</div>
       </div>
       <div className={toolClass("Reports")}>
-        <ArrowTrendingUpIcon className="h-6 w-6" />
-        <div>Reports</div>
+        <ArrowTrendingUpIcon className="h-5 w-5" />
+        <div className="text-sm">Reports</div>
       </div>
       <div className={toolClass("Logs")}>
-        <Bars3Icon className="h-6 w-6" />
-        <div>Logs</div>
+        <Bars3Icon className="h-5 w-5" />
+        <div className="text-sm">Logs</div>
       </div>
       <div className={toolClass("Secrets")}>
-        <LockClosedIcon className="h-6 w-6" />
+        <LockClosedIcon className="h-5 w-5" />
         <div className="text-sm">Secrets</div>
       </div>
     </div>

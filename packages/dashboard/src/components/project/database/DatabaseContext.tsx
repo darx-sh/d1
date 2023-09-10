@@ -8,12 +8,17 @@ enableMapSet();
 type DatabaseState = {
   schema: SchemaDef;
   curNav: NavDef;
-  // table editor's state
+  // schema editor's state
   draftTable: TableDef;
   draftTableError: TableDefError;
   draftColumnMarks: ColumnMarkMap;
   editorMod: "Create" | "Update" | "None";
   draftOriginalTable: string | null;
+
+  // Row editor's state
+  draftRow: Row;
+  draftRowMod: "Create" | "Update" | "None";
+  draftOriginalRow: Row;
 };
 
 export type NavDef = { typ: "Schema" } | { typ: "Table"; tableName: string };
@@ -106,6 +111,9 @@ const initialState: DatabaseState = {
   draftColumnMarks: {},
   editorMod: "None",
   draftOriginalTable: null,
+  draftRow: {},
+  draftRowMod: "None",
+  draftOriginalRow: {},
 };
 
 type DatabaseAction =
@@ -115,7 +123,10 @@ type DatabaseAction =
   | { type: "InitDraftFromTemplate" }
   | { type: "SetDraftError"; error: TableDefError }
   | { type: "DeleteScratchTable" }
-  | TableEditAction;
+  | TableEditAction
+  | { type: "InitRowEditorFromTemplate" }
+  | { type: "InitRowEditorFromRow"; row: Row }
+  | { type: "DeleteRowEditor" };
 
 type TableEditAction =
   | { type: "SetTableName"; tableName: string }
@@ -198,6 +209,7 @@ function databaseReducer(
       state.editorMod = "None";
       state.draftOriginalTable = null;
       return state;
+    // TableEditAction...
     case "SetTableName":
       if (state.draftTable === null) {
         throw new Error("Cannot set table name to an empty table");
@@ -241,6 +253,22 @@ function databaseReducer(
       }
       // ignore if the column is marked as "Add"
       return state;
+    // TableEditAction end
+    case "InitRowEditorFromTemplate":
+      state.draftRow = {};
+      state.draftRowMod = "Create";
+      state.draftOriginalRow = {};
+      return state;
+    case "InitRowEditorFromRow":
+      state.draftRow = action.row;
+      state.draftRowMod = "Update";
+      state.draftOriginalRow = action.row;
+      return state;
+    case "DeleteRowEditor":
+      state.draftRow = {};
+      state.draftOriginalRow = {};
+      state.draftRowMod = "None";
+      return state;
   }
 }
 
@@ -255,6 +283,19 @@ export function tableChanged(
 
   for (const [_, v] of Object.entries(mark)) {
     if (v !== "None") {
+      return true;
+    }
+  }
+  return false;
+}
+
+export function rowChanged(oldRow: Row, newRow: Row): boolean {
+  if (Object.keys(oldRow).length !== Object.keys(newRow).length) {
+    throw new Error("oldRow and newRow have different number of columns");
+  }
+
+  for (const [k, v] of Object.entries(oldRow)) {
+    if (v !== newRow[k]) {
       return true;
     }
   }

@@ -28,7 +28,8 @@ export default function ColumnsEditor() {
     );
   };
 
-  const columnCanEdit = (columnIndex: number) => {
+  const canChangeColumnProperty = (columnIndex: number) => {
+    // cannot change existing column's "type", "not null" and "default value".
     return columnMarks[columnIndex] === "Add";
   };
 
@@ -49,7 +50,7 @@ export default function ColumnsEditor() {
           aria-describedby="comments-description"
           name="isNullable"
           type="checkbox"
-          className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
+          className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-gray-600"
           checked={!column.isNullable}
           onChange={(event) => {
             dispatch({
@@ -61,7 +62,9 @@ export default function ColumnsEditor() {
               },
             });
           }}
-          disabled={isReadOnly ? true : false}
+          disabled={
+            isReadOnly || !canChangeColumnProperty(columnIndex) ? true : false
+          }
         />
       </td>
     );
@@ -83,7 +86,7 @@ export default function ColumnsEditor() {
           type="text"
           name="defaultValue"
           id="defaultValue"
-          className="block w-44 rounded-md border-0 py-1.5 pl-2 text-xs text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
+          className="block w-44 rounded-md border-0 py-1.5 pl-2 text-xs text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-gray-300"
           placeholder={displayDefaultValue(column.defaultValue)}
           onChange={(event) => {
             dispatch({
@@ -98,7 +101,13 @@ export default function ColumnsEditor() {
               },
             });
           }}
-          disabled={isReadOnly || column.fieldType === null ? true : false}
+          disabled={
+            isReadOnly ||
+            column.fieldType === null ||
+            !canChangeColumnProperty(columnIndex)
+              ? true
+              : false
+          }
         />
       </td>
     );
@@ -148,7 +157,7 @@ export default function ColumnsEditor() {
             type="text"
             className={classNames(
               columnReadOnly ? "" : "",
-              "block w-32 rounded-md border-0 py-1.5 pl-2  text-sm text-gray-400 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
+              "block w-32 rounded-md border-0 py-1.5 pl-2 text-sm text-gray-400 shadow-sm ring-1 ring-inset ring-gray-300 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-gray-300"
             )}
             placeholder={columnName}
             value={columnName}
@@ -178,7 +187,7 @@ export default function ColumnsEditor() {
                 },
               });
             }}
-            disabled={columnReadOnly}
+            disabled={columnReadOnly || !canChangeColumnProperty(columnIndex)}
           ></ColumnTypeSelect>
         </td>
 
@@ -219,7 +228,7 @@ export default function ColumnsEditor() {
       </table>
       <button
         type="button"
-        className="mx-auto mt-8 block w-80 rounded-md bg-gray-600 px-16 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+        className="mx-auto mt-8 block w-80 rounded-md bg-gray-600 px-16 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-gray-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-600"
         onClick={() => {
           dispatch({
             type: "AddColumn",

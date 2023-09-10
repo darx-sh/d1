@@ -74,6 +74,8 @@ export function displayFieldType(t: FieldType) {
   switch (t) {
     case "int64Identity":
       return "Identity";
+    case "NotDefined":
+      return "---";
     default:
       return t;
   }
