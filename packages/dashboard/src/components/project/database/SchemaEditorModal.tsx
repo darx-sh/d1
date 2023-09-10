@@ -29,7 +29,7 @@ type TableEditorProps = {
   afterSave: () => void;
 };
 
-export default function TableEditorModal(props: TableEditorProps) {
+export default function SchemaEditorModal(props: TableEditorProps) {
   const dispatch = useDatabaseDispatch();
   const state = useDatabaseState();
   const { open } = props;

@@ -8,7 +8,7 @@ import {
 } from "~/components/project/database/DatabaseContext";
 import Spinner from "~/components/project/Spinner";
 import { displayFieldType } from "~/utils/types";
-import TableEditorModal from "~/components/project/database/TableEditorModal";
+import SchemaEditorModal from "~/components/project/database/SchemaEditorModal";
 import TableActions from "~/components/project/database/TableActions";
 import DangerActionConfirm from "~/components/project/database/DangerActionConfirm";
 
@@ -117,7 +117,7 @@ export default function SchemaDetails(props: SchemaDetailsProps) {
           })}
         </div>
 
-        <TableEditorModal
+        <SchemaEditorModal
           open={state.editorMod !== "None"}
           envId={props.envId}
           beforeSave={() => {
@@ -130,7 +130,7 @@ export default function SchemaDetails(props: SchemaDetailsProps) {
               setIsLoading(false);
             })().catch(console.error);
           }}
-        ></TableEditorModal>
+        ></SchemaEditorModal>
         <DangerActionConfirm
           message={DeleteTableConfirm(deletingTableName!)}
           open={deletingTableName !== null}
