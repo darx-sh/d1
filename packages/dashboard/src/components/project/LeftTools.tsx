@@ -20,7 +20,7 @@ export default function LeftTools() {
 
   const toolClass = (typ: string) => {
     const commonClass =
-      "flex h-16 w-16 flex flex-col items-center border rounded p-4 hover:bg-gray-100 cursor-pointer";
+      "flex h-20 w-20 flex flex-col items-center border rounded p-4 hover:bg-gray-100 cursor-pointer";
     const highlightClass = "outline outline-blue-300 shadow bg-gray-100";
     if (curTab()?.type == typ) {
       return className(commonClass, highlightClass);

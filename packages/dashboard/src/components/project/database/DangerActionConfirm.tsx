@@ -21,7 +21,7 @@ export default function DangerActionConfirm(props: CancelEditorProps) {
         className="relative z-10"
         initialFocus={cancelButtonRef}
         onClose={() => {
-          console.log("onClose");
+          onNo();
         }}
       >
         <Transition.Child

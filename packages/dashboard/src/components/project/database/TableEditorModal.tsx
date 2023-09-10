@@ -190,7 +190,7 @@ export default function TableEditorModal(props: TableEditorProps) {
                                         autoComplete="tableName"
                                         className={
                                           tableDefError.nameError === null
-                                            ? "block rounded-md border-0 px-1.5 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
+                                            ? "block rounded-md border-0 px-1.5 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-gray-400"
                                             : "block rounded-md border-0 px-1.5 py-1.5 text-red-900 shadow-sm ring-1 ring-inset ring-red-300 placeholder:text-red-400 focus:ring-2 focus:ring-inset focus:ring-red-600"
                                         }
                                         onChange={(event) => {
@@ -243,7 +243,7 @@ export default function TableEditorModal(props: TableEditorProps) {
                               </button>
                               <button
                                 type="button"
-                                className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                                className="rounded-md bg-gray-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-600"
                                 onClick={handleSave}
                               >
                                 Save

@@ -146,7 +146,7 @@ export default function TableDetails(props: TableDetailsProps) {
           <div className="mt-2 flex justify-between">
             <button
               type="button"
-              className="rounded-md bg-gray-300 px-10 py-2 text-sm font-normal  shadow-sm hover:bg-gray-400"
+              className="rounded-md border bg-gray-100 px-10 py-2 text-sm font-normal text-gray-900 shadow-sm hover:bg-gray-300"
             >
               New Record
             </button>

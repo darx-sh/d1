@@ -103,7 +103,7 @@ export default function SchemaDetails(props: SchemaDetailsProps) {
         <div className="flex px-10">
           <button
             type="button"
-            className="mt-2 rounded-md border bg-gray-100 px-10 py-2 text-sm font-normal text-gray-900  shadow-sm hover:bg-gray-300"
+            className="mt-2 rounded-md border bg-gray-100 px-10 py-2 text-sm font-normal text-gray-900 shadow-sm hover:bg-gray-300"
             onClick={() => {
               dispatch({ type: "InitDraftFromTemplate" });
             }}
