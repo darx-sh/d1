@@ -149,8 +149,11 @@ export default function TableEditorModal(props: TableEditorProps) {
                       <div className="flex h-full flex-col overflow-y-scroll bg-white py-6 shadow-xl">
                         <div className="px-4 sm:px-6">
                           <div className="flex items-start justify-between">
-                            <Dialog.Title className="text-base font-semibold leading-6 text-gray-900">
-                              Table Editor
+                            <Dialog.Title className="-ml-2 text-lg font-normal leading-6 text-gray-900">
+                              {state.editorMod === "Create" &&
+                                "Create a new table"}
+                              {state.editorMod === "Update" &&
+                                "Update an existing table"}
                             </Dialog.Title>
                             <div className="ml-3 flex h-7 items-center">
                               <button
@@ -223,8 +226,8 @@ export default function TableEditorModal(props: TableEditorProps) {
                                 </div>
                               </div>
 
-                              <div className="border-b border-gray-900/10 pb-12">
-                                <h2 className="text-base font-normal leading-7 text-gray-900">
+                              <div className="rounded-md border border-b border-gray-900/10 p-2 pb-12 shadow-sm ring-1 ring-inset ring-gray-300">
+                                <h2 className=" mb-3 text-base font-normal leading-7 text-gray-900">
                                   Columns
                                 </h2>
                                 <ColumnsEditor></ColumnsEditor>

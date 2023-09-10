@@ -13,11 +13,11 @@ export default function TopNav() {
   ];
 
   return (
-    <nav className="ml-2 flex h-16 rounded" aria-label="Breadcrumb">
+    <nav className="ml-2 flex rounded" aria-label="Breadcrumb">
       <ol role="list" className="flex items-center space-x-4">
         {nav.map((page, index) => (
           <li key={page.name}>
-            <div className="flex h-16 items-center ">
+            <div className="flex h-12 items-center ">
               {index != 0 && (
                 <svg
                   className="h-5 w-5 flex-shrink-0 text-gray-300"
@@ -30,7 +30,7 @@ export default function TopNav() {
               )}
               <Link
                 href={page.href}
-                className="ml-4 text-sm font-medium text-gray-500 hover:text-gray-700"
+                className="ml-4 text-sm font-normal text-gray-500 hover:text-gray-900"
               >
                 {page.name}
               </Link>
