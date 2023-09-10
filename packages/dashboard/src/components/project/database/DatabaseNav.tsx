@@ -20,8 +20,10 @@ export default function DatabaseNav() {
       <a href="#">
         <div
           className={classNames(
-            state.curNav.typ === "Schema" ? "bg-gray-200 text-indigo-600" : "",
-            "mx-2 mt-4 flex items-center justify-center border p-2 py-3 text-gray-700 hover:bg-gray-50 hover:text-indigo-600"
+            state.curNav.typ === "Schema"
+              ? "bg-gray-200 text-indigo-600"
+              : "text-gray-700 hover:bg-gray-50 hover:text-indigo-600",
+            "mx-2 mt-4 flex items-center justify-center border p-2 py-3"
           )}
           onClick={() => {
             dispatch({ type: "SetNav", nav: { typ: "Schema" } });
@@ -33,7 +35,6 @@ export default function DatabaseNav() {
       </a>
 
       <div className="mx-2 mt-6 rounded py-4">
-        {/*<div className="px-2 text-xs">Tables</div>*/}
         <nav className="flex flex-col px-2" aria-label="Tables">
           <ul role="list" className="space-y-1">
             {navigation.map((item) => (

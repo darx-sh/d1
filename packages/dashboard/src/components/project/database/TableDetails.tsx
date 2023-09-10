@@ -6,7 +6,6 @@ import {
   TableDef,
 } from "./DatabaseContext";
 import TableEditorModal from "~/components/project/database/TableEditorModal";
-import TableActions from "~/components/project/database/TableActions";
 import { FieldType } from "~/utils/types";
 import { paginateTable, loadSchema } from "~/components/project/database/Api";
 import Spinner from "~/components/project/Spinner";

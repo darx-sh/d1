@@ -20,7 +20,7 @@ import {
   CreateTableReq,
   TableEditReq,
 } from "~/components/project/database/Api";
-import CancelEditor from "~/components/project/database/CancelEditor";
+import DangerActionConfirm from "~/components/project/database/DangerActionConfirm";
 
 type TableEditorProps = {
   envId: string;
@@ -190,8 +190,8 @@ export default function TableEditorModal(props: TableEditorProps) {
                                         autoComplete="tableName"
                                         className={
                                           tableDefError.nameError === null
-                                            ? "block rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
-                                            : "block rounded-md border-0 py-1.5 text-red-900 shadow-sm ring-1 ring-inset ring-red-300 placeholder:text-red-400 focus:ring-2 focus:ring-inset focus:ring-red-600"
+                                            ? "block rounded-md border-0 px-1.5 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
+                                            : "block rounded-md border-0 px-1.5 py-1.5 text-red-900 shadow-sm ring-1 ring-inset ring-red-300 placeholder:text-red-400 focus:ring-2 focus:ring-inset focus:ring-red-600"
                                         }
                                         onChange={(event) => {
                                           const v = event.target.value;
@@ -259,8 +259,11 @@ export default function TableEditorModal(props: TableEditorProps) {
             </div>
           </Dialog>
         </Transition.Root>
-        <CancelEditor
+        <DangerActionConfirm
           open={showCancelConfirm}
+          message={
+            "There is unsaved changes. Do you want to discard the changes?"
+          }
           onYes={() => {
             setShowCancelConfirm(false);
             dispatch({ type: "DeleteScratchTable" });
@@ -268,7 +271,7 @@ export default function TableEditorModal(props: TableEditorProps) {
           onNo={() => {
             setShowCancelConfirm(false);
           }}
-        ></CancelEditor>
+        ></DangerActionConfirm>
       </>
     );
   };

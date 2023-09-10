@@ -62,12 +62,18 @@ type ListTableRsp = {
   primaryKey: string[];
 }[];
 
-export type DDLReq = CreateTableReq | TableEditReq;
+export type DDLReq = CreateTableReq | DropTableReq | TableEditReq;
 
 export interface CreateTableReq {
   createTable: {
     tableName: string;
     columns: DxColumnType[];
+  };
+}
+
+export interface DropTableReq {
+  dropTable: {
+    tableName: string;
   };
 }
 

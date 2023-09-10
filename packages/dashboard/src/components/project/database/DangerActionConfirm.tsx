@@ -1,14 +1,15 @@
-import { Fragment, useRef, useState } from "react";
+import { Fragment, ReactNode, useRef, useState } from "react";
 import { Dialog, Transition } from "@headlessui/react";
 import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 
 interface CancelEditorProps {
+  message: ReactNode;
   open: boolean;
   onYes: () => void;
   onNo: () => void;
 }
 
-export default function CancelEditor(props: CancelEditorProps) {
+export default function DangerActionConfirm(props: CancelEditorProps) {
   const { open, onYes, onNo } = props;
 
   const cancelButtonRef = useRef(null);
@@ -60,8 +61,7 @@ export default function CancelEditor(props: CancelEditorProps) {
                         as="h3"
                         className="text-base leading-6 text-gray-900"
                       >
-                        There is unsaved changes. Do you want to discard the
-                        changes?
+                        {props.message}
                       </Dialog.Title>
                     </div>
                   </div>
