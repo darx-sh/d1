@@ -146,30 +146,35 @@ export default function SchemaEditorModal(props: TableEditorProps) {
                     leaveTo="translate-x-full"
                   >
                     <Dialog.Panel className="pointer-events-auto w-screen max-w-2xl">
+                      <Transition.Child
+                        as={Fragment}
+                        enter="ease-in-out duration-250"
+                        enterFrom="opacity-0"
+                        enterTo="opacity-100"
+                        leave="ease-in-out duration-250"
+                        leaveFrom="opacity-100"
+                        leaveTo="opacity-0"
+                      >
+                        <div className="absolute left-0 top-0 -ml-8 flex pr-2 pt-4 sm:-ml-10 sm:pr-4">
+                          <button
+                            type="button"
+                            className="relative rounded-md text-gray-300 hover:text-white focus:outline-none focus:ring-2 focus:ring-white"
+                            onClick={handleCancel}
+                          >
+                            <span className="absolute -inset-2.5" />
+                            <span className="sr-only">Close panel</span>
+                            <XMarkIcon className="h-6 w-6" aria-hidden="true" />
+                          </button>
+                        </div>
+                      </Transition.Child>
                       <div className="flex h-full flex-col overflow-y-scroll bg-white py-6 shadow-xl">
-                        <div className="px-4 sm:px-6">
-                          <div className="flex items-start justify-between">
-                            <Dialog.Title className="-ml-2 text-lg font-normal leading-6 text-gray-900">
-                              {state.editorMod === "Create" &&
-                                "Create a new table"}
-                              {state.editorMod === "Update" &&
-                                "Update an existing table"}
-                            </Dialog.Title>
-                            <div className="ml-3 flex h-7 items-center">
-                              <button
-                                type="button"
-                                className="relative rounded-md bg-white text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                                onClick={handleCancel}
-                              >
-                                <span className="absolute -inset-2.5" />
-                                <span className="sr-only">Close panel</span>
-                                <XMarkIcon
-                                  className="h-6 w-6"
-                                  aria-hidden="true"
-                                />
-                              </button>
-                            </div>
-                          </div>
+                        <div className="flex items-start justify-between">
+                          <Dialog.Title className="ml-3 text-lg font-normal leading-6 text-gray-900">
+                            {state.editorMod === "Create" &&
+                              "Create a new table"}
+                            {state.editorMod === "Update" &&
+                              "Update an existing table"}
+                          </Dialog.Title>
                         </div>
                         <div className="relative flex-1 px-4">
                           <form>
