@@ -15,6 +15,8 @@ import axios from "axios";
 import axiosRetry from "axios-retry";
 import { useInterval } from "usehooks-ts";
 import { DatabaseProvider } from "~/components/project/database/DatabaseContext";
+import { LocalizationProvider } from "@mui/x-date-pickers";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 
 function ProjectDetail() {
   const router = useRouter();
@@ -179,11 +181,13 @@ function ProjectDetail() {
 
 function ProjectDetailWrapper() {
   return (
-    <ProjectProvider>
-      <DatabaseProvider>
-        <ProjectDetail></ProjectDetail>
-      </DatabaseProvider>
-    </ProjectProvider>
+    <LocalizationProvider dateAdapter={AdapterDayjs}>
+      <ProjectProvider>
+        <DatabaseProvider>
+          <ProjectDetail></ProjectDetail>
+        </DatabaseProvider>
+      </ProjectProvider>
+    </LocalizationProvider>
   );
 }
 
