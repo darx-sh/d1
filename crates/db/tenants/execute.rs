@@ -8,9 +8,10 @@ use serde::ser::SerializeMap;
 use serde::{Serialize, Serializer};
 use serde_json::Value;
 use sqlx::mysql::MySqlRow;
-use sqlx::types::time;
 use sqlx::{Column, Either, Row, TypeInfo};
 use std::any::Any;
+use time::format_description::well_known::Rfc3339;
+use time::OffsetDateTime;
 
 #[async_trait]
 impl TenantConnPool for MySqlTenantPool {
@@ -124,9 +125,12 @@ impl Serialize for XRow {
           map.serialize_entry(name, &v)?;
         }
         "TIMESTAMP" | "DATETIME" => {
-          let v: Option<time::OffsetDateTime> = self.0.try_get(idx).unwrap();
-          let v = v.map(|v| format!("{}", v));
-          map.serialize_entry(name, &v)?;
+          let v: Option<OffsetDateTime> = self.0.try_get(idx).unwrap();
+          if let Some(v) = v {
+            map.serialize_entry(name, &v.format(&Rfc3339).unwrap())?;
+          } else {
+            map.serialize_entry(name, &None::<OffsetDateTime>)?;
+          }
         }
         "DATE" => {
           let v: Option<time::Date> = self.0.try_get(idx).unwrap();

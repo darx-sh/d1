@@ -121,6 +121,31 @@ export function displayDefaultValue(defaultValue: DefaultValue) {
   }
 }
 
+export function displayColumnValue(v: any, fieldType: FieldType) {
+  if (v === null) {
+    return "NULL";
+  }
+
+  switch (fieldType) {
+    case "int64":
+      return (v as number).toString();
+    case "int64Identity":
+      return (v as number).toString();
+    case "float64":
+      return (v as number).toString();
+    case "bool":
+      return (v as boolean).toString();
+    case "datetime":
+      return v as string;
+    case "varchar(255)":
+      return v as string;
+    case "text":
+      return v as string;
+    case "NotDefined":
+      throw new Error("Field type is not defined");
+  }
+}
+
 // http response to dx default value
 export function primitiveToDefaultValue(
   v: PrimitiveType,
