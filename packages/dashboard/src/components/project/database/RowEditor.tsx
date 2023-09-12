@@ -13,7 +13,7 @@ import { displayFieldType } from "~/utils/types";
 import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
 
 function ColumnDatetime() {
-  return <DateTimePicker ampm={false}></DateTimePicker>;
+  return <DateTimePicker ampm={false} className=""></DateTimePicker>;
 }
 
 interface RowEditorProps {
@@ -39,22 +39,52 @@ export default function RowEditor(props: RowEditorProps) {
     }
   };
 
-  const renderNull = () => {
-    return <div>NULL</div>;
+  const handleSave = () => {
+    console.log("handleSave");
+  };
+
+  const handleCancel = () => {
+    console.log("handleCancel");
   };
 
   const renderColumnName = (column: DxColumnType) => {
     return (
-      <div className="flex" key={column.name}>
+      <div className="mr-auto flex justify-stretch" key={column.name}>
         <label
           htmlFor="comment"
           className="block w-28 text-sm font-medium leading-6 text-gray-900"
         >
           {column.name}
         </label>
-        <div className="ml-2 rounded-lg bg-blue-50 bg-gray-200 p-1 px-2 text-center text-xs">
+        <div className="ml-2 w-20 rounded-lg bg-blue-50 bg-gray-200 p-1 px-2 text-center text-xs">
           {displayFieldType(column.fieldType)}
         </div>
+
+        {column.isNullable && (
+          <div className="flex h-6 items-center px-4">
+            <label
+              htmlFor="comment"
+              className="w-18 mr-2 block text-sm font-normal leading-6 text-gray-900"
+            >
+              NULL
+            </label>
+            <input
+              id="comments"
+              aria-describedby="comments-description"
+              name="comments"
+              type="checkbox"
+              className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
+              onChange={(e) => {
+                const isNull = e.target.checked;
+                dispatch({
+                  type: "SetColumnNullMark",
+                  columnName: column.name,
+                  isNull,
+                });
+              }}
+            />
+          </div>
+        )}
       </div>
     );
   };
@@ -64,139 +94,111 @@ export default function RowEditor(props: RowEditorProps) {
     value: number | null | undefined
   ) => {
     return (
-      <div className="mt-6" key={column.name}>
-        {renderColumnName(column)}
-        <div>
-          <div className="ring-inset-0 mt-2 rounded p-2 ring-1 ring-gray-200">
-            {value === null ? (
-              renderNull()
-            ) : (
-              <input type="number">{value}</input>
-            )}
-          </div>
-        </div>
-      </div>
+      <input
+        type="number"
+        className="ring-inset-0 mt-2 rounded p-2 text-sm text-gray-900 ring-1 ring-gray-300"
+      >
+        {value}
+      </input>
     );
   };
 
   const renderIdentity = (column: DxColumnType) => {
     return (
-      <div className="mt-6" key={column.name}>
-        {renderColumnName(column)}
-
-        <div className="ring-inset-0 mt-2 rounded p-2 text-sm text-gray-400 ring-1 ring-gray-200">
-          Auto generated
-        </div>
+      <div className="ring-inset-0 mt-2 rounded p-2 text-sm text-gray-400 ring-1 ring-gray-300 focus:outline-none">
+        Auto generated
       </div>
     );
   };
 
-  const renderBool = (
-    column: DxColumnType,
-    value: boolean | null | undefined
-  ) => {
+  const renderBool = (column: DxColumnType, value: boolean | undefined) => {
     return (
-      <div className="mt-6" key={column.name}>
-        {renderColumnName(column)}
-        <div className="mt-2">
-          {value === null ? renderNull() : <input type="number">{value}</input>}
+      <fieldset className="flex space-x-6">
+        <div className="flex items-center space-x-2">
+          <input
+            id="t"
+            type="radio"
+            className="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-600"
+            defaultChecked={true}
+          />
+          <label htmlFor="t" className="block">
+            true
+          </label>
         </div>
-      </div>
+        <div className="flex items-center space-x-2">
+          <input
+            id="f"
+            type="radio"
+            className="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-600"
+          />
+          <label htmlFor="f" className="block">
+            false
+          </label>
+        </div>
+      </fieldset>
     );
   };
 
-  const renderVarChar = (
-    column: DxColumnType,
-    value: string | null | undefined
-  ) => {
+  const renderVarChar = (column: DxColumnType, value: string | undefined) => {
     return (
-      <div className="mt-6" key={column.name}>
-        {renderColumnName(column)}
-        <div className="mt-2">
-          {value === null ? (
-            renderNull()
-          ) : (
-            <textarea
-              rows={1}
-              name="comment"
-              id="comment"
-              className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-              defaultValue={value}
-            />
-          )}
-        </div>
-      </div>
+      <textarea
+        rows={1}
+        name="comment"
+        id="comment"
+        className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+        defaultValue={value}
+      />
     );
   };
 
-  const renderText = (
-    column: DxColumnType,
-    value: string | null | undefined
-  ) => {
+  const renderText = (column: DxColumnType, value: string | undefined) => {
     return (
-      <div className="mt-6" key={column.name}>
-        {renderColumnName(column)}
-        <div className="mt-2">
-          {value === null ? (
-            renderNull()
-          ) : (
-            <textarea
-              rows={3}
-              className="block w-full rounded-md border-0 px-1.5 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-gray-300 sm:text-sm sm:leading-6"
-              defaultValue={value}
-            />
-          )}
-        </div>
-      </div>
+      <textarea
+        rows={2}
+        className="block w-full rounded-md border-0 px-1.5 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-1 focus:ring-inset focus:ring-gray-300 sm:text-sm sm:leading-6"
+        defaultValue={value}
+      />
     );
   };
 
-  const renderDatetime = (
-    column: DxColumnType,
-    value: string | null | undefined
-  ) => {
-    return (
-      <div className="mt-6" key={column.name}>
-        {renderColumnName(column)}
-        <div className="mt-2">
-          {value === null ? renderNull() : <ColumnDatetime></ColumnDatetime>}
-        </div>
-      </div>
-    );
+  const renderDatetime = (column: DxColumnType, value: string | undefined) => {
+    return <ColumnDatetime></ColumnDatetime>;
   };
 
   const renderColumn = (column: DxColumnType, row: Row) => {
-    const value = row[column.name];
-    switch (column.fieldType) {
-      case "int64Identity":
-        return renderIdentity(column);
-      case "int64":
-      case "float64":
-        return renderNumber(
-          column,
-          value! as unknown as number | null | undefined
-        );
-      case "bool":
-        return renderBool(
-          column,
-          value! as unknown as boolean | null | undefined
-        );
-      case "varchar(255)":
-        return renderVarChar(
-          column,
-          value! as unknown as string | null | undefined
-        );
-      case "text":
-        return renderText(
-          column,
-          value! as unknown as string | null | undefined
-        );
-      case "datetime":
-        return renderDatetime(
-          column,
-          value! as unknown as string | null | undefined
-        );
-    }
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const value: any = row[column.name]!;
+
+    const renderContent = () => {
+      switch (column.fieldType) {
+        case "int64Identity":
+          return renderIdentity(column);
+        case "int64":
+        case "float64":
+          return renderNumber(column, value as unknown as number | undefined);
+        case "bool":
+          return renderBool(column, value as unknown as boolean | undefined);
+        case "varchar(255)":
+          return renderVarChar(column, value as unknown as string | undefined);
+        case "text":
+          return renderText(column, value as unknown as string | undefined);
+        case "datetime":
+          return renderDatetime(column, value as unknown as string | undefined);
+      }
+    };
+
+    const valueIsNull = state.draftRowNullMark[column.name] === true;
+    return (
+      <>
+        <div
+          className="mt-6 rounded border bg-gray-50 p-3 shadow"
+          key={column.name}
+        >
+          {renderColumnName(column)}
+          <div className="mt-2">{!valueIsNull && renderContent()}</div>
+        </div>
+      </>
+    );
   };
 
   return (
@@ -257,10 +259,28 @@ export default function RowEditor(props: RowEditorProps) {
                             "Update an exising row"}
                         </Dialog.Title>
                       </div>
-                      <div className="relative mt-6 flex-1 px-4 sm:px-6">
+                      <div className="relative mt-6 flex-1 divide-y divide-gray-200 px-4 sm:px-6">
                         {tableDef.columns.map((column) => {
                           return renderColumn(column, state.draftRow);
                         })}
+                      </div>
+                      <div className="mr-6 mt-6 flex items-center justify-end gap-x-6">
+                        <button
+                          type="button"
+                          className="text-sm font-semibold leading-6 text-gray-900"
+                          onClick={() => {
+                            handleCancel();
+                          }}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          className="w-36 rounded-md bg-gray-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-600"
+                          onClick={handleSave}
+                        >
+                          Save
+                        </button>
                       </div>
                     </div>
                   </Dialog.Panel>
