@@ -59,6 +59,10 @@ export interface DxColumnType {
 
 type ExtraColumnOptions = "AUTO_INCREMENT" | "ON UPDATE CURRENT_TIMESTAMP(3)";
 
+export function isSystemField(column_name: string) {
+  return ["id", "created_at", "updated_at"].includes(column_name);
+}
+
 const DefaultDxColumns: DxColumnType[] = [
   {
     name: "id",

@@ -6,12 +6,13 @@ import {
   TableDef,
 } from "./DatabaseContext";
 import SchemaEditorModal from "~/components/project/database/SchemaEditorModal";
-import { FieldType } from "~/utils/types";
+import { displayColumnValue } from "~/utils/types";
 import { paginateTable, loadSchema } from "~/components/project/database/Api";
 import Spinner from "~/components/project/Spinner";
 import RowEditor from "~/components/project/database/RowEditor";
 import DangerActionConfirm from "~/components/project/database/DangerActionConfirm";
 import TableActions from "~/components/project/database/TableActions";
+import TableGrid from "~/components/project/database/TableGrid";
 
 export interface TableDetailsProps {
   envId: string;
@@ -67,31 +68,6 @@ export default function TableDetails(props: TableDetailsProps) {
         </th>
       </tr>
     );
-  };
-
-  const displayColumnValue = (v: any, fieldType: FieldType) => {
-    if (v === null) {
-      return "NULL";
-    }
-
-    switch (fieldType) {
-      case "int64":
-        return (v as number).toString();
-      case "int64Identity":
-        return (v as number).toString();
-      case "float64":
-        return (v as number).toString();
-      case "bool":
-        return (v as boolean).toString();
-      case "datetime":
-        return v as string;
-      case "varchar(255)":
-        return v as string;
-      case "text":
-        return v as string;
-      case "NotDefined":
-        throw new Error("Field type is not defined");
-    }
   };
 
   const renderOneRow = (
@@ -188,13 +164,13 @@ export default function TableDetails(props: TableDetailsProps) {
               onDelete={null}
             ></TableActions>
           </div>
-
-          <div className="overflow-auto py-2 align-middle">
-            <table>
-              <thead>{renderColumnNames(columnNames)}</thead>
-              <tbody>{renderRows(columnNames, tableDef)}</tbody>
-            </table>
-          </div>
+          <TableGrid tableDef={tableDef} rows={rows}></TableGrid>
+          {/*<div className="overflow-auto py-2 align-middle">*/}
+          {/*  <table>*/}
+          {/*    <thead>{renderColumnNames(columnNames)}</thead>*/}
+          {/*    <tbody>{renderRows(columnNames, tableDef)}</tbody>*/}
+          {/*  </table>*/}
+          {/*</div>*/}
         </div>
       </>
     );
