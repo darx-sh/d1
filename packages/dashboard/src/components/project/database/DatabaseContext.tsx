@@ -17,6 +17,7 @@ type DatabaseState = {
 
   // Row editor's state
   draftRow: Row;
+  draftRowNullMark: { [key: string]: boolean };
   draftRowMod: "Create" | "Update" | "None";
   draftOriginalRow: Row;
 };
@@ -24,7 +25,7 @@ type DatabaseState = {
 export type NavDef = { typ: "Schema" } | { typ: "Table"; tableName: string };
 
 export interface Row {
-  [key: string]: any[];
+  [key: string]: any;
 }
 
 export interface SchemaDef {
@@ -112,6 +113,7 @@ const initialState: DatabaseState = {
   editorMod: "None",
   draftOriginalTable: null,
   draftRow: {},
+  draftRowNullMark: {},
   draftRowMod: "None",
   draftOriginalRow: {},
 };
@@ -126,7 +128,9 @@ type DatabaseAction =
   | TableEditAction
   | { type: "InitRowEditorFromTemplate" }
   | { type: "InitRowEditorFromRow"; row: Row }
-  | { type: "DeleteRowEditor" };
+  | { type: "DeleteRowEditor" }
+  | { type: "SetColumnNullMark"; columnName: string; isNull: boolean }
+  | { type: "SetColumnValue"; columnName: string; value: any };
 
 type TableEditAction =
   | { type: "SetTableName"; tableName: string }
@@ -268,6 +272,13 @@ function databaseReducer(
       state.draftRow = {};
       state.draftOriginalRow = {};
       state.draftRowMod = "None";
+      return state;
+    case "SetColumnNullMark":
+      state.draftRowNullMark[action.columnName] = action.isNull;
+      return state;
+    case "SetColumnValue":
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      state.draftRow[action.columnName] = action.value;
       return state;
   }
 }

@@ -11,6 +11,7 @@ import { paginateTable, loadSchema } from "~/components/project/database/Api";
 import Spinner from "~/components/project/Spinner";
 import RowEditor from "~/components/project/database/RowEditor";
 import DangerActionConfirm from "~/components/project/database/DangerActionConfirm";
+import TableActions from "~/components/project/database/TableActions";
 
 export interface TableDetailsProps {
   envId: string;
@@ -167,16 +168,25 @@ export default function TableDetails(props: TableDetailsProps) {
         ></DangerActionConfirm>
 
         <div className="px-8">
-          <div className="mt-2 flex justify-between">
+          <div className="mt-2 flex items-center">
             <button
               type="button"
-              className="rounded-md border bg-gray-100 px-10 py-2 text-sm font-normal text-gray-900 shadow-sm hover:bg-gray-300"
+              className="mr-2 rounded-md border bg-gray-100 px-10 py-2 text-sm font-normal text-gray-900 shadow-sm hover:bg-gray-300"
               onClick={() => {
                 dispatch({ type: "InitRowEditorFromTemplate" });
               }}
             >
               New Record
             </button>
+            <TableActions
+              onEdit={() => {
+                dispatch({
+                  type: "InitDraftFromTable",
+                  tableName: tableDef.name!,
+                });
+              }}
+              onDelete={null}
+            ></TableActions>
           </div>
 
           <div className="overflow-auto py-2 align-middle">

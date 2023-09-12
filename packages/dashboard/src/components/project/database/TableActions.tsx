@@ -7,7 +7,7 @@ import { Menu, Transition } from "@headlessui/react";
 
 export interface TableActionsProps {
   onEdit: () => void;
-  onDelete: () => void;
+  onDelete: (() => void) | null;
 }
 export default function TableActions(props: TableActionsProps) {
   return (
@@ -43,38 +43,35 @@ export default function TableActions(props: TableActionsProps) {
                     className="mr-3 h-5 w-5 text-gray-400 group-hover:text-gray-500"
                     aria-hidden="true"
                   />
-                  Edit Table
+                  Edit Schema
                 </a>
               )}
             </Menu.Item>
           </div>
-          <div className="py-1">
-            <Menu.Item>
-              {({ active }) => (
-                <a
-                  href="#"
-                  className={className(
-                    active ? "bg-gray-300 text-gray-900" : "text-gray-700",
-                    "group flex items-center px-4 py-2 text-sm"
-                  )}
-                  onClick={props.onDelete}
-                >
-                  <TrashIcon
-                    className="mr-3 h-5 w-5 text-gray-400 group-hover:text-gray-500"
-                    aria-hidden="true"
-                  />
-                  Delete
-                </a>
-              )}
-            </Menu.Item>
-          </div>
+          {props.onDelete && (
+            <div className="py-1">
+              <Menu.Item>
+                {({ active }) => (
+                  <a
+                    href="#"
+                    className={className(
+                      active ? "bg-gray-300 text-gray-900" : "text-gray-700",
+                      "group flex items-center px-4 py-2 text-sm"
+                    )}
+                    onClick={props.onDelete!}
+                  >
+                    <TrashIcon
+                      className="mr-3 h-5 w-5 text-gray-400 group-hover:text-gray-500"
+                      aria-hidden="true"
+                    />
+                    Delete Table
+                  </a>
+                )}
+              </Menu.Item>
+            </div>
+          )}
         </Menu.Items>
       </Transition>
     </Menu>
   );
 }
-
-// <div className="flex hover:bg-gray-600">
-//   <Cog6ToothIcon className="h-6 w-6 " />
-//   <div>Actions</div>
-// </div>
