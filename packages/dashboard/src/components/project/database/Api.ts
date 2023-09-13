@@ -42,6 +42,17 @@ export async function paginateTable(
   return rows;
 }
 
+export async function insertRow(envId: string, tableName: string, values: Row) {
+  const res = await invokeAsync(envId, "_plugins/table/api.insertRow", {
+    tableName,
+    values,
+  });
+}
+
+// export async function updateRow(envId: string, tableName: string, id: number, values: Row) {
+//   throw new Error("not implemented");
+// }
+
 export async function ddl(envId: string, req: DDLReq) {
   const rsp: object = await invokeAsync(envId, "_plugins/schema/api.ddl", {
     req: req,

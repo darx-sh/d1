@@ -1,4 +1,4 @@
-import { Fragment, useState } from "react";
+import { ChangeEvent, Fragment, useState } from "react";
 import { Dialog, Transition } from "@headlessui/react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import DangerActionConfirm from "~/components/project/database/DangerActionConfirm";
@@ -8,12 +8,154 @@ import {
   rowChanged,
   DxColumnType,
   Row,
+  isSystemField,
 } from "~/components/project/database/DatabaseContext";
 import { displayFieldType } from "~/utils/types";
+import { insertRow } from "~/components/project/database/Api";
 import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
+import { Dayjs } from "dayjs";
+import dayjs from "dayjs";
 
-function ColumnDatetime() {
-  return <DateTimePicker ampm={false} className=""></DateTimePicker>;
+interface ColumnProps {
+  columnType: DxColumnType;
+}
+
+function ColumnDatetime(props: ColumnProps) {
+  const dispatch = useDatabaseDispatch();
+  const state = useDatabaseState();
+  const value = state.draftRow[props.columnType.name] as string | undefined;
+  let v: Dayjs | null = null;
+  if (value !== undefined) {
+    v = dayjs(state.draftRow[props.columnType.name] as string);
+  }
+  return (
+    <DateTimePicker
+      ampm={false}
+      defaultValue={v}
+      onChange={(value: Dayjs | null, _context) => {
+        if (value !== null) {
+          const dt = value.format("2021-06-30 13:03:47.123Z");
+          dispatch({
+            type: "SetColumnValue",
+            columnName: props.columnType.name,
+            value: dt,
+          });
+        } else {
+          dispatch({
+            type: "SetColumnNullMark",
+            columnName: props.columnType.name,
+            isNull: true,
+          });
+        }
+      }}
+    ></DateTimePicker>
+  );
+}
+
+function ColumnNumber(props: ColumnProps) {
+  const state = useDatabaseState();
+  const dispatch = useDatabaseDispatch();
+  const value = state.draftRow[props.columnType.name] as number | undefined;
+  const { name } = props.columnType;
+  return (
+    <input
+      type="number"
+      className="ring-inset-0 mt-2 rounded p-2 text-sm text-gray-900 ring-1 ring-gray-300"
+      onChange={(e) => {
+        const value = e.target.value;
+        if (value === "") {
+          if (props.columnType.isNullable) {
+            dispatch({
+              type: "SetColumnNullMark",
+              columnName: name,
+              isNull: true,
+            });
+          }
+        } else {
+          dispatch({
+            type: "SetColumnValue",
+            columnName: name,
+            value: value,
+          });
+        }
+      }}
+    >
+      {value}
+    </input>
+  );
+}
+
+function ColumnBool(props: ColumnProps) {
+  const dispatch = useDatabaseDispatch();
+  const { name } = props.columnType;
+
+  const handleOptionChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const v = e.target.value;
+    if (v === "true") {
+      dispatch({ type: "SetColumnValue", columnName: name, value: true });
+    } else {
+      dispatch({ type: "SetColumnValue", columnName: name, value: false });
+    }
+  };
+
+  return (
+    <fieldset className="flex space-x-6">
+      <div className="flex items-center space-x-2">
+        <input
+          id="t"
+          type="radio"
+          className="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-600"
+          value="true"
+          name="options"
+          onChange={handleOptionChange}
+        />
+        <label htmlFor="t" className="block">
+          true
+        </label>
+      </div>
+      <div className="flex items-center space-x-2">
+        <input
+          id="f"
+          type="radio"
+          className="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-600"
+          value="false"
+          name="options"
+          onChange={handleOptionChange}
+        />
+        <label htmlFor="f" className="block">
+          false
+        </label>
+      </div>
+    </fieldset>
+  );
+}
+
+interface TextColumnProps extends ColumnProps {
+  line: number;
+}
+
+function ColumnText(props: TextColumnProps) {
+  const state = useDatabaseState();
+  const dispatch = useDatabaseDispatch();
+  const { name } = props.columnType;
+  const value = state.draftRow[name] as string | undefined;
+
+  return (
+    <textarea
+      rows={props.line}
+      name="comment"
+      id="comment"
+      className="block w-full rounded-md border-0 p-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+      value={value || ""}
+      onChange={(e) => {
+        dispatch({
+          type: "SetColumnValue",
+          columnName: name,
+          value: e.target.value,
+        });
+      }}
+    />
+  );
 }
 
 interface RowEditorProps {
@@ -31,25 +173,36 @@ export default function RowEditor(props: RowEditorProps) {
   const dispatch = useDatabaseDispatch();
   const tableDef = state.schema[props.tableName]!;
 
-  const handleClose = () => {
-    if (rowChanged(state.draftOriginalRow, state.draftRow)) {
+  const handleCancel = () => {
+    if (
+      rowChanged(state.draftRowMode, state.draftOriginalRow, state.draftRow)
+    ) {
       setShowCancelConfirm(true);
     } else {
       dispatch({ type: "DeleteRowEditor" });
     }
   };
 
-  const handleSave = () => {
-    console.log("handleSave");
+  const handleSave = async () => {
+    switch (state.draftRowMode) {
+      case "Create":
+        props.beforeSave();
+        await insertRow(props.envId, props.tableName, state.draftRow);
+        props.afterSave();
+        break;
+      case "Update":
+        props.beforeSave();
+        // todo
+        props.afterSave();
+        break;
+      case "None":
+        throw new Error("RowEditor is not initialized");
+    }
   };
 
-  const handleCancel = () => {
-    console.log("handleCancel");
-  };
-
-  const renderColumnName = (column: DxColumnType) => {
+  const renderColumnHeader = (column: DxColumnType) => {
     return (
-      <div className="mr-auto flex justify-stretch" key={column.name}>
+      <div className="mr-auto flex justify-stretch">
         <label
           htmlFor="comment"
           className="block w-28 text-sm font-medium leading-6 text-gray-900"
@@ -73,6 +226,7 @@ export default function RowEditor(props: RowEditorProps) {
               aria-describedby="comments-description"
               name="comments"
               type="checkbox"
+              checked={columnIsNull(column.name)}
               className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
               onChange={(e) => {
                 const isNull = e.target.checked;
@@ -89,122 +243,65 @@ export default function RowEditor(props: RowEditorProps) {
     );
   };
 
-  const renderNumber = (
-    column: DxColumnType,
-    value: number | null | undefined
-  ) => {
-    return (
-      <input
-        type="number"
-        className="ring-inset-0 mt-2 rounded p-2 text-sm text-gray-900 ring-1 ring-gray-300"
-      >
-        {value}
-      </input>
-    );
-  };
-
-  const renderIdentity = (column: DxColumnType) => {
-    return (
-      <div className="ring-inset-0 mt-2 rounded p-2 text-sm text-gray-400 ring-1 ring-gray-300 focus:outline-none">
-        Auto generated
-      </div>
-    );
-  };
-
-  const renderBool = (column: DxColumnType, value: boolean | undefined) => {
-    return (
-      <fieldset className="flex space-x-6">
-        <div className="flex items-center space-x-2">
-          <input
-            id="t"
-            type="radio"
-            className="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-600"
-            defaultChecked={true}
-          />
-          <label htmlFor="t" className="block">
-            true
-          </label>
-        </div>
-        <div className="flex items-center space-x-2">
-          <input
-            id="f"
-            type="radio"
-            className="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-600"
-          />
-          <label htmlFor="f" className="block">
-            false
-          </label>
-        </div>
-      </fieldset>
-    );
-  };
-
-  const renderVarChar = (column: DxColumnType, value: string | undefined) => {
-    return (
-      <textarea
-        rows={1}
-        name="comment"
-        id="comment"
-        className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-        defaultValue={value}
-      />
-    );
-  };
-
-  const renderText = (column: DxColumnType, value: string | undefined) => {
-    return (
-      <textarea
-        rows={2}
-        className="block w-full rounded-md border-0 px-1.5 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-1 focus:ring-inset focus:ring-gray-300 sm:text-sm sm:leading-6"
-        defaultValue={value}
-      />
-    );
-  };
-
-  const renderDatetime = (column: DxColumnType, value: string | undefined) => {
-    return <ColumnDatetime></ColumnDatetime>;
-  };
+  const columnIsNull = (columnName: string) => {
+    let valueIsNull = false;
+    if (state.draftRowMode === "Create" && state.draftRowNullMark[columnName] === true) {
+      valueIsNull = true;
+    }
+    if (state.draftRowMode === "Update" && state.draftRow[columnName] === null) {
+      valueIsNull = true;
+    }
+    return valueIsNull;
+  }
 
   const renderColumn = (column: DxColumnType, row: Row) => {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const value: any = row[column.name]!;
+    const renderColumnContent = () => {
+      if (isSystemField(column.name)) {
+        return (
+          <div className="ring-inset-0 mt-2 rounded p-2 text-sm text-gray-400 ring-1 ring-gray-300 focus:outline-none">
+            Auto generated
+          </div>
+        );
+      }
 
-    const renderContent = () => {
       switch (column.fieldType) {
         case "int64Identity":
-          return renderIdentity(column);
+          return (
+            <div className="ring-inset-0 mt-2 rounded p-2 text-sm text-gray-400 ring-1 ring-gray-300 focus:outline-none">
+              Auto generated
+            </div>
+          );
         case "int64":
         case "float64":
-          return renderNumber(column, value as unknown as number | undefined);
+          return <ColumnNumber columnType={column}></ColumnNumber>;
         case "bool":
-          return renderBool(column, value as unknown as boolean | undefined);
+          return <ColumnBool columnType={column}></ColumnBool>;
         case "varchar(255)":
-          return renderVarChar(column, value as unknown as string | undefined);
+          return <ColumnText columnType={column} line={1}></ColumnText>;
         case "text":
-          return renderText(column, value as unknown as string | undefined);
+          return <ColumnText columnType={column} line={2}></ColumnText>;
         case "datetime":
-          return renderDatetime(column, value as unknown as string | undefined);
+          return <ColumnDatetime columnType={column}></ColumnDatetime>;
       }
     };
 
-    const valueIsNull = state.draftRowNullMark[column.name] === true;
+
+
     return (
-      <>
-        <div
-          className="mt-6 rounded border bg-gray-50 p-3 shadow"
-          key={column.name}
-        >
-          {renderColumnName(column)}
-          <div className="mt-2">{!valueIsNull && renderContent()}</div>
-        </div>
-      </>
+      <div
+        className="mt-6 rounded border bg-gray-50 p-3 shadow"
+        key={column.name}
+      >
+        {renderColumnHeader(column)}
+        <div className="mt-2">{!columnIsNull(column.name) && renderColumnContent()}</div>
+      </div>
     );
   };
 
   return (
     <>
       <Transition.Root show={open} as={Fragment}>
-        <Dialog as="div" className="relative z-10" onClose={handleClose}>
+        <Dialog as="div" className="relative z-10" onClose={handleCancel}>
           <Transition.Child
             as={Fragment}
             enter="ease-in-out duration-250"
@@ -243,7 +340,7 @@ export default function RowEditor(props: RowEditorProps) {
                         <button
                           type="button"
                           className="relative rounded-md text-gray-300 hover:text-white focus:outline-none focus:ring-2 focus:ring-white"
-                          onClick={handleClose}
+                          onClick={handleCancel}
                         >
                           <span className="absolute -inset-2.5" />
                           <span className="sr-only">Close panel</span>
@@ -254,8 +351,8 @@ export default function RowEditor(props: RowEditorProps) {
                     <div className="flex h-full flex-col overflow-y-scroll bg-white py-6 shadow-xl">
                       <div className="px-4 sm:px-6">
                         <Dialog.Title className="text-base font-semibold leading-6 text-gray-900">
-                          {state.draftRowMod === "Create" && "New record"}
-                          {state.draftRowMod === "Update" &&
+                          {state.draftRowMode === "Create" && "New record"}
+                          {state.draftRowMode === "Update" &&
                             "Update an exising row"}
                         </Dialog.Title>
                       </div>
@@ -296,6 +393,7 @@ export default function RowEditor(props: RowEditorProps) {
           "There is unsaved changes. Do you want to discard the changes?"
         }
         onYes={() => {
+          dispatch({type: "DeleteDraftRow"});
           setShowCancelConfirm(false);
         }}
         onNo={() => {

@@ -129,7 +129,7 @@ impl Serialize for XRow {
           if let Some(v) = v {
             map.serialize_entry(name, &v.format(&Rfc3339).unwrap())?;
           } else {
-            map.serialize_entry(name, &None::<OffsetDateTime>)?;
+            map.serialize_entry(name, &None::<String>)?;
           }
         }
         "DATE" => {
