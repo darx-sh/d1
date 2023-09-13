@@ -43,8 +43,8 @@ export default function TableDetails(props: TableDetailsProps) {
         null,
         null
       );
-      setIsLoading(false);
       setRows(rows);
+      setIsLoading(false);
     };
     fetchData().catch(console.error);
   }, []);
@@ -102,7 +102,7 @@ export default function TableDetails(props: TableDetailsProps) {
     return (
       <>
         <SchemaEditorModal
-          open={state.editorMod === "Update"}
+          open={state.editorMode === "Update"}
           envId={props.envId}
           beforeSave={() => {
             setIsLoading(true);
@@ -123,14 +123,17 @@ export default function TableDetails(props: TableDetailsProps) {
           }}
         ></SchemaEditorModal>
         <RowEditor
-          open={state.draftRowMod !== "None"}
+          open={state.draftRowMode !== "None"}
           envId={props.envId}
           tableName={props.tableName}
           beforeSave={() => {
-            console.log("beforeSave");
+            setIsLoading(true);
           }}
-          afterSave={() => {
-            console.log("afterSave");
+          afterSave={async () => {
+            const rows = await paginateTable(props.envId, props.tableName, null, null);
+            setRows(rows);
+            dispatch({type: "DeleteDraftRow"});
+            setIsLoading(false);
           }}
         ></RowEditor>
         <DangerActionConfirm

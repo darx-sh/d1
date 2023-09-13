@@ -12,15 +12,17 @@ type DatabaseState = {
   draftTable: TableDef;
   draftTableError: TableDefError;
   draftColumnMarks: ColumnMarkMap;
-  editorMod: "Create" | "Update" | "None";
+  editorMode: "Create" | "Update" | "None";
   draftOriginalTable: string | null;
 
   // Row editor's state
   draftRow: Row;
   draftRowNullMark: { [key: string]: boolean };
-  draftRowMod: "Create" | "Update" | "None";
+  draftRowMode: DraftRowMode;
   draftOriginalRow: Row;
 };
+
+export type DraftRowMode = "Create" | "Update" | "None";
 
 export type NavDef = { typ: "Schema" } | { typ: "Table"; tableName: string };
 
@@ -114,11 +116,11 @@ const initialState: DatabaseState = {
   draftTable: { name: null, columns: [] },
   draftTableError: { nameError: null, columnsError: [] },
   draftColumnMarks: {},
-  editorMod: "None",
+  editorMode: "None",
   draftOriginalTable: null,
   draftRow: {},
   draftRowNullMark: {},
-  draftRowMod: "None",
+  draftRowMode: "None",
   draftOriginalRow: {},
 };
 
@@ -134,7 +136,8 @@ type DatabaseAction =
   | { type: "InitRowEditorFromRow"; row: Row }
   | { type: "DeleteRowEditor" }
   | { type: "SetColumnNullMark"; columnName: string; isNull: boolean }
-  | { type: "SetColumnValue"; columnName: string; value: any };
+  | { type: "SetColumnValue"; columnName: string; value: any }
+  | {type: "DeleteDraftRow"};
 
 type TableEditAction =
   | { type: "SetTableName"; tableName: string }
@@ -189,7 +192,7 @@ function databaseReducer(
       state.draftTable = { name: null, columns: [] };
       state.draftTableError = { nameError: null, columnsError: [] };
       state.draftColumnMarks = {};
-      state.editorMod = "None";
+      state.editorMode = "None";
       state.draftOriginalTable = null;
       return state;
     case "SetNav":
@@ -198,12 +201,12 @@ function databaseReducer(
     case "InitDraftFromTable":
       const t1 = state.schema[action.tableName]!;
       state.draftTable = t1;
-      state.editorMod = "Update";
+      state.editorMode = "Update";
       state.draftOriginalTable = action.tableName;
       return state;
     case "InitDraftFromTemplate":
       state.draftTable = DefaultTableTemplate;
-      state.editorMod = "Create";
+      state.editorMode = "Create";
       state.draftOriginalTable = null;
       return state;
     case "SetDraftError":
@@ -214,7 +217,7 @@ function databaseReducer(
       state.draftTable.columns = [];
       state.draftTableError = { nameError: null, columnsError: [] };
       state.draftColumnMarks = {};
-      state.editorMod = "None";
+      state.editorMode = "None";
       state.draftOriginalTable = null;
       return state;
     // TableEditAction...
@@ -264,18 +267,18 @@ function databaseReducer(
     // TableEditAction end
     case "InitRowEditorFromTemplate":
       state.draftRow = {};
-      state.draftRowMod = "Create";
+      state.draftRowMode = "Create";
       state.draftOriginalRow = {};
       return state;
     case "InitRowEditorFromRow":
       state.draftRow = action.row;
-      state.draftRowMod = "Update";
+      state.draftRowMode = "Update";
       state.draftOriginalRow = action.row;
       return state;
     case "DeleteRowEditor":
       state.draftRow = {};
       state.draftOriginalRow = {};
-      state.draftRowMod = "None";
+      state.draftRowMode = "None";
       return state;
     case "SetColumnNullMark":
       state.draftRowNullMark[action.columnName] = action.isNull;
@@ -283,6 +286,12 @@ function databaseReducer(
     case "SetColumnValue":
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       state.draftRow[action.columnName] = action.value;
+      return state;
+    case "DeleteDraftRow":
+      state.draftRow = {};
+      state.draftRowNullMark = {};
+      state.draftRowMode = "None";
+      state.draftOriginalRow = {};
       return state;
   }
 }
@@ -304,10 +313,22 @@ export function tableChanged(
   return false;
 }
 
-export function rowChanged(oldRow: Row, newRow: Row): boolean {
-  if (Object.keys(oldRow).length !== Object.keys(newRow).length) {
+export function rowChanged(
+  draftRowMode: DraftRowMode,
+  oldRow: Row,
+  newRow: Row
+): boolean {
+  if (
+    draftRowMode === "Update" &&
+    Object.keys(oldRow).length !== Object.keys(newRow).length
+  ) {
     throw new Error("oldRow and newRow have different number of columns");
   }
+
+  if (draftRowMode === "Create" && Object.entries(newRow).length > 0) {
+    return true;
+  }
+
 
   for (const [k, v] of Object.entries(oldRow)) {
     if (v !== newRow[k]) {

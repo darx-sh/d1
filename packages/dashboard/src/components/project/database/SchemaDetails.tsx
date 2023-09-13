@@ -118,7 +118,7 @@ export default function SchemaDetails(props: SchemaDetailsProps) {
         </div>
 
         <SchemaEditorModal
-          open={state.editorMod !== "None"}
+          open={state.editorMode !== "None"}
           envId={props.envId}
           beforeSave={() => {
             setIsLoading(true);

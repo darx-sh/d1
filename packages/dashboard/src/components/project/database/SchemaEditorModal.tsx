@@ -39,7 +39,7 @@ export default function SchemaEditorModal(props: TableEditorProps) {
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   const handleSave = async () => {
-    const mod = state.editorMod;
+    const mod = state.editorMode;
     if (mod === "Create") {
       props.beforeSave();
       await createTable();
@@ -53,7 +53,7 @@ export default function SchemaEditorModal(props: TableEditorProps) {
   const handleCancel = () => {
     const marks = state.draftColumnMarks;
     let hasChanged = false;
-    switch (state.editorMod) {
+    switch (state.editorMode) {
       case "Create":
         if (tableChanged(DefaultTableTemplate, state.draftTable, marks)) {
           hasChanged = true;
@@ -118,7 +118,7 @@ export default function SchemaEditorModal(props: TableEditorProps) {
             className="relative z-10"
             onClose={handleCancel}
             initialFocus={
-              state.editorMod === "Create" ? tableNameRef : undefined
+              state.editorMode === "Create" ? tableNameRef : undefined
             }
           >
             <Transition.Child
@@ -170,9 +170,9 @@ export default function SchemaEditorModal(props: TableEditorProps) {
                       <div className="flex h-full flex-col overflow-y-scroll bg-white py-6 shadow-xl">
                         <div className="flex items-start justify-between">
                           <Dialog.Title className="ml-3 text-lg font-normal leading-6 text-gray-900">
-                            {state.editorMod === "Create" &&
+                            {state.editorMode === "Create" &&
                               "Create a new table"}
-                            {state.editorMod === "Update" &&
+                            {state.editorMode === "Update" &&
                               "Update an existing table"}
                           </Dialog.Title>
                         </div>
