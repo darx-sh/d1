@@ -45,7 +45,7 @@ export default function ToolContent() {
                 }}
               ></CodeMirror>
             </div>
-            <div className="mr-0 h-full w-1/5 border-l-2 border-t-2 border-gray-300 bg-gray-50">
+            <div className="border-t-1 border-l-1 ring-inset-0 mr-0 h-full w-1/5 rounded bg-gray-50 shadow-sm ring-1 ring-gray-300">
               <HttpEndpoints></HttpEndpoints>
             </div>
           </div>
