@@ -10,14 +10,8 @@ import {
   DxColumnType,
   rowEditorColumnValue,
   isSystemField,
-  RowEditorColumnValue,
 } from "~/components/project/database/DatabaseContext";
-import {
-  PrimitiveType,
-  displayDefaultValue,
-  displayDatum,
-  datumToPrimitive,
-} from "~/utils/types";
+import { displayDefaultValue } from "~/utils/types";
 import {
   insertRow,
   RowDatumToApiRow,

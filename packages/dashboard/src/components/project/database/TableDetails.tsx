@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import { Row, useDatabaseState, useDatabaseDispatch } from "./DatabaseContext";
 import SchemaEditorModal from "~/components/project/database/SchemaEditorModal";
-import { displayDatum } from "~/utils/types";
 import {
   paginateTable,
   loadSchema,
   ApiRowToRowDatum,
+  deleteRows,
 } from "~/components/project/database/Api";
 import Spinner from "~/components/project/Spinner";
 import RowEditor from "~/components/project/database/RowEditor";
@@ -25,13 +25,7 @@ export default function TableDetails(props: TableDetailsProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [rows, setRows] = useState<Row[]>([]);
   const [showCancelInsertConfirm, setShowCancelInsertConfirm] = useState(false);
-
-  const columnNames = tableDef.columns.map((c) => {
-    if (c.name === null) {
-      throw new Error("Column name cannot be null");
-    }
-    return c.name;
-  });
+  const [deletingRowIds, setDeletingRowIds] = useState<(string | number)[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -49,48 +43,8 @@ export default function TableDetails(props: TableDetailsProps) {
     fetchData().catch(console.error);
   }, []);
 
-  const renderColumnNames = (columnNames: string[]) => {
-    return (
-      <tr>
-        {columnNames.map((col, idx) => {
-          return (
-            <th
-              key={col}
-              scope="col"
-              className="border bg-gray-50 px-4 py-3.5 text-left text-sm font-normal text-gray-900"
-            >
-              {col}
-            </th>
-          );
-        })}
-        <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-0">
-          <span className="sr-only">Edit</span>
-        </th>
-      </tr>
-    );
-  };
-
-  const renderOneRow = (row: Row, columnNames: string[], ridx: number) => {
-    return (
-      <tr key={ridx}>
-        {columnNames.map((name, idx) => {
-          return (
-            <td
-              key={idx}
-              className="whitespace-nowrap border px-4 py-4 text-sm text-gray-500 hover:cursor-pointer hover:bg-gray-200"
-            >
-              {displayDatum(row[name]!)}
-            </td>
-          );
-        })}
-      </tr>
-    );
-  };
-
-  const renderRows = (columnNames: string[]) => {
-    return rows.map((row, idx) => {
-      return renderOneRow(row, columnNames, idx);
-    });
+  const handleDelete = (ids: (string | number)[]) => {
+    setDeletingRowIds(ids);
   };
 
   const renderContent = () => {
@@ -149,6 +103,31 @@ export default function TableDetails(props: TableDetailsProps) {
           onNo={() => setShowCancelInsertConfirm(false)}
         ></DangerActionConfirm>
 
+        <DangerActionConfirm
+          message={"Do you want do delete selected rows"}
+          open={deletingRowIds.length > 0}
+          onYes={() => {
+            setIsLoading(true);
+            (async () => {
+              const rowIds = deletingRowIds as number[];
+              await deleteRows(props.envId, props.tableName, rowIds);
+              const apiRows = await paginateTable(
+                props.envId,
+                props.tableName,
+                null,
+                null
+              );
+              const rows = apiRows.map((r) => ApiRowToRowDatum(r, tableDef));
+              setRows(rows);
+              setIsLoading(false);
+            })().catch(console.error);
+            setDeletingRowIds([]);
+          }}
+          onNo={() => {
+            setDeletingRowIds([]);
+          }}
+        ></DangerActionConfirm>
+
         <div className="px-8">
           <div className="mt-2 flex items-center">
             <button
@@ -170,13 +149,11 @@ export default function TableDetails(props: TableDetailsProps) {
               onDelete={null}
             ></TableActions>
           </div>
-          <TableGrid tableDef={tableDef} rows={rows}></TableGrid>
-          {/*<div className="overflow-auto py-2 align-middle">*/}
-          {/*  <table>*/}
-          {/*    <thead>{renderColumnNames(columnNames)}</thead>*/}
-          {/*    <tbody>{renderRows(columnNames, tableDef)}</tbody>*/}
-          {/*  </table>*/}
-          {/*</div>*/}
+          <TableGrid
+            tableDef={tableDef}
+            rows={rows}
+            onDelete={handleDelete}
+          ></TableGrid>
         </div>
       </>
     );

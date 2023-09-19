@@ -92,6 +92,17 @@ export async function updateRow(
   });
 }
 
+export async function deleteRows(
+  envId: string,
+  tableName: string,
+  ids: number[]
+) {
+  const res = await invokeAsync(envId, "_plugins/table/api.deleteRows", {
+    tableName,
+    ids,
+  });
+}
+
 export async function ddl(envId: string, req: DDLReq) {
   const rsp: object = await invokeAsync(envId, "_plugins/schema/api.ddl", {
     req: req,
