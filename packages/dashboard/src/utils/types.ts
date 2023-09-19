@@ -1,4 +1,5 @@
-export type PrimitiveType = number | string | boolean | null;
+export type PrimitiveType = PrimitiveNotNull | null;
+export type PrimitiveNotNull = number | string | boolean;
 
 export type MySQLFieldType =
   // numeric data types
@@ -34,7 +35,7 @@ export function mysqlToFieldType(t: MySQLFieldType, extra: string): FieldType {
   switch (t) {
     case "bigint":
       if (extra.toUpperCase() === "AUTO_INCREMENT") {
-        return "int64Identity";
+        return "int64 Auto Increment";
       } else {
         return "int64";
       }
@@ -51,126 +52,147 @@ export function mysqlToFieldType(t: MySQLFieldType, extra: string): FieldType {
   }
 }
 
-export type FieldType = UserFieldType | "int64Identity" | "NotDefined";
-
-export type UserFieldType =
+export type FieldType =
   | "int64"
   | "float64"
   | "bool"
   | "datetime"
   | "varchar(255)"
-  | "text";
+  | "text"
+  | "int64 Auto Increment"
+  | "Not Defined";
 
-export const USER_FIELD_TYPES: UserFieldType[] = [
+export const FieldTypeList: FieldType[] = [
   "int64",
   "float64",
   "bool",
   "datetime",
   "varchar(255)",
   "text",
+  "int64 Auto Increment",
+  "Not Defined",
 ];
 
-export function displayFieldType(t: FieldType) {
-  switch (t) {
-    case "int64Identity":
-      return "Identity";
-    case "NotDefined":
-      return "---";
-    default:
-      return t;
-  }
-}
+export type DatumNotNull =
+  | { typ: "int64"; value: number }
+  | { typ: "float64"; value: number }
+  | { typ: "bool"; value: boolean }
+  | { typ: "datetime"; value: string }
+  | { typ: "varchar(255)"; value: string }
+  | { typ: "text"; value: string }
+  | { typ: "int64AutoIncrement"; value: number };
 
-export function displayToFieldType(t: string): FieldType {
-  switch (t) {
-    case "int64":
-      return "int64";
-    case "int64 Identity":
-      return "int64Identity";
-    case "float64":
-      return "float64";
-    case "bool":
-      return "bool";
-    case "datetime":
-      return "datetime";
-    case "varchar(255)":
-      return "varchar(255)";
-    case "text":
-      return "text";
-    default:
-      throw new Error(`Invalid type: ${t}`);
-  }
-}
+export type Datum = DatumNotNull | { typ: "NULL" };
 
-// mysql 8.0.13 can have default value for TEXT when
-// it is defined as an expression.
 export type DefaultValue =
-  | { typ: UserFieldType; value: string }
+  | { typ: "int64"; value: number }
+  | { typ: "float64"; value: number }
+  | { typ: "bool"; value: boolean }
+  | { typ: "datetime"; value: string }
+  | { typ: "varchar(255)"; value: string }
+  | { typ: "text"; value: string }
+  | { typ: "NULL" }
   | { typ: "expr"; value: string }
-  | { typ: "NULL"; value: "" }
-  | { typ: "NotDefined"; value: "" };
+  | { typ: "Not Defined" };
 
-export function displayDefaultValue(defaultValue: DefaultValue) {
-  switch (defaultValue.typ) {
-    case "NotDefined":
-      return "";
+// export function defaultValueToDatum(defaultValue: DefaultValue): Datum {
+//   if (defaultValue.typ === "Not Defined") {
+//     throw new Error("Default value is not defined");
+//   } else {
+//     return defaultValue;
+//   }
+// }
+
+export function displayDefaultValue(v: DefaultValue): string {
+  switch (v.typ) {
     case "NULL":
       return "NULL";
+    case "Not Defined":
+      return "Not Defined";
     default:
-      return defaultValue.value;
+      return v.value.toString();
   }
 }
 
-export function displayColumnValue(v: any, fieldType: FieldType) {
-  if (v === null) {
-    return "NULL";
-  }
-
-  switch (fieldType) {
+export function displayDatum(datum: Datum) {
+  switch (datum.typ) {
+    case "NULL":
+      return "NULl";
     case "int64":
-      return (v as number).toString();
-    case "int64Identity":
-      return (v as number).toString();
+      return datum.value.toString();
     case "float64":
-      return (v as number).toString();
+      return datum.value.toString();
     case "bool":
-      return (v as boolean).toString();
+      return datum.value.toString();
     case "datetime":
-      return v as string;
+      return datum.value;
     case "varchar(255)":
-      return v as string;
+      return datum.value;
     case "text":
-      return v as string;
-    case "NotDefined":
-      throw new Error("Field type is not defined");
+      return datum.value;
+    case "int64AutoIncrement":
+      return datum.value.toString();
+  }
+}
+
+export function primitiveToDatum(
+  v: PrimitiveType,
+  fieldType: FieldType
+): Datum {
+  if (v === null) {
+    return { typ: "NULL" };
+  }
+  switch (fieldType) {
+    case "Not Defined":
+      throw new Error("internal error: field type is not defined");
+    case "int64 Auto Increment":
+    case "int64":
+      return { typ: "int64", value: v as number };
+    case "float64":
+      return { typ: "float64", value: v as number };
+    case "bool":
+      return { typ: "bool", value: v as boolean };
+    case "datetime":
+      const value = v as string;
+      return { typ: "datetime", value };
+    case "varchar(255)":
+      return { typ: "varchar(255)", value: v as string };
+    case "text":
+      return { typ: "text", value: v as string };
+  }
+}
+
+export function datumToPrimitive(datum: Datum): PrimitiveType {
+  switch (datum.typ) {
+    case "NULL":
+      return null;
+    default:
+      return datum.value;
   }
 }
 
 // http response to dx default value
 export function primitiveToDefaultValue(
   v: PrimitiveType,
-  fieldType: FieldType,
-  isNullable: boolean
+  fieldType: FieldType
 ): DefaultValue {
   // if the column is nullable, then a default value of "null" means it is "NULL".
   // if the column is not-nullable, then a default value of "null" means the default value is empty.
   if (v === null) {
-    if (isNullable) {
-      return { typ: "NULL", value: "" };
-    } else {
-      return { typ: "NotDefined", value: "" };
-    }
+    return { typ: "NULL" };
   }
 
   switch (fieldType) {
+    case "Not Defined":
+      throw new Error("internal error: field type is not defined");
+    case "int64 Auto Increment":
+      return { typ: "Not Defined" };
     case "int64":
-      return { typ: "int64", value: (v as number).toString() };
-    case "int64Identity":
-      return { typ: "NotDefined", value: "" };
+      return { typ: "int64", value: v as number };
     case "float64":
-      return { typ: "float64", value: (v as number).toString() };
+      return { typ: "float64", value: v as number };
     case "bool":
-      return { typ: "bool", value: (v as boolean).toString() };
+      return { typ: "bool", value: v as boolean };
     case "datetime":
       const value = v as string;
       if (value.includes("CURRENT_TIMESTAMP") || value.includes("NOW")) {
@@ -182,8 +204,6 @@ export function primitiveToDefaultValue(
       return { typ: "varchar(255)", value: v as string };
     case "text":
       return { typ: "expr", value: v as string };
-    case "NotDefined":
-      throw new Error("field not defined, cannot have a default value");
   }
 }
 
@@ -192,30 +212,21 @@ export function stringToDefaultValue(
   fieldType: FieldType,
   v: string
 ): DefaultValue {
-  if (v === "NULL") {
-    return { typ: "NULL", value: "" };
-  }
-
-  if (v === "") {
-    return { typ: "NotDefined", value: "" };
-  }
-
   switch (fieldType) {
+    case "Not Defined":
+      throw new Error("internal error: field type is not defined");
     case "int64":
-      return { typ: "int64", value: v };
-    case "int64Identity":
-      throw new Error("int64_identity cannot have a default value");
+    case "int64 Auto Increment":
+      return { typ: "int64", value: parseInt(v) };
     case "float64":
-      return { typ: "float64", value: v };
+      return { typ: "float64", value: parseFloat(v) };
     case "bool":
-      return { typ: "bool", value: v };
+      return { typ: "bool", value: Boolean(v) };
     case "datetime":
       return { typ: "datetime", value: v };
     case "varchar(255)":
       return { typ: "varchar(255)", value: v };
     case "text":
-      return { typ: "expr", value: `(${v})` };
-    case "NotDefined":
-      throw new Error("field not defined, cannot have a default value");
+      return { typ: "text", value: v };
   }
 }

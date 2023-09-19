@@ -90,6 +90,7 @@ pub async fn op_ddl(
     DDLReq::DropColumn(req) => drop_column_sql(&req),
     DDLReq::RenameColumn(req) => rename_column_sql(&req),
   }?;
+  println!("sql: {}", sql);
   conn.js_execute(sql.as_str(), vec![]).await
 }
 

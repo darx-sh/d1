@@ -7,7 +7,6 @@ import {
   TableDef,
 } from "~/components/project/database/DatabaseContext";
 import Spinner from "~/components/project/Spinner";
-import { displayFieldType } from "~/utils/types";
 import SchemaEditorModal from "~/components/project/database/SchemaEditorModal";
 import TableActions from "~/components/project/database/TableActions";
 import DangerActionConfirm from "~/components/project/database/DangerActionConfirm";
@@ -55,7 +54,7 @@ export default function SchemaDetails(props: SchemaDetailsProps) {
         <div className="px-2 text-sm"> {column.name}</div>
         <div className="ml-auto flex items-center">
           <div className="w-20 rounded-lg bg-blue-50 p-1 text-center text-xs">
-            {displayFieldType(column.fieldType)}
+            {column.fieldType}
           </div>
         </div>
       </div>

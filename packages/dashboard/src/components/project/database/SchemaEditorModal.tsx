@@ -8,7 +8,7 @@ import {
 } from "~/components/project/database/DatabaseContext";
 import {
   ColumnError,
-  ColumnMarkMap,
+  SchemaActionMap,
   DefaultTableTemplate,
   tableChanged,
   TableDef,
@@ -19,6 +19,7 @@ import {
   loadSchema,
   CreateTableReq,
   TableEditReq,
+  columnTypeToApiReqColumnType,
 } from "~/components/project/database/Api";
 import DangerActionConfirm from "~/components/project/database/DangerActionConfirm";
 
@@ -51,7 +52,7 @@ export default function SchemaEditorModal(props: TableEditorProps) {
   };
 
   const handleCancel = () => {
-    const marks = state.draftColumnMarks;
+    const marks = state.schemaActions;
     let hasChanged = false;
     switch (state.editorMode) {
       case "Create":
@@ -95,7 +96,7 @@ export default function SchemaEditorModal(props: TableEditorProps) {
     const curTableName = state.draftOriginalTable!;
     const oldTableDef = state.schema[curTableName]!;
     const newTableDef = state.draftTable;
-    const marks = state.draftColumnMarks;
+    const marks = state.schemaActions;
     const error = validateTableDef(newTableDef);
     if (error !== null) {
       dispatch({ type: "SetDraftError", error });
@@ -304,7 +305,7 @@ function validateTableDef(tableDef: TableDef): TableDefError | null {
       hasError = true;
       columnError.nameError = "Column name cannot be empty";
     }
-    if (col.fieldType === "NotDefined") {
+    if (col.fieldType === "Not Defined") {
       hasError = true;
       columnError.fieldTypeError = "Column type cannot be empty";
     }
@@ -328,17 +329,7 @@ function validateTableDef(tableDef: TableDef): TableDefError | null {
 
 function genCreateTable(tableDef: TableDef): CreateTableReq {
   const columns = tableDef.columns.map((c) => {
-    const name = c.name;
-    const fieldType = c.fieldType;
-    const isNullable = c.isNullable;
-    const extra = c.extra;
-    return {
-      name,
-      fieldType,
-      isNullable,
-      defaultValue: c.defaultValue,
-      extra,
-    };
+    return columnTypeToApiReqColumnType(c);
   });
   const req = {
     createTable: {
@@ -352,7 +343,7 @@ function genCreateTable(tableDef: TableDef): CreateTableReq {
 function genTableEdit(
   oldTable: TableDef,
   newTable: TableDef,
-  marks: ColumnMarkMap
+  marks: SchemaActionMap
 ): TableEditReq[] {
   const reqs: TableEditReq[] = [];
   if (oldTable.name! !== newTable.name!) {
@@ -380,7 +371,7 @@ function genTableEdit(
         reqs.push({
           addColumn: {
             tableName: newTable.name!,
-            column: newTable.columns[i]!,
+            column: columnTypeToApiReqColumnType(newTable.columns[i]!),
           },
         });
         break;

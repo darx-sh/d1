@@ -20,7 +20,7 @@ export default function ColumnsEditor() {
   const state = useDatabaseState();
 
   const columns = state.draftTable.columns;
-  const columnMarks = state.draftColumnMarks;
+  const columnMarks = state.schemaActions;
 
   const columnIsReadOnly = (columnIndex: number) => {
     return ["id", "created_at", "updated_at"].includes(
@@ -54,7 +54,7 @@ export default function ColumnsEditor() {
           checked={!column.isNullable}
           onChange={(event) => {
             dispatch({
-              type: "UpdateColumn",
+              type: "SchemaUpdateColumn",
               columnIndex: columnIndex,
               column: {
                 ...column,
@@ -90,7 +90,7 @@ export default function ColumnsEditor() {
           placeholder={displayDefaultValue(column.defaultValue)}
           onChange={(event) => {
             dispatch({
-              type: "UpdateColumn",
+              type: "SchemaUpdateColumn",
               columnIndex,
               column: {
                 ...column,
@@ -123,7 +123,7 @@ export default function ColumnsEditor() {
         className={rowDataClass}
         onClick={() => {
           dispatch({
-            type: "DelColumn",
+            type: "SchemaDelColumn",
             columnIndex: columnIndex,
           });
         }}
@@ -163,7 +163,7 @@ export default function ColumnsEditor() {
             value={columnName}
             onChange={(event) => {
               dispatch({
-                type: "UpdateColumn",
+                type: "SchemaUpdateColumn",
                 columnIndex: columnIndex,
                 column: {
                   ...column,
@@ -179,7 +179,7 @@ export default function ColumnsEditor() {
             fieldType={column.fieldType}
             onSelect={(t: FieldType) => {
               dispatch({
-                type: "UpdateColumn",
+                type: "SchemaUpdateColumn",
                 columnIndex,
                 column: {
                   ...column,
@@ -231,11 +231,11 @@ export default function ColumnsEditor() {
         className="mx-auto mt-8 block w-80 rounded-md bg-gray-600 px-16 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-gray-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-600"
         onClick={() => {
           dispatch({
-            type: "AddColumn",
+            type: "SchemaAddColumn",
             column: {
               name: "",
-              fieldType: "NotDefined",
-              defaultValue: { typ: "NotDefined", value: "" },
+              fieldType: "Not Defined",
+              defaultValue: { typ: "Not Defined", value: "" },
               isNullable: true,
               extra: null,
             },

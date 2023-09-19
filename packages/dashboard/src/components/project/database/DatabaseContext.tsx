@@ -1,7 +1,7 @@
 import { createContext, Dispatch, ReactNode, useContext } from "react";
 import { enableMapSet } from "immer";
 import { useImmerReducer } from "use-immer";
-import { FieldType, DefaultValue } from "~/utils/types";
+import { FieldType, Datum, DatumNotNull, DefaultValue } from "~/utils/types";
 
 enableMapSet();
 
@@ -11,23 +11,22 @@ type DatabaseState = {
   // schema editor's state
   draftTable: TableDef;
   draftTableError: TableDefError;
-  draftColumnMarks: ColumnMarkMap;
+  schemaActions: SchemaActionMap;
   editorMode: "Create" | "Update" | "None";
   draftOriginalTable: string | null;
 
   // Row editor's state
-  draftRow: Row;
-  draftRowNullMark: { [key: string]: boolean };
-  draftRowMode: DraftRowMode;
-  draftOriginalRow: Row;
+  rowEditorColumnActions: RowColumnActionMap;
+  rowEditorMode: RowEditorMode;
+  rowEditorOriginalRow: Row;
 };
 
-export type DraftRowMode = "Create" | "Update" | "None";
+export type RowEditorMode = "Create" | "Update" | "None";
 
 export type NavDef = { typ: "Schema" } | { typ: "Table"; tableName: string };
 
 export interface Row {
-  [key: string]: any;
+  [key: string]: Datum;
 }
 
 export interface SchemaDef {
@@ -68,8 +67,8 @@ export function isSystemField(column_name: string) {
 const DefaultDxColumns: DxColumnType[] = [
   {
     name: "id",
-    fieldType: "int64Identity",
-    defaultValue: { typ: "NotDefined", value: "" },
+    fieldType: "int64 Auto Increment",
+    defaultValue: { typ: "Not Defined" },
     isNullable: false,
     extra: "AUTO_INCREMENT",
   },
@@ -104,10 +103,21 @@ export const DefaultTableTemplate: TableDef = {
 // - MODIFY COLUMN column_name data_type NULL (making a column NULL)
 // - MODIFY COLUMN column_name data_type NOT NULL (making a column NOT NULL)
 
-type ColumnMark = "Add" | "Del" | "Update" | "None";
+type SchemaAction = "Add" | "Del" | "Update" | "None";
 
-export interface ColumnMarkMap {
-  [key: number]: ColumnMark;
+export interface SchemaActionMap {
+  [key: number]: SchemaAction;
+}
+
+// column's modification action of a row.
+// it is used for insert/update a row.
+type ColumnAction =
+  | { typ: "SetDefault" }
+  | { typ: "SetNull" }
+  | { typ: "SetRegular"; value: DatumNotNull };
+
+interface RowColumnActionMap {
+  [key: string]: ColumnAction;
 }
 
 const initialState: DatabaseState = {
@@ -115,13 +125,12 @@ const initialState: DatabaseState = {
   curNav: { typ: "Schema" },
   draftTable: { name: null, columns: [] },
   draftTableError: { nameError: null, columnsError: [] },
-  draftColumnMarks: {},
+  schemaActions: {},
   editorMode: "None",
   draftOriginalTable: null,
-  draftRow: {},
-  draftRowNullMark: {},
-  draftRowMode: "None",
-  draftOriginalRow: {},
+  rowEditorColumnActions: {},
+  rowEditorMode: "None",
+  rowEditorOriginalRow: {},
 };
 
 type DatabaseAction =
@@ -132,25 +141,23 @@ type DatabaseAction =
   | { type: "SetDraftError"; error: TableDefError }
   | { type: "DeleteScratchTable" }
   | TableEditAction
-  | { type: "InitRowEditorFromTemplate" }
+  | { type: "InitRowEditorFromEmpty" }
   | { type: "InitRowEditorFromRow"; row: Row }
   | { type: "DeleteRowEditor" }
-  | { type: "SetColumnNullMark"; columnName: string; isNull: boolean }
-  | { type: "SetColumnValue"; columnName: string; value: any }
-  | {type: "DeleteDraftRow"};
+  | { type: "SetColumnAction"; columnName: string; columnAction: ColumnAction };
 
 type TableEditAction =
   | { type: "SetTableName"; tableName: string }
   | {
-      type: "AddColumn";
+      type: "SchemaAddColumn";
       column: DxColumnType;
     }
   | {
-      type: "DelColumn";
+      type: "SchemaDelColumn";
       columnIndex: number;
     }
   | {
-      type: "UpdateColumn";
+      type: "SchemaUpdateColumn";
       column: DxColumnType;
       columnIndex: number;
     };
@@ -191,7 +198,7 @@ function databaseReducer(
       state.schema = action.schemaDef;
       state.draftTable = { name: null, columns: [] };
       state.draftTableError = { nameError: null, columnsError: [] };
-      state.draftColumnMarks = {};
+      state.schemaActions = {};
       state.editorMode = "None";
       state.draftOriginalTable = null;
       return state;
@@ -216,7 +223,7 @@ function databaseReducer(
       state.draftTable.name = null;
       state.draftTable.columns = [];
       state.draftTableError = { nameError: null, columnsError: [] };
-      state.draftColumnMarks = {};
+      state.schemaActions = {};
       state.editorMode = "None";
       state.draftOriginalTable = null;
       return state;
@@ -228,25 +235,25 @@ function databaseReducer(
       state.draftTable.name = action.tableName;
       state.draftTableError.nameError = null;
       return state;
-    case "AddColumn":
+    case "SchemaAddColumn":
       if (state.draftTable === null) {
         throw new Error("Cannot add column to an empty table");
       }
 
       state.draftTable.columns.push(action.column);
-      state.draftColumnMarks[state.draftTable.columns.length - 1] = "Add";
+      state.schemaActions[state.draftTable.columns.length - 1] = "Add";
       return state;
-    case "DelColumn":
+    case "SchemaDelColumn":
       if (state.draftTable === null) {
         throw new Error("Cannot drop column to an empty table");
       }
-      if (state.draftColumnMarks[action.columnIndex] === "Add") {
-        state.draftColumnMarks[action.columnIndex] = "None";
+      if (state.schemaActions[action.columnIndex] === "Add") {
+        state.schemaActions[action.columnIndex] = "None";
       } else {
-        state.draftColumnMarks[action.columnIndex] = "Del";
+        state.schemaActions[action.columnIndex] = "Del";
       }
       return state;
-    case "UpdateColumn":
+    case "SchemaUpdateColumn":
       if (state.draftTable === null) {
         throw new Error("Cannot rename column to an empty table");
       }
@@ -258,48 +265,118 @@ function databaseReducer(
           return c;
         }
       });
-      const mark = state.draftColumnMarks[action.columnIndex];
+      const mark = state.schemaActions[action.columnIndex];
       if (mark === undefined) {
-        state.draftColumnMarks[action.columnIndex] = "Update";
+        state.schemaActions[action.columnIndex] = "Update";
       }
       // ignore if the column is marked as "Add"
       return state;
     // TableEditAction end
-    case "InitRowEditorFromTemplate":
-      state.draftRow = {};
-      state.draftRowMode = "Create";
-      state.draftOriginalRow = {};
+    case "InitRowEditorFromEmpty":
+      state.rowEditorColumnActions = {};
+      state.rowEditorMode = "Create";
+      state.rowEditorOriginalRow = {};
       return state;
     case "InitRowEditorFromRow":
-      state.draftRow = action.row;
-      state.draftRowMode = "Update";
-      state.draftOriginalRow = action.row;
+      state.rowEditorColumnActions = {};
+      state.rowEditorMode = "Update";
+      state.rowEditorOriginalRow = action.row;
       return state;
     case "DeleteRowEditor":
-      state.draftRow = {};
-      state.draftOriginalRow = {};
-      state.draftRowMode = "None";
+      state.rowEditorColumnActions = {};
+      state.rowEditorOriginalRow = {};
+      state.rowEditorMode = "None";
       return state;
-    case "SetColumnNullMark":
-      state.draftRowNullMark[action.columnName] = action.isNull;
-      return state;
-    case "SetColumnValue":
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      state.draftRow[action.columnName] = action.value;
-      return state;
-    case "DeleteDraftRow":
-      state.draftRow = {};
-      state.draftRowNullMark = {};
-      state.draftRowMode = "None";
-      state.draftOriginalRow = {};
+    case "SetColumnAction":
+      state.rowEditorColumnActions[action.columnName] = action.columnAction;
       return state;
   }
+}
+
+export type RowEditorColumnValue =
+  | { typ: "Not Defined" }
+  | { typ: "NULL" }
+  | { typ: "Default" }
+  | DatumNotNull;
+
+function rowEditorNewColumnValue(
+  columnActions: RowColumnActionMap,
+  columnName: string
+): RowEditorColumnValue {
+  const action = columnActions[columnName];
+  if (action === undefined) {
+    return { typ: "Not Defined" };
+  } else {
+    switch (action.typ) {
+      case "SetDefault":
+        return { typ: "Default" };
+      case "SetNull":
+        return { typ: "NULL" };
+      case "SetRegular":
+        return action.value;
+    }
+  }
+}
+
+function rowEditorUpdateColumnValue(
+  columnActions: RowColumnActionMap,
+  columnName: string,
+  originalRow: Row
+): RowEditorColumnValue {
+  const action = columnActions[columnName];
+  if (action === undefined) {
+    return originalRow[columnName]!;
+  } else {
+    switch (action.typ) {
+      case "SetDefault":
+        return { typ: "Default" };
+      case "SetNull":
+        return { typ: "NULL" };
+      case "SetRegular":
+        return action.value;
+    }
+  }
+}
+
+export function rowEditorColumnValue(
+  state: DatabaseState,
+  columnType: DxColumnType
+): RowEditorColumnValue {
+  const columnName = columnType.name;
+  switch (state.rowEditorMode) {
+    case "Create":
+      return rowEditorNewColumnValue(state.rowEditorColumnActions, columnName);
+    case "Update":
+      return rowEditorUpdateColumnValue(
+        state.rowEditorColumnActions,
+        columnName,
+        state.rowEditorOriginalRow
+      );
+    case "None":
+      return { typ: "Not Defined" };
+  }
+}
+
+export function getInsertRow(state: DatabaseState): Row {
+  const { changes, deletedColumns } = rowActionToRow(
+    state.rowEditorColumnActions
+  );
+  const insert = { ...state.rowEditorOriginalRow, ...changes };
+  deletedColumns.forEach((c) => {
+    if (insert[c] !== undefined) delete insert[c];
+  });
+  return insert;
+}
+
+export function getUpdateRow(state: DatabaseState): Row {
+  const { changes } = rowActionToRow(state.rowEditorColumnActions);
+  return changes;
 }
 
 export function tableChanged(
   oldTable: TableDef | null,
   newTable: TableDef | null,
-  mark: ColumnMarkMap
+  mark: SchemaActionMap
 ): boolean {
   if (oldTable?.name !== newTable?.name) {
     return true;
@@ -313,27 +390,21 @@ export function tableChanged(
   return false;
 }
 
-export function rowChanged(
-  draftRowMode: DraftRowMode,
-  oldRow: Row,
-  newRow: Row
-): boolean {
-  if (
-    draftRowMode === "Update" &&
-    Object.keys(oldRow).length !== Object.keys(newRow).length
-  ) {
-    throw new Error("oldRow and newRow have different number of columns");
-  }
-
-  if (draftRowMode === "Create" && Object.entries(newRow).length > 0) {
-    return true;
-  }
-
-
-  for (const [k, v] of Object.entries(oldRow)) {
-    if (v !== newRow[k]) {
-      return true;
+function rowActionToRow(actions: RowColumnActionMap) {
+  const changes: Row = {};
+  const deletedColumns: Set<string> = new Set();
+  Object.entries(actions).map(([k, v]) => {
+    switch (v.typ) {
+      case "SetNull":
+        changes[k] = { typ: "NULL" };
+        break;
+      case "SetDefault":
+        deletedColumns.add(k);
+        break;
+      case "SetRegular":
+        changes[k] = v.value;
+        break;
     }
-  }
-  return false;
+  });
+  return { changes, deletedColumns };
 }
