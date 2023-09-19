@@ -5,13 +5,24 @@ import DangerActionConfirm from "~/components/project/database/DangerActionConfi
 import {
   useDatabaseState,
   useDatabaseDispatch,
-  rowChanged,
+  getInsertRow,
+  getUpdateRow,
   DxColumnType,
-  Row,
+  rowEditorColumnValue,
   isSystemField,
+  RowEditorColumnValue,
 } from "~/components/project/database/DatabaseContext";
-import { displayFieldType } from "~/utils/types";
-import { insertRow } from "~/components/project/database/Api";
+import {
+  PrimitiveType,
+  displayDefaultValue,
+  displayDatum,
+  datumToPrimitive,
+} from "~/utils/types";
+import {
+  insertRow,
+  RowDatumToApiRow,
+  updateRow,
+} from "~/components/project/database/Api";
 import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
 import { Dayjs } from "dayjs";
 import dayjs from "dayjs";
@@ -23,78 +34,131 @@ interface ColumnProps {
 function ColumnDatetime(props: ColumnProps) {
   const dispatch = useDatabaseDispatch();
   const state = useDatabaseState();
-  const value = state.draftRow[props.columnType.name] as string | undefined;
-  let v: Dayjs | null = null;
-  if (value !== undefined) {
-    v = dayjs(state.draftRow[props.columnType.name] as string);
+  const columnType = props.columnType;
+  const value = rowEditorColumnValue(state, columnType);
+
+  switch (value.typ) {
+    case "Default":
+      return (
+        <span className="bg-gray-200">
+          {displayDefaultValue(columnType.defaultValue)}
+        </span>
+      );
+    case "NULL":
+    case "Not Defined":
+      return (
+        <DateTimePicker
+          ampm={false}
+          defaultValue={null}
+          onChange={(value: Dayjs | null, _context) => {
+            if (value !== null) {
+              const dt = value.format("2021-06-30 13:03:47.123Z");
+              dispatch({
+                type: "SetColumnAction",
+                columnName: props.columnType.name,
+                columnAction: {
+                  typ: "SetRegular",
+                  value: { typ: "datetime", value: dt },
+                },
+              });
+            }
+          }}
+        ></DateTimePicker>
+      );
+    default:
+      const v = value.value as string;
+      const defaultDt = dayjs(v);
+      return (
+        <DateTimePicker
+          ampm={false}
+          defaultValue={defaultDt}
+          onChange={(value: Dayjs | null, _context) => {
+            if (value !== null) {
+              const dt = value.format("2021-06-30 13:03:47.123Z");
+              dispatch({
+                type: "SetColumnAction",
+                columnName: props.columnType.name,
+                columnAction: {
+                  typ: "SetRegular",
+                  value: { typ: "datetime", value: dt },
+                },
+              });
+            }
+          }}
+        ></DateTimePicker>
+      );
   }
-  return (
-    <DateTimePicker
-      ampm={false}
-      defaultValue={v}
-      onChange={(value: Dayjs | null, _context) => {
-        if (value !== null) {
-          const dt = value.format("2021-06-30 13:03:47.123Z");
-          dispatch({
-            type: "SetColumnValue",
-            columnName: props.columnType.name,
-            value: dt,
-          });
-        } else {
-          dispatch({
-            type: "SetColumnNullMark",
-            columnName: props.columnType.name,
-            isNull: true,
-          });
-        }
-      }}
-    ></DateTimePicker>
-  );
 }
 
 function ColumnNumber(props: ColumnProps) {
   const state = useDatabaseState();
   const dispatch = useDatabaseDispatch();
-  const value = state.draftRow[props.columnType.name] as number | undefined;
-  const { name } = props.columnType;
+  const columnType = props.columnType;
+  const value = rowEditorColumnValue(state, columnType);
+
+  const columnValue = () => {
+    switch (value.typ) {
+      case "Not Defined":
+      case "NULL":
+        return "";
+      case "Default":
+        const v = columnType.defaultValue as { typ: "int64"; value: number };
+        return v.value.toString();
+      default:
+        const v2 = value as { typ: "int64"; value: number };
+        return v2.value.toString();
+    }
+  };
+
   return (
     <input
       type="number"
+      value={columnValue()}
       className="ring-inset-0 mt-2 rounded p-2 text-sm text-gray-900 ring-1 ring-gray-300"
       onChange={(e) => {
         const value = e.target.value;
-        if (value === "") {
-          if (props.columnType.isNullable) {
-            dispatch({
-              type: "SetColumnNullMark",
-              columnName: name,
-              isNull: true,
-            });
-          }
-        } else {
-          dispatch({
-            type: "SetColumnValue",
-            columnName: name,
-            value: value,
-          });
-        }
+        dispatch({
+          type: "SetColumnAction",
+          columnName: columnType.name,
+          columnAction: {
+            typ: "SetRegular",
+            value: { typ: "int64", value: parseInt(value) },
+          },
+        });
       }}
-    >
-      {value}
-    </input>
+    ></input>
   );
 }
 
 function ColumnBool(props: ColumnProps) {
   const dispatch = useDatabaseDispatch();
-  const { name } = props.columnType;
+  const state = useDatabaseState();
+  const columnType = props.columnType;
+  const name = columnType.name;
+  const value = rowEditorColumnValue(state, columnType);
 
   const handleOptionChange = (e: ChangeEvent<HTMLInputElement>) => {
     const v = e.target.value;
     if (v === "true") {
-      dispatch({ type: "SetColumnValue", columnName: name, value: true });
+      dispatch({
+        type: "SetColumnAction",
+        columnName: name,
+        columnAction: {
+          typ: "SetRegular",
+          value: { typ: "bool", value: true },
+        },
+      });
+    } else if (v === "false") {
+      dispatch({
+        type: "SetColumnAction",
+        columnName: name,
+        columnAction: {
+          typ: "SetRegular",
+          value: { typ: "bool", value: false },
+        },
+      });
     } else {
-      dispatch({ type: "SetColumnValue", columnName: name, value: false });
+      throw new Error("unknown value: " + v);
     }
   };
 
@@ -107,6 +171,7 @@ function ColumnBool(props: ColumnProps) {
           className="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-600"
           value="true"
           name="options"
+          checked={value.typ === "bool" && value.value === true}
           onChange={handleOptionChange}
         />
         <label htmlFor="t" className="block">
@@ -120,6 +185,7 @@ function ColumnBool(props: ColumnProps) {
           className="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-600"
           value="false"
           name="options"
+          checked={value.typ === "bool" && value.value === false}
           onChange={handleOptionChange}
         />
         <label htmlFor="f" className="block">
@@ -137,8 +203,30 @@ interface TextColumnProps extends ColumnProps {
 function ColumnText(props: TextColumnProps) {
   const state = useDatabaseState();
   const dispatch = useDatabaseDispatch();
+  const columnType = props.columnType;
   const { name } = props.columnType;
-  const value = state.draftRow[name] as string | undefined;
+  const value = rowEditorColumnValue(state, columnType);
+
+  const placeholder = () => {
+    switch (value.typ) {
+      case "Default":
+        return displayDefaultValue(columnType.defaultValue);
+      default:
+        return "";
+    }
+  };
+
+  const displayValue = () => {
+    switch (value.typ) {
+      case "Not Defined":
+      case "NULL":
+      case "Default":
+        return "";
+      default:
+        const v = value.value as string;
+        return v;
+    }
+  };
 
   return (
     <textarea
@@ -146,12 +234,16 @@ function ColumnText(props: TextColumnProps) {
       name="comment"
       id="comment"
       className="block w-full rounded-md border-0 p-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-      value={value || ""}
+      placeholder={placeholder()}
+      value={displayValue()}
       onChange={(e) => {
         dispatch({
-          type: "SetColumnValue",
+          type: "SetColumnAction",
           columnName: name,
-          value: e.target.value,
+          columnAction: {
+            typ: "SetRegular",
+            value: { typ: "varchar(255)", value: e.target.value },
+          },
         });
       }}
     />
@@ -166,6 +258,128 @@ interface RowEditorProps {
   afterSave: () => void;
 }
 
+function ColumnHeader(props: ColumnProps) {
+  const dispatch = useDatabaseDispatch();
+  const state = useDatabaseState();
+  const column = props.columnType;
+  const currentValue = rowEditorColumnValue(state, column);
+  const inputName = `nullDefaultOptions-${column.name}`;
+
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const v = event.target.value;
+    if (v === "isNull") {
+      dispatch({
+        type: "SetColumnAction",
+        columnName: column.name,
+        columnAction: { typ: "SetNull" },
+      });
+    } else if (v === "isDefault") {
+      dispatch({
+        type: "SetColumnAction",
+        columnName: column.name,
+        columnAction: { typ: "SetDefault" },
+      });
+    }
+  };
+
+  return (
+    <div className="mr-auto flex justify-stretch">
+      <label
+        htmlFor="comment"
+        className="block w-28 text-sm font-medium leading-6 text-gray-900"
+      >
+        {column.name}
+      </label>
+      <div className="ml-2 w-20 rounded-lg bg-blue-50 bg-gray-200 p-1 px-2 text-center text-xs">
+        {column.fieldType}
+      </div>
+
+      {!isSystemField(column.name) && (
+        <fieldset className="flex space-x-6 pl-6">
+          {column.isNullable && (
+            <div className="flex items-center space-x-2">
+              <label htmlFor="isNull" className="block">
+                Null
+              </label>
+              <input
+                type="radio"
+                name={inputName}
+                value="isNull"
+                checked={currentValue.typ === "NULL"}
+                onChange={handleChange}
+              />
+            </div>
+          )}
+
+          {column.defaultValue.typ !== "Not Defined" &&
+            column.defaultValue.typ !== "NULL" && (
+              <div className="flex items-center space-x-2">
+                <label htmlFor="isNull" className="block">
+                  Default
+                </label>
+                <input
+                  type="radio"
+                  name={inputName}
+                  value="isDefault"
+                  checked={currentValue.typ === "Default"}
+                  onChange={handleChange}
+                />
+              </div>
+            )}
+        </fieldset>
+      )}
+    </div>
+  );
+}
+
+function ColumnContent(props: ColumnProps) {
+  const column = props.columnType;
+  if (isSystemField(column.name)) {
+    return (
+      <div className="ring-inset-0 mt-2 rounded p-2 text-sm text-gray-400 ring-1 ring-gray-300 focus:outline-none">
+        Auto generated
+      </div>
+    );
+  }
+
+  switch (column.fieldType) {
+    case "Not Defined":
+      throw new Error("Not Defined");
+    case "int64 Auto Increment":
+      return (
+        <div className="ring-inset-0 mt-2 rounded p-2 text-sm text-gray-400 ring-1 ring-gray-300 focus:outline-none">
+          Auto generated
+        </div>
+      );
+    case "int64":
+    case "float64":
+      return <ColumnNumber columnType={column}></ColumnNumber>;
+    case "bool":
+      return <ColumnBool columnType={column}></ColumnBool>;
+    case "varchar(255)":
+      return <ColumnText columnType={column} line={1}></ColumnText>;
+    case "text":
+      return <ColumnText columnType={column} line={2}></ColumnText>;
+    case "datetime":
+      return <ColumnDatetime columnType={column}></ColumnDatetime>;
+  }
+}
+
+function ColumnContainer(props: ColumnProps) {
+  const column = props.columnType;
+  return (
+    <div
+      className="mt-6 rounded border bg-gray-50 p-3 shadow"
+      key={column.name}
+    >
+      <ColumnHeader columnType={column}></ColumnHeader>
+      <div className="mt-2">
+        <ColumnContent columnType={column} />
+      </div>
+    </div>
+  );
+}
+
 export default function RowEditor(props: RowEditorProps) {
   const { open } = props;
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
@@ -174,9 +388,7 @@ export default function RowEditor(props: RowEditorProps) {
   const tableDef = state.schema[props.tableName]!;
 
   const handleCancel = () => {
-    if (
-      rowChanged(state.draftRowMode, state.draftOriginalRow, state.draftRow)
-    ) {
+    if (Object.keys(state.rowEditorColumnActions).length > 0) {
       setShowCancelConfirm(true);
     } else {
       dispatch({ type: "DeleteRowEditor" });
@@ -184,118 +396,29 @@ export default function RowEditor(props: RowEditorProps) {
   };
 
   const handleSave = async () => {
-    switch (state.draftRowMode) {
+    switch (state.rowEditorMode) {
       case "Create":
         props.beforeSave();
-        await insertRow(props.envId, props.tableName, state.draftRow);
+        const insertR = getInsertRow(state);
+        const apiR = RowDatumToApiRow(insertR);
+        await insertRow(props.envId, props.tableName, apiR);
         props.afterSave();
         break;
       case "Update":
         props.beforeSave();
-        // todo
+        const datum = state.rowEditorOriginalRow["id"]! as {
+          typ: "int64AutoIncrement";
+          value: number;
+        };
+        const id = datum.value;
+        const updateR = getUpdateRow(state);
+        const updateApiR = RowDatumToApiRow(updateR);
+        await updateRow(props.envId, props.tableName, id, updateApiR);
         props.afterSave();
         break;
       case "None":
         throw new Error("RowEditor is not initialized");
     }
-  };
-
-  const renderColumnHeader = (column: DxColumnType) => {
-    return (
-      <div className="mr-auto flex justify-stretch">
-        <label
-          htmlFor="comment"
-          className="block w-28 text-sm font-medium leading-6 text-gray-900"
-        >
-          {column.name}
-        </label>
-        <div className="ml-2 w-20 rounded-lg bg-blue-50 bg-gray-200 p-1 px-2 text-center text-xs">
-          {displayFieldType(column.fieldType)}
-        </div>
-
-        {column.isNullable && (
-          <div className="flex h-6 items-center px-4">
-            <label
-              htmlFor="comment"
-              className="w-18 mr-2 block text-sm font-normal leading-6 text-gray-900"
-            >
-              NULL
-            </label>
-            <input
-              id="comments"
-              aria-describedby="comments-description"
-              name="comments"
-              type="checkbox"
-              checked={columnIsNull(column.name)}
-              className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
-              onChange={(e) => {
-                const isNull = e.target.checked;
-                dispatch({
-                  type: "SetColumnNullMark",
-                  columnName: column.name,
-                  isNull,
-                });
-              }}
-            />
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const columnIsNull = (columnName: string) => {
-    let valueIsNull = false;
-    if (state.draftRowMode === "Create" && state.draftRowNullMark[columnName] === true) {
-      valueIsNull = true;
-    }
-    if (state.draftRowMode === "Update" && state.draftRow[columnName] === null) {
-      valueIsNull = true;
-    }
-    return valueIsNull;
-  }
-
-  const renderColumn = (column: DxColumnType, row: Row) => {
-    const renderColumnContent = () => {
-      if (isSystemField(column.name)) {
-        return (
-          <div className="ring-inset-0 mt-2 rounded p-2 text-sm text-gray-400 ring-1 ring-gray-300 focus:outline-none">
-            Auto generated
-          </div>
-        );
-      }
-
-      switch (column.fieldType) {
-        case "int64Identity":
-          return (
-            <div className="ring-inset-0 mt-2 rounded p-2 text-sm text-gray-400 ring-1 ring-gray-300 focus:outline-none">
-              Auto generated
-            </div>
-          );
-        case "int64":
-        case "float64":
-          return <ColumnNumber columnType={column}></ColumnNumber>;
-        case "bool":
-          return <ColumnBool columnType={column}></ColumnBool>;
-        case "varchar(255)":
-          return <ColumnText columnType={column} line={1}></ColumnText>;
-        case "text":
-          return <ColumnText columnType={column} line={2}></ColumnText>;
-        case "datetime":
-          return <ColumnDatetime columnType={column}></ColumnDatetime>;
-      }
-    };
-
-
-
-    return (
-      <div
-        className="mt-6 rounded border bg-gray-50 p-3 shadow"
-        key={column.name}
-      >
-        {renderColumnHeader(column)}
-        <div className="mt-2">{!columnIsNull(column.name) && renderColumnContent()}</div>
-      </div>
-    );
   };
 
   return (
@@ -351,14 +474,19 @@ export default function RowEditor(props: RowEditorProps) {
                     <div className="flex h-full flex-col overflow-y-scroll bg-white py-6 shadow-xl">
                       <div className="px-4 sm:px-6">
                         <Dialog.Title className="text-base font-semibold leading-6 text-gray-900">
-                          {state.draftRowMode === "Create" && "New record"}
-                          {state.draftRowMode === "Update" &&
+                          {state.rowEditorMode === "Create" && "New record"}
+                          {state.rowEditorMode === "Update" &&
                             "Update an exising row"}
                         </Dialog.Title>
                       </div>
                       <div className="relative mt-6 flex-1 divide-y divide-gray-200 px-4 sm:px-6">
                         {tableDef.columns.map((column) => {
-                          return renderColumn(column, state.draftRow);
+                          return (
+                            <ColumnContainer
+                              columnType={column}
+                              key={column.name}
+                            ></ColumnContainer>
+                          );
                         })}
                       </div>
                       <div className="mr-6 mt-6 flex items-center justify-end gap-x-6">
@@ -393,7 +521,7 @@ export default function RowEditor(props: RowEditorProps) {
           "There is unsaved changes. Do you want to discard the changes?"
         }
         onYes={() => {
-          dispatch({type: "DeleteDraftRow"});
+          dispatch({ type: "DeleteRowEditor" });
           setShowCancelConfirm(false);
         }}
         onNo={() => {

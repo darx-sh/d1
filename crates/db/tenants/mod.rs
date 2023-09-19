@@ -51,6 +51,7 @@ pub enum DxDefaultValueTyp {
   Expr,
   #[serde(rename = "NULL")]
   Null,
+  #[serde(rename = "NotDefined")]
   NotDefined,
 }
 

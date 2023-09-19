@@ -55,6 +55,7 @@ use sea_query::{ColumnDef, Expr, Index, MysqlQueryBuilder, Table};
 pub fn create_table_sql(req: &CreateTableReq) -> Result<String> {
   let mut stmt = Table::create();
 
+  println!("create_table req: {:?}", req);
   // add default columns and indexes
   // let mut id = ColumnDef::new(DxIdent("id".to_string()));
   // id.string().string_len(255);

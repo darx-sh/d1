@@ -1,14 +1,21 @@
-import {
-  DataGridPro,
-  GridColDef,
-  GridRowsProp,
-} from "@mui/x-data-grid-pro";
+import { DataGridPro, GridColDef, GridRowsProp } from "@mui/x-data-grid-pro";
 import {
   useDatabaseDispatch,
   Row,
   TableDef,
 } from "~/components/project/database/DatabaseContext";
-import { displayColumnValue } from "~/utils/types";
+import {
+  Datum,
+  displayDatum,
+  PrimitiveType,
+  primitiveToDatum,
+} from "~/utils/types";
+
+import {
+  RowDatumToApiRow,
+  ApiRow,
+  ApiRowToRowDatum,
+} from "~/components/project/database/Api";
 import { GridActionsCellItem } from "@mui/x-data-grid-pro";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
@@ -28,9 +35,10 @@ export default function TableGrid(prop: TableGridProp) {
       field: c.name,
       sortable: false,
       editable: false,
-
       renderCell: (p) => {
-        if (p.value === null) {
+        const value = p.value as PrimitiveType;
+        const datum = primitiveToDatum(value, c.fieldType);
+        if (datum.typ === "NULL") {
           return (
             <div key={c.name}>
               <span className="rounded-md bg-gray-200 p-1 text-gray-500">
@@ -39,15 +47,7 @@ export default function TableGrid(prop: TableGridProp) {
             </div>
           );
         }
-
-        if (c.fieldType === "datetime") {
-          const d = new Date(p.value as string);
-          return d.toLocaleString();
-        }
-
-        return (
-          <div key={c.name}>{displayColumnValue(p.value, c.fieldType)}</div>
-        );
+        return <div key={c.name}>{displayDatum(datum)}</div>;
       },
     };
   });
@@ -56,16 +56,26 @@ export default function TableGrid(prop: TableGridProp) {
     field: "actions",
     type: "actions",
     getActions: (params) => [
-      <GridActionsCellItem key="update" icon={<EditIcon />} label="Edit" onClick={() => {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-unsafe-assignment
-        dispatch({type: "InitRowEditorFromRow", row: params.row.__originalRow})
-      }}/>,
-      <GridActionsCellItem key="delte" icon={<DeleteIcon />} label="Delete"/>,
+      <GridActionsCellItem
+        key="update"
+        icon={<EditIcon />}
+        label="Edit"
+        onClick={() => {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-unsafe-assignment
+          const apiRow = params.row as ApiRow;
+          const row = ApiRowToRowDatum(apiRow, tableDef);
+          dispatch({
+            type: "InitRowEditorFromRow",
+            row,
+          });
+        }}
+      />,
+      <GridActionsCellItem key="delte" icon={<DeleteIcon />} label="Delete" />,
     ],
   });
 
-  const gridRows: GridRowsProp = rows.map((r) => {
-    return {__originalRow: r, ...r};
+  const gridRows = rows.map((r) => {
+    return RowDatumToApiRow(r);
   });
 
   return (
@@ -77,6 +87,7 @@ export default function TableGrid(prop: TableGridProp) {
         rowCount={100}
         columns={gridColDef}
         rows={gridRows}
+        initialState={{ pinnedColumns: { right: ["actions"] } }}
       ></DataGridPro>
     </div>
   );

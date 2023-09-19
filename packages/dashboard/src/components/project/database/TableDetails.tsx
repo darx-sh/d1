@@ -1,13 +1,12 @@
 import { useState, useEffect } from "react";
-import {
-  Row,
-  useDatabaseState,
-  useDatabaseDispatch,
-  TableDef,
-} from "./DatabaseContext";
+import { Row, useDatabaseState, useDatabaseDispatch } from "./DatabaseContext";
 import SchemaEditorModal from "~/components/project/database/SchemaEditorModal";
-import { displayColumnValue } from "~/utils/types";
-import { paginateTable, loadSchema } from "~/components/project/database/Api";
+import { displayDatum } from "~/utils/types";
+import {
+  paginateTable,
+  loadSchema,
+  ApiRowToRowDatum,
+} from "~/components/project/database/Api";
 import Spinner from "~/components/project/Spinner";
 import RowEditor from "~/components/project/database/RowEditor";
 import DangerActionConfirm from "~/components/project/database/DangerActionConfirm";
@@ -37,12 +36,13 @@ export default function TableDetails(props: TableDetailsProps) {
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
-      const rows = await paginateTable(
+      const apiRows = await paginateTable(
         props.envId,
         props.tableName,
         null,
         null
       );
+      const rows = apiRows.map((r) => ApiRowToRowDatum(r, tableDef));
       setRows(rows);
       setIsLoading(false);
     };
@@ -70,12 +70,7 @@ export default function TableDetails(props: TableDetailsProps) {
     );
   };
 
-  const renderOneRow = (
-    row: Row,
-    columnNames: string[],
-    ridx: number,
-    tableDef: TableDef
-  ) => {
+  const renderOneRow = (row: Row, columnNames: string[], ridx: number) => {
     return (
       <tr key={ridx}>
         {columnNames.map((name, idx) => {
@@ -84,7 +79,7 @@ export default function TableDetails(props: TableDetailsProps) {
               key={idx}
               className="whitespace-nowrap border px-4 py-4 text-sm text-gray-500 hover:cursor-pointer hover:bg-gray-200"
             >
-              {displayColumnValue(row[name]!, tableDef.columns[idx]!.fieldType)}
+              {displayDatum(row[name]!)}
             </td>
           );
         })}
@@ -92,9 +87,9 @@ export default function TableDetails(props: TableDetailsProps) {
     );
   };
 
-  const renderRows = (columnNames: string[], tableDef: TableDef) => {
+  const renderRows = (columnNames: string[]) => {
     return rows.map((row, idx) => {
-      return renderOneRow(row, columnNames, idx, tableDef);
+      return renderOneRow(row, columnNames, idx);
     });
   };
 
@@ -111,28 +106,36 @@ export default function TableDetails(props: TableDetailsProps) {
             (async () => {
               const schema = await loadSchema(props.envId);
               dispatch({ type: "LoadSchema", schemaDef: schema });
-              const rows = await paginateTable(
+              const apiRows = await paginateTable(
                 props.envId,
                 props.tableName,
                 null,
                 null
               );
+              const tableDef = schema[props.tableName]!;
+              const rows = apiRows.map((r) => ApiRowToRowDatum(r, tableDef));
               setRows(rows);
               setIsLoading(false);
             })().catch(console.error);
           }}
         ></SchemaEditorModal>
         <RowEditor
-          open={state.draftRowMode !== "None"}
+          open={state.rowEditorMode !== "None"}
           envId={props.envId}
           tableName={props.tableName}
           beforeSave={() => {
             setIsLoading(true);
           }}
           afterSave={async () => {
-            const rows = await paginateTable(props.envId, props.tableName, null, null);
+            const apiRows = await paginateTable(
+              props.envId,
+              props.tableName,
+              null,
+              null
+            );
+            const rows = apiRows.map((r) => ApiRowToRowDatum(r, tableDef));
             setRows(rows);
-            dispatch({type: "DeleteDraftRow"});
+            dispatch({ type: "DeleteRowEditor" });
             setIsLoading(false);
           }}
         ></RowEditor>
@@ -152,7 +155,7 @@ export default function TableDetails(props: TableDetailsProps) {
               type="button"
               className="mr-2 rounded-md border bg-gray-100 px-10 py-2 text-sm font-normal text-gray-900 shadow-sm hover:bg-gray-300"
               onClick={() => {
-                dispatch({ type: "InitRowEditorFromTemplate" });
+                dispatch({ type: "InitRowEditorFromEmpty" });
               }}
             >
               New Record
