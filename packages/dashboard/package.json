@@ -11,7 +11,6 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.354.0",
     "@aws-sdk/s3-request-presigner": "^3.354.0",
-    "@codemirror/lang-javascript": "^6.1.9",
     "@codemirror/lang-json": "^6.0.1",
     "@codemirror/view": "^6.13.2",
     "@emotion/react": "^11.11.1",
