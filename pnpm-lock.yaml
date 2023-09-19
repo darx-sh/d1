@@ -25,9 +25,6 @@ importers:
       '@aws-sdk/s3-request-presigner':
         specifier: ^3.354.0
         version: 3.354.0
-      '@codemirror/lang-javascript':
-        specifier: ^6.1.9
-        version: 6.1.9
       '@codemirror/lang-json':
         specifier: ^6.0.1
         version: 6.0.1
@@ -46,6 +43,9 @@ importers:
       '@heroicons/react':
         specifier: ^2.0.17
         version: 2.0.17(react@18.2.0)
+      '@monaco-editor/react':
+        specifier: ^4.5.2
+        version: 4.5.2(monaco-editor@0.43.0)(react-dom@18.2.0)(react@18.2.0)
       '@mui/icons-material':
         specifier: ^5.14.8
         version: 5.14.8(@mui/material@5.14.8)(@types/react@18.0.28)(react@18.2.0)
@@ -1249,18 +1249,6 @@ packages:
       '@lezer/common': 1.0.3
     dev: false
 
-  /@codemirror/lang-javascript@6.1.9:
-    resolution: {integrity: sha512-z3jdkcqOEBT2txn2a87A0jSy6Te3679wg/U8QzMeftFt+4KA6QooMwfdFzJiuC3L6fXKfTXZcDocoaxMYfGz0w==}
-    dependencies:
-      '@codemirror/autocomplete': 6.9.0(@codemirror/language@6.8.0)(@codemirror/state@6.2.1)(@codemirror/view@6.13.2)(@lezer/common@1.0.3)
-      '@codemirror/language': 6.8.0
-      '@codemirror/lint': 6.4.0
-      '@codemirror/state': 6.2.1
-      '@codemirror/view': 6.13.2
-      '@lezer/common': 1.0.3
-      '@lezer/javascript': 1.4.4
-    dev: false
-
   /@codemirror/lang-json@6.0.1:
     resolution: {integrity: sha512-+T1flHdgpqDDlJZ2Lkil/rLiRy684WMLc74xUnjJH48GQdfJo/pudlTRreZmKwzP8/tGdKf83wlbAdOCzlJOGQ==}
     dependencies:
@@ -1283,7 +1271,7 @@ packages:
     resolution: {integrity: sha512-6VZ44Ysh/Zn07xrGkdtNfmHCbGSHZzFBdzWi0pbd7chAQ/iUcpLGX99NYRZTa7Ugqg4kEHCqiHhcZnH0gLIgSg==}
     dependencies:
       '@codemirror/state': 6.2.1
-      '@codemirror/view': 6.13.2
+      '@codemirror/view': 6.15.3
       crelt: 1.0.6
     dev: false
 
@@ -1612,13 +1600,6 @@ packages:
       '@lezer/common': 1.0.3
     dev: false
 
-  /@lezer/javascript@1.4.4:
-    resolution: {integrity: sha512-0BiBjpEcrt2IXrIzEAsdTLylrVhGHRqVQL3baTBx1sf4qewjIvhG1/pTUumu7W/7YR0AASjLQOQxFmo5EvNmzQ==}
-    dependencies:
-      '@lezer/highlight': 1.1.6
-      '@lezer/lr': 1.3.9
-    dev: false
-
   /@lezer/json@1.0.1:
     resolution: {integrity: sha512-nkVC27qiEZEjySbi6gQRuMwa2sDu2PtfjSgz0A4QF81QyRGm3kb2YRzLcOPcTEtmcwvrX/cej7mlhbwViA4WJw==}
     dependencies:
@@ -1630,6 +1611,28 @@ packages:
     resolution: {integrity: sha512-XPz6dzuTHlnsbA5M2DZgjflNQ+9Hi5Swhic0RULdp3oOs3rh6bqGZolosVqN/fQIT8uNiepzINJDnS39oweTHQ==}
     dependencies:
       '@lezer/common': 1.0.3
+    dev: false
+
+  /@monaco-editor/loader@1.3.3(monaco-editor@0.43.0):
+    resolution: {integrity: sha512-6KKF4CTzcJiS8BJwtxtfyYt9shBiEv32ateQ9T4UVogwn4HM/uPo9iJd2Dmbkpz8CM6Y0PDUpjnZzCwC+eYo2Q==}
+    peerDependencies:
+      monaco-editor: '>= 0.21.0 < 1'
+    dependencies:
+      monaco-editor: 0.43.0
+      state-local: 1.0.7
+    dev: false
+
+  /@monaco-editor/react@4.5.2(monaco-editor@0.43.0)(react-dom@18.2.0)(react@18.2.0):
+    resolution: {integrity: sha512-emcWu6vg1OpXPiYll4aPOaXe8bwYB4UaaNTwtArFLgMoNGBzRZb2Xn0Bra2HMIFM7QLgs7fCGunHO5LkfT2LBA==}
+    peerDependencies:
+      monaco-editor: '>= 0.25.0 < 1'
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0
+      react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0
+    dependencies:
+      '@monaco-editor/loader': 1.3.3(monaco-editor@0.43.0)
+      monaco-editor: 0.43.0
+      react: 18.2.0
+      react-dom: 18.2.0(react@18.2.0)
     dev: false
 
   /@mui/base@5.0.0-beta.14(@types/react@18.0.28)(react-dom@18.2.0)(react@18.2.0):
@@ -4127,6 +4130,10 @@ packages:
     resolution: {integrity: sha512-2yyAR8qBkN3YuheJanUpWC5U3bb5osDywNB8RzDVlDwDHbocAJveqqj1u8+SVD7jkWT4yvsHCpWqqWqAxb0zCA==}
     dev: true
 
+  /monaco-editor@0.43.0:
+    resolution: {integrity: sha512-cnoqwQi/9fml2Szamv1XbSJieGJ1Dc8tENVMD26Kcfl7xGQWp7OBKMjlwKVGYFJ3/AXJjSOGvcqK7Ry/j9BM1Q==}
+    dev: false
+
   /ms@2.1.2:
     resolution: {integrity: sha512-sGkPx+VjMtmA6MX27oA4FBFELFCZZ4S4XqeGOXCv68tT+jb3vk/RyaKWP0PTKyWtmLSM0b+adUTEvbs1PEaH2w==}
 
@@ -4864,6 +4871,10 @@ packages:
 
   /standard-as-callback@2.1.0:
     resolution: {integrity: sha512-qoRRSyROncaz1z0mvYqIE4lCd9p2R90i6GxW3uZv5ucSu8tU7B5HXUP1gG8pVZsYNVaXjk8ClXHPttLyxAL48A==}
+    dev: false
+
+  /state-local@1.0.7:
+    resolution: {integrity: sha512-HTEHMNieakEnoe33shBYcZ7NX83ACUjCu8c40iOGEZsngj9zRnkqS9j1pqQPXwobB0ZcVTk27REb7COQ0UR59w==}
     dev: false
 
   /streamsearch@1.1.0:

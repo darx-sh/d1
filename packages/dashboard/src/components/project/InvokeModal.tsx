@@ -5,18 +5,31 @@ import {
   useProjectDispatch,
   useProjectState,
 } from "~/components/project/ProjectContext";
-import { githubDark, githubLight } from "@uiw/codemirror-theme-github";
+import { githubDark } from "@uiw/codemirror-theme-github";
 import { json } from "@codemirror/lang-json";
 import { EditorView } from "@codemirror/view";
 import CodeMirror from "@uiw/react-codemirror";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import axios from "axios";
 import { env } from "~/env.mjs";
+import Editor from "@monaco-editor/react";
 
 type InvokeModalProps = {
   httpRoute: HttpRoute;
   onClose: () => void;
 };
+
+const myTheme = EditorView.theme({
+  "&": {
+    fontSize: "1rem",
+    lineHeight: "1.5rem",
+    maxHeight: "670px",
+  },
+  "&.cm-focused": {
+    outline: "none",
+  },
+  ".cm-scroller": { overflow: "auto" },
+});
 
 export default function InvokeModal(props: InvokeModalProps) {
   const [open, setOpen] = useState(true);
@@ -49,18 +62,6 @@ export default function InvokeModal(props: InvokeModalProps) {
       })
       .catch((error) => console.log("invoke function error: ", error));
   };
-
-  const myTheme = EditorView.theme({
-    "&": {
-      fontSize: "1rem",
-      lineHeight: "1.5rem",
-      maxHeight: "670px",
-    },
-    "&.cm-focused": {
-      outline: "none",
-    },
-    ".cm-scroller": { overflow: "auto" },
-  });
 
   const copyToClipboard = async (text: string) => {
     try {
@@ -121,25 +122,25 @@ export default function InvokeModal(props: InvokeModalProps) {
                     <div className="relative mt-3 flex-1 px-4 sm:px-6">
                       <div className=" border-2 p-2 shadow-md">
                         <div className="p-2 text-xs font-light">JSON Body</div>
-                        <CodeMirror
+                        <Editor
+                          defaultLanguage="json"
                           value={props.httpRoute.curParams}
-                          theme={githubLight}
-                          extensions={[
-                            json(),
-                            myTheme,
-                            EditorView.lineWrapping,
-                          ]}
+                          path={props.httpRoute.httpPath}
                           height="200px"
-                          basicSetup={{ lineNumbers: false, foldGutter: false }}
-                          onChange={(value, _viewUpdate) => {
-                            paramsRef.current = value;
+                          options={{
+                            fontSize: 14,
+                            minimap: { enabled: false },
+                            overviewRulerBorder: false,
+                          }}
+                          onChange={(value, event) => {
+                            paramsRef.current = value!;
                             projectDispatch({
                               type: "UpdatePostParam",
                               httpRoute: props.httpRoute,
-                              param: value,
+                              param: value!,
                             });
                           }}
-                        ></CodeMirror>
+                        ></Editor>
                         <button
                           type="button"
                           className="mt-2 rounded-md bg-indigo-600 px-2.5 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
@@ -167,7 +168,7 @@ export default function InvokeModal(props: InvokeModalProps) {
                       </div>
                     </div>
                     {postResult && (
-                      <div className="relative mt-6 flex-1 px-4 sm:px-6">
+                      <div className="relative mt-6 flex-1 bg-gray-200 px-4 sm:px-6">
                         <div className="p-2 font-light">Result</div>
                         <CodeMirror
                           value={JSON.stringify(
@@ -189,6 +190,15 @@ export default function InvokeModal(props: InvokeModalProps) {
                             highlightActiveLine: false,
                           }}
                         ></CodeMirror>
+                        {/*<Editor*/}
+                        {/*  defaultLanguage="json"*/}
+                        {/*  value={JSON.stringify(*/}
+                        {/*    JSON.parse(postResult),*/}
+                        {/*    null,*/}
+                        {/*    2*/}
+                        {/*  )}*/}
+                        {/*  height="200px"*/}
+                        {/*></Editor>*/}
                       </div>
                     )}
                   </div>
