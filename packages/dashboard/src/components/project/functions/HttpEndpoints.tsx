@@ -3,7 +3,7 @@ import {
   useProjectState,
 } from "~/components/project/ProjectContext";
 import { useState } from "react";
-import InvokeModal from "~/components/project/InvokeModal";
+import InvokeModal from "~/components/project/functions/InvokeModal";
 
 export default function HttpEndpoints() {
   const projectState = useProjectState();

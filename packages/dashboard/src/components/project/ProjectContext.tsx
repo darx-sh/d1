@@ -24,7 +24,10 @@ type ProjectState = {
   curOpenTabIdx: number | null;
   projectInfo: ProjectInfo | null;
   envInfo: EnvInfo | null;
+  curNav: NavType;
 };
+
+export type NavType = "database" | "functions" | "metrics" | "logs" | "secrets";
 
 export type ProjectInfo = {
   id: string;
@@ -44,7 +47,7 @@ export type HttpRoute = {
   curParams: string;
 };
 
-type Tab = { type: "JsEditor"; codeIdx: number } | { type: "Database" };
+type Tab = { type: "JsEditor"; codeIdx: number };
 
 export const initialHttpParam = JSON.stringify({}, null, 2);
 
@@ -58,6 +61,7 @@ const initialProject: ProjectState = {
   curOpenTabIdx: null,
   projectInfo: null,
   envInfo: null,
+  curNav: "database",
 };
 
 enum TabType {
@@ -86,7 +90,8 @@ type ProjectAction =
   | { type: "CloseJsTab"; fsPath: string }
   | { type: "SelectTab"; tabIdx: number }
   | { type: "UpdatePostParam"; httpRoute: HttpRoute; param: string }
-  | { type: "OpenDatabase" };
+  | { type: "OpenDatabase" }
+  | { type: "OpenFunctions" };
 
 export type CodeChecksums = {
   [key: string]: string;
@@ -225,16 +230,23 @@ function projectReducer(
       return state;
     }
     case "OpenDatabase": {
-      const tabIdx = state.tabs.findIndex((t) => t.type === "Database");
-      if (tabIdx >= 0) {
-        // we already find the tab, just select it.
-        state.curOpenTabIdx = tabIdx;
-      } else {
-        state.tabs.push({ type: "Database" });
-        state.curOpenTabIdx = state.tabs.length - 1;
-      }
+      state.curNav = "database";
       return state;
     }
+    case "OpenFunctions": {
+      state.curNav = "functions";
+      return state;
+    }
+    //   const tabIdx = state.tabs.findIndex((t) => t.type === "Database");
+    //   if (tabIdx >= 0) {
+    //     // we already find the tab, just select it.
+    //     state.curOpenTabIdx = tabIdx;
+    //   } else {
+    //     state.tabs.push({ type: "Database" });
+    //     state.curOpenTabIdx = state.tabs.length - 1;
+    //   }
+    //   return state;
+    // }
     default:
       throw "Unhandled action type: " + action.type + " in projectReducer";
   }
