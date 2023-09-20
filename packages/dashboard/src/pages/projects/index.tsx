@@ -11,6 +11,7 @@ import {
   EnvInfo,
 } from "~/components/project/ProjectContext";
 import randomName from "~/components/project/RandomName";
+import TopNav from "~/components/TopNav";
 
 const user = {
   id: "Tom Cook",
@@ -87,38 +88,7 @@ function Projects() {
         <Spinner />
       ) : (
         <div className="min-h-full">
-          <nav className="border-b border-gray-200 bg-white">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-              <div className="flex h-16 justify-between">
-                <div className="flex">
-                  <div className="flex flex-shrink-0 items-center">
-                    <img
-                      className="h-8 w-auto"
-                      src="https://tailwindui.com/img/logos/mark.svg?color=indigo&shade=600"
-                      alt="Darx Logo"
-                    />
-                  </div>
-                  <div className="sm:-my-px sm:ml-6 sm:flex sm:space-x-8">
-                    {navigation.map((item) => (
-                      <a
-                        key={item.id}
-                        href={item.href}
-                        className={classNames(
-                          item.current
-                            ? "border-indigo-500 text-gray-900"
-                            : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700",
-                          "inline-flex items-center border-b-2 px-1 pt-1 text-sm font-medium"
-                        )}
-                        aria-current={item.current ? "page" : undefined}
-                      >
-                        {item.id}
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </nav>
+          <TopNav navs={[{ name: "Home", href: "/" }]}></TopNav>
 
           <div className="my-10 px-60">
             <button
@@ -132,7 +102,7 @@ function Projects() {
               {projects.map((project) => (
                 <li
                   key={project.id}
-                  className="rounded-lg border border-gray-300 transition-colors duration-200 hover:border-gray-700"
+                  className="rounded-lg ring-1 ring-inset ring-gray-300 transition-colors duration-200 hover:bg-gray-100"
                 >
                   <Link
                     onClick={(e) => {

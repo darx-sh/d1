@@ -1,21 +1,19 @@
 import Link from "next/link";
-import { useProjectState } from "~/components/project/ProjectContext";
 
-export default function TopNav() {
-  const projectState = useProjectState();
-  const nav = [
-    {
-      name: "Home",
-      href: "/",
-    },
-    { name: "Projects", href: "/projects" },
-    { name: `${projectState.projectInfo!.name}`, href: "#" },
-  ];
+export interface TopNaveProps {
+  navs: { name: string; href: string }[];
+}
+
+export default function TopNav(props: TopNaveProps) {
+  const { navs } = props;
 
   return (
-    <nav className="ml-2 flex rounded" aria-label="Breadcrumb">
+    <nav
+      className="ml-2 flex rounded border-b bg-white"
+      aria-label="Breadcrumb"
+    >
       <ol role="list" className="flex items-center space-x-4">
-        {nav.map((page, index) => (
+        {navs.map((page, index) => (
           <li key={page.name}>
             <div className="flex h-12 items-center ">
               {index != 0 && (

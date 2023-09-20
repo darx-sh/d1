@@ -63,16 +63,16 @@ export default function Functions() {
   return (
     <>
       <div className="relative h-full">
-        <div className="absolute bottom-0 left-0 top-0 w-40 bg-gray-50">
+        <div className="absolute bottom-0 left-0 top-0 w-40 border-r bg-gray-50">
           <LeftDirectory></LeftDirectory>
         </div>
         <div className="pl-40">
           <EditorTabs></EditorTabs>
         </div>
-        <div className="h-full pl-40 pr-64">
+        <div className="h-full pl-40 pr-64 pt-2">
           {code !== null && code !== undefined && <MyEditor></MyEditor>}
         </div>
-        <div className="border-t-1 border-l-1 ring-inset-0 absolute bottom-0 right-0 mr-0 h-full w-64 rounded bg-gray-50 shadow-sm ring-1 ring-gray-300">
+        <div className="absolute bottom-0 right-0 mr-0 h-full w-64 border-l bg-gray-50">
           <HttpEndpoints></HttpEndpoints>
         </div>
       </div>
