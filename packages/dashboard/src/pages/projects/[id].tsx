@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import TopNav from "~/components/project/TopNav";
-import LeftContainer from "~/components/project/LeftContainer";
+import LeftNav from "~/components/project/LeftNav";
 import RightContainer from "~/components/project/RightContainer";
 import Spinner from "~/components/project/Spinner";
 import {
@@ -167,10 +167,10 @@ function ProjectDetail() {
           <div className="fixed left-0 right-0 top-0 h-12 border-b bg-white">
             <TopNav></TopNav>
           </div>
-          <div className="fixed bottom-0 left-0 top-12 w-48 bg-gray-50">
-            <LeftContainer></LeftContainer>
+          <div className="fixed bottom-0 left-0 top-12 w-24 bg-white">
+            <LeftNav></LeftNav>
           </div>
-          <div className="fixed bottom-0 left-48 right-0 top-12 min-w-0  border bg-white">
+          <div className="fixed bottom-0 left-24 right-0 top-12 min-w-0  border bg-white">
             <RightContainer></RightContainer>
           </div>
         </>

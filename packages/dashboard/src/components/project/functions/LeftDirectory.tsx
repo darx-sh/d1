@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import FileMenu from "~/components/project/FileMenu";
+import FileMenu from "~/components/project/functions/FileMenu";
 import TreeView, { type NodeId } from "~/components/react-tree-view";
 import { DocumentIcon } from "@heroicons/react/24/outline";
 import { FolderIcon, FolderOpenIcon } from "@heroicons/react/24/solid";

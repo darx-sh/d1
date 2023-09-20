@@ -3,9 +3,8 @@ import {
   useProjectDispatch,
 } from "~/components/project/ProjectContext";
 import classNames from "classnames";
-import { CircleStackIcon } from "@heroicons/react/24/outline";
 
-export default function ToolTabs() {
+export default function EditorTabs() {
   const state = useProjectState();
   const dispatch = useProjectDispatch();
   const tabs = state.tabs.map((tab, idx) => {
@@ -22,21 +21,6 @@ export default function ToolTabs() {
         } else {
           return {
             name: fileName,
-            href: "#",
-            current: false,
-          };
-        }
-      }
-      case "Database": {
-        if (idx === state.curOpenTabIdx) {
-          return {
-            name: "Database",
-            href: "#",
-            current: true,
-          };
-        } else {
-          return {
-            name: "Database",
             href: "#",
             current: false,
           };
@@ -78,9 +62,6 @@ export default function ToolTabs() {
           }}
         >
           <div className="flex flex-row items-center space-x-1">
-            {state.tabs[tabIdx]!.type === "Database" ? (
-              <CircleStackIcon className="h-5 w-5" />
-            ) : null}
             {state.tabs[tabIdx]!.type === "JsEditor" ? jsIcon() : null}
             <p> {tab.name}</p>
           </div>

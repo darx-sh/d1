@@ -1,11 +1,19 @@
-import ToolTabs from "~/components/project/ToolTabs";
-import ToolContent from "~/components/project/ToolContent";
+import { useProjectState } from "./ProjectContext";
+import Database from "~/components/project/database/Database";
+import Functions from "~/components/project/functions/Functions";
+import React from "react";
 
 export default function RightContainer() {
-  return (
-    <div className="relative flex h-full flex-col">
-      <ToolTabs></ToolTabs>
-      <ToolContent></ToolContent>
-    </div>
-  );
+  const state = useProjectState();
+
+  switch (state.curNav) {
+    case "functions": {
+      return <Functions></Functions>;
+    }
+    case "database": {
+      return <Database></Database>;
+    }
+    default:
+      throw new Error("not implemented");
+  }
 }
