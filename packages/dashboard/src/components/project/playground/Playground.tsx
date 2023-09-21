@@ -6,9 +6,9 @@ import {
 import Editor from "@monaco-editor/react";
 import { loader } from "@monaco-editor/react";
 import React from "react";
-import HttpEndpoints from "~/components/project/functions/HttpEndpoints";
-import LeftDirectory from "~/components/project/functions/LeftDirectory";
-import EditorTabs from "~/components/project/functions/EditorTabs";
+import HttpEndpoints from "~/components/project/playground/HttpEndpoints";
+import LeftDirectory from "~/components/project/playground/LeftDirectory";
+import EditorTabs from "~/components/project/playground/EditorTabs";
 import classNames from "classnames";
 import { ListBulletIcon } from "@heroicons/react/20/solid";
 
@@ -50,15 +50,24 @@ function MyEditor(props: MyEditorProps) {
   );
 }
 
-export default function Functions() {
+export default function Playground() {
   const state = useProjectState();
   const curOpenTab = state.curOpenTabIdx;
 
-  function findCodeIdx(tab: number | null) {
-    if (tab === null) {
+  function findCodeIdx(tabIdx: number | null) {
+    if (tabIdx === null) {
       return null;
     }
-    return state.tabs[tab]?.codeIdx;
+
+    const tab = state.tabs[tabIdx];
+    if (tab === undefined) {
+      return null;
+    }
+
+    switch (tab.type) {
+      case "JsEditor":
+        return tab.codeIdx;
+    }
   }
 
   const codeIdx = findCodeIdx(curOpenTab);
@@ -70,27 +79,10 @@ export default function Functions() {
   return (
     <>
       <div className="relative h-full">
-        <div className="absolute bottom-0 left-0 top-0 w-40 border-r bg-gray-50">
+        <div className="absolute bottom-0 left-0 top-0 w-40 border-r">
           <div className="flex flex-col">
-            <LeftDirectory></LeftDirectory>
-            <div className="relative mt-40">
-              <div
-                className="absolute inset-0 flex items-center"
-                aria-hidden="true"
-              >
-                <div className="mx-2 w-full border-t border-gray-300" />
-              </div>
-            </div>
-            <div
-              className={classNames(
-                true
-                  ? "bg-gray-200 text-indigo-600"
-                  : "text-gray-700 hover:bg-gray-50 hover:text-indigo-600",
-                "mx-2 mt-4 flex items-center justify-center border p-2 py-3"
-              )}
-            >
-              <ListBulletIcon className="h-5 w-5" />
-              <div className="px-2 text-sm">API List</div>
+            <div className="px-2 py-2">
+              <LeftDirectory></LeftDirectory>
             </div>
           </div>
         </div>
