@@ -9,10 +9,10 @@ export default function Database() {
 
   return (
     <>
-      <div className="absolute bottom-0 left-0 top-10 w-40 flex-none border-r">
+      <div className="absolute bottom-0 left-0 top-0 w-40 flex-none border-r bg-gray-50">
         <DatabaseNav></DatabaseNav>
       </div>
-      <div className="absolute bottom-0 left-40 right-0 top-10 min-w-0 overflow-auto">
+      <div className="absolute bottom-0 left-40 right-0 top-0 min-w-0 overflow-auto">
         <DatabaseDetails envId={envId} />
       </div>
     </>

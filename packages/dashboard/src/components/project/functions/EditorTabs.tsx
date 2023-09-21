@@ -3,6 +3,7 @@ import {
   useProjectDispatch,
 } from "~/components/project/ProjectContext";
 import classNames from "classnames";
+import { XMarkIcon } from "@heroicons/react/24/outline";
 
 export default function EditorTabs() {
   const state = useProjectState();
@@ -61,9 +62,16 @@ export default function EditorTabs() {
             });
           }}
         >
-          <div className="flex flex-row items-center space-x-1">
+          <div className="flex flex-row items-center">
             {state.tabs[tabIdx]!.type === "JsEditor" ? jsIcon() : null}
-            <p> {tab.name}</p>
+            <p className="px-2"> {tab.name}</p>
+            <XMarkIcon
+              className="h-4 w-4 rounded-lg bg-gray-200 hover:bg-gray-400"
+              onClick={(event) => {
+                event.stopPropagation();
+                dispatch({ type: "CloseTab", tabIdx });
+              }}
+            ></XMarkIcon>
           </div>
         </a>
       ))}

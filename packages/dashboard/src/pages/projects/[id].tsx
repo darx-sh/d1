@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/router";
-import TopNav from "~/components/project/TopNav";
+import TopNav from "~/components/TopNav";
 import LeftNav from "~/components/project/LeftNav";
 import RightContainer from "~/components/project/RightContainer";
 import Spinner from "~/components/project/Spinner";
@@ -24,6 +24,18 @@ function ProjectDetail() {
   const [isLoading, setIsLoading] = useState(true);
   const projectDispatch = useProjectDispatch();
   const projectState = useProjectState();
+
+  const navs = () => {
+    return [
+      {
+        name: "Home",
+        href: "/",
+      },
+      { name: "Projects", href: "/projects" },
+      { name: `${projectState.projectInfo!.name}`, href: "#" },
+    ];
+  };
+
   type HttpRoute = {
     http_path: string;
     method: string;
@@ -165,9 +177,9 @@ function ProjectDetail() {
       ) : (
         <>
           <div className="fixed left-0 right-0 top-0 h-12 border-b bg-white">
-            <TopNav></TopNav>
+            <TopNav navs={navs()}></TopNav>
           </div>
-          <div className="fixed bottom-0 left-0 top-12 w-24 bg-white">
+          <div className="fixed bottom-0 left-0 top-12 w-24 border-t bg-white">
             <LeftNav></LeftNav>
           </div>
           <div className="fixed bottom-0 left-24 right-0 top-12 min-w-0  border bg-white">
