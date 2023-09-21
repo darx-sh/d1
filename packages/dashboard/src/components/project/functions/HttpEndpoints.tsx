@@ -16,8 +16,8 @@ export default function HttpEndpoints() {
     return null;
   }
 
-  const curOpenTab = projectState.tabs[tabIdx]!;
-  if (curOpenTab.type !== "JsEditor") {
+  const curOpenTab = projectState.tabs[tabIdx];
+  if (curOpenTab === undefined || curOpenTab.type !== "JsEditor") {
     return null;
   }
 

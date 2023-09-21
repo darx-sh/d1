@@ -49,7 +49,6 @@ WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND CONSTRAINT_NAME = 'PRIMARY'
         return p.columnName;
       }),
     };
-    console.log("tableDef: ", tableDef);
     schema.push(tableDef);
   }
 

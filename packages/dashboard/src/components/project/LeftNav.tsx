@@ -15,7 +15,7 @@ export default function LeftNav() {
   const toolClass = (navType: NavType) => {
     const commonClass =
       "flex w-20 m-auto mb-2 flex flex-col items-center p-4 hover:bg-gray-100 cursor-pointer";
-    const highlightClass = "outline outline-blue-300 shadow bg-gray-100";
+    const highlightClass = "outline outline-indigo-300 shadow bg-gray-100";
     if (state.curNav === navType) {
       return className(commonClass, highlightClass);
     } else {

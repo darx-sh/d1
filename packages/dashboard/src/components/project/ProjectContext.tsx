@@ -10,12 +10,7 @@ import md5 from "crypto-js/md5";
 
 type ProjectState = {
   directory: {
-    codes: {
-      fsPath: string;
-      content: string;
-      prevChecksum?: string;
-      curChecksum?: string;
-    }[];
+    codes: CodeInfo[];
     httpRoutes: HttpRoute[];
     treeViewData: INode[];
   };
@@ -26,6 +21,13 @@ type ProjectState = {
   envInfo: EnvInfo | null;
   curNav: NavType;
 };
+
+export interface CodeInfo {
+  fsPath: string;
+  content: string;
+  prevChecksum?: string;
+  curChecksum?: string;
+}
 
 export type NavType = "database" | "functions" | "metrics" | "logs" | "secrets";
 
@@ -66,7 +68,6 @@ const initialProject: ProjectState = {
 
 enum TabType {
   JsEditor,
-  Database,
 }
 
 type ProjectAction =
@@ -87,7 +88,7 @@ type ProjectAction =
   | { type: "RenameDirectory"; oldFsPath: string; newFsPath: string }
   | { type: "DeleteJsFile"; fsPath: string }
   | { type: "DeleteDirectory"; fsPath: string }
-  | { type: "CloseJsTab"; fsPath: string }
+  | { type: "CloseTab"; tabIdx: number }
   | { type: "SelectTab"; tabIdx: number }
   | { type: "UpdatePostParam"; httpRoute: HttpRoute; param: string }
   | { type: "OpenDatabase" }
@@ -217,6 +218,21 @@ function projectReducer(
       state.curOpenTabIdx = action.tabIdx;
       return state;
     }
+    case "CloseTab": {
+      const idx = action.tabIdx;
+      state.tabs.splice(idx, 1);
+      if (state.tabs.length === 0) {
+        state.curOpenTabIdx = null;
+        return state;
+      }
+
+      if (state.curOpenTabIdx !== null) {
+        if (state.curOpenTabIdx > idx) {
+          state.curOpenTabIdx = state.curOpenTabIdx - 1;
+        }
+      }
+      return state;
+    }
     case "UpdatePostParam": {
       const { httpRoute, param } = action;
       const idx = state.directory.httpRoutes.findIndex((r) => {
@@ -237,16 +253,7 @@ function projectReducer(
       state.curNav = "functions";
       return state;
     }
-    //   const tabIdx = state.tabs.findIndex((t) => t.type === "Database");
-    //   if (tabIdx >= 0) {
-    //     // we already find the tab, just select it.
-    //     state.curOpenTabIdx = tabIdx;
-    //   } else {
-    //     state.tabs.push({ type: "Database" });
-    //     state.curOpenTabIdx = state.tabs.length - 1;
-    //   }
-    //   return state;
-    // }
+
     default:
       throw "Unhandled action type: " + action.type + " in projectReducer";
   }
