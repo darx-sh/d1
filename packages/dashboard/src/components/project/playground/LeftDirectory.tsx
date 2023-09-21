@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import FileMenu from "~/components/project/functions/FileMenu";
+import FileMenu from "~/components/project/playground/FileMenu";
 import TreeView, { type NodeId } from "~/components/react-tree-view";
 import { DocumentIcon } from "@heroicons/react/24/outline";
 import { FolderIcon, FolderOpenIcon } from "@heroicons/react/24/solid";
@@ -161,7 +161,8 @@ export default function LeftDirectory() {
                 {!isBranch && (
                   <DocumentIcon className="mr-1 h-4 w-4"></DocumentIcon>
                 )}
-                <span className="-mb-0.5">{element.name}</span>
+                {isBranch && <span className="-mb-0.5">db-func</span>}
+                {!isBranch && <span className="-mb-0.5">{element.name}</span>}
               </div>
               {newFileParent != null &&
               isBranch &&

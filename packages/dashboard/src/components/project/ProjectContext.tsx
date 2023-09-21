@@ -29,7 +29,13 @@ export interface CodeInfo {
   curChecksum?: string;
 }
 
-export type NavType = "database" | "functions" | "metrics" | "logs" | "secrets";
+export type NavType =
+  | "database"
+  | "playground"
+  | "functions"
+  | "metrics"
+  | "logs"
+  | "secrets";
 
 export type ProjectInfo = {
   id: string;
@@ -66,13 +72,7 @@ const initialProject: ProjectState = {
   curNav: "database",
 };
 
-enum TabType {
-  JsEditor,
-}
-
 type ProjectAction =
-  | { type: "SetProject"; project: ProjectInfo }
-  | { type: "SetCurEnv"; envId: string }
   | {
       type: "LoadEnv";
       codes: { fsPath: string; content: string }[];
@@ -84,15 +84,12 @@ type ProjectAction =
   | { type: "NewJsFile"; parentNodeId: NodeId; fileName: string }
   | { type: "OpenJsFile"; nodeId: NodeId }
   | { type: "UpdateJsFile"; codeIdx: number; content: string }
-  | { type: "RenameJsFile"; oldFsPath: string; newFsPath: string }
-  | { type: "RenameDirectory"; oldFsPath: string; newFsPath: string }
-  | { type: "DeleteJsFile"; fsPath: string }
-  | { type: "DeleteDirectory"; fsPath: string }
   | { type: "CloseTab"; tabIdx: number }
   | { type: "SelectTab"; tabIdx: number }
   | { type: "UpdatePostParam"; httpRoute: HttpRoute; param: string }
-  | { type: "OpenDatabase" }
-  | { type: "OpenFunctions" };
+  | { type: "NavToDatabase" }
+  | { type: "NavToPlayground" }
+  | { type: "NavToFunctions" };
 
 export type CodeChecksums = {
   [key: string]: string;
@@ -193,7 +190,7 @@ function projectReducer(
           `Cannot find code with fsPath: ${fsPath}, nodeId: ${action.nodeId}`
         );
       }
-      // state.curOpenTabIdx = codeIdx;
+
       const tabIdx = state.tabs.findIndex(
         (t) => t.type === "JsEditor" && t.codeIdx === codeIdx
       );
@@ -245,33 +242,21 @@ function projectReducer(
       }
       return state;
     }
-    case "OpenDatabase": {
+    case "NavToDatabase": {
       state.curNav = "database";
       return state;
     }
-    case "OpenFunctions": {
+    case "NavToPlayground": {
+      state.curNav = "playground";
+      return state;
+    }
+    case "NavToFunctions": {
       state.curNav = "functions";
       return state;
     }
-
-    default:
-      throw "Unhandled action type: " + action.type + " in projectReducer";
   }
 }
 
-// [
-//  {fsPath: "functions/foo.js", content: ""},
-//  {fsPath: "functions/bar.js", content: ""},
-//  {fsPath: "functions/foo/foo.js", content: ""]
-//
-// [
-//  {id: "", name: "", parent: null, children: ["functions"]},
-//  {id: "functions", name: "functions", parent: "", children: ["foo.js", "bar.js", "foo"], isBranch: true},
-//  {id: "functions/foo", name: "foo", parent: "functions", children: ["functions/foo/foo.js"], isBranch: true},
-//  {id: "functions/foo/foo.js", name: "foo.js", parent: "functions/foo", children: [], isBranch: false},
-//  {id: "functions/foo.js", name: "foo.js", parent: "functions", children: [], isBranch: false},
-//  {id: "functions/bar.js", name: "bar.js", parent: "functions", children: [], isBranch: false},
-// ]
 function buildTreeViewData(
   codes: { fsPath: string; content: string }[]
 ): INode[] {

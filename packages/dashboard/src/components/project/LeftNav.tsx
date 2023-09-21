@@ -4,6 +4,7 @@ import {
   Bars3Icon,
   LockClosedIcon,
   CodeBracketIcon,
+  BoltIcon,
 } from "@heroicons/react/24/outline";
 import { useProjectDispatch, useProjectState, NavType } from "./ProjectContext";
 import className from "classnames";
@@ -27,14 +28,22 @@ export default function LeftNav() {
     <div className="mt-6 justify-evenly gap-x-2 gap-y-2 divide-gray-900">
       <div
         className={toolClass("database")}
-        onClick={() => dispatch({ type: "OpenDatabase" })}
+        onClick={() => dispatch({ type: "NavToDatabase" })}
       >
         <CircleStackIcon className="h-5 w-5" />
         <div className="text-xs">Database</div>
       </div>
       <div
+        className={toolClass("playground")}
+        onClick={() => dispatch({ type: "NavToPlayground" })}
+      >
+        <BoltIcon className="h-5 w-5" />
+        <div className="text-xs">Playground</div>
+      </div>
+
+      <div
         className={toolClass("functions")}
-        onClick={() => dispatch({ type: "OpenFunctions" })}
+        onClick={() => dispatch({ type: "NavToFunctions" })}
       >
         <CodeBracketIcon className="h-5 w-5" />
         <div className="text-xs">Functions</div>
