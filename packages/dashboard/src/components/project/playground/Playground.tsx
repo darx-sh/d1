@@ -89,7 +89,7 @@ export default function Playground() {
         <div className="pl-40">
           <EditorTabs></EditorTabs>
         </div>
-        <div className="h-full pl-40 pr-64 pt-2">
+        <div className="h-full pl-40 pr-64 pt-3.5">
           {code && <MyEditor code={code} codeIdx={codeIdx!}></MyEditor>}
         </div>
         <div className="absolute bottom-0 right-0 mr-0 h-full w-64 border-l bg-gray-50">
