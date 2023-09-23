@@ -5,11 +5,13 @@ use deno_core::{serde_v8, v8};
 use futures::TryStreamExt;
 use once_cell::sync::Lazy;
 use patricia_tree::StringPatriciaMap;
+use sqlx::MySqlExecutor;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::time::Duration;
+use time::{PrimitiveDateTime, UtcOffset};
 use tokio::fs;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
@@ -365,6 +367,29 @@ pub async fn invoke_function(
     .context("deserialize result error")
     .map_err(ApiError::Internal)?;
   Ok(script_result)
+}
+
+//TODO move to core crate
+pub async fn save_log<'c>(exe: impl MySqlExecutor<'c>) -> Result<u64> {
+  let logs = darx_isolate_runtime::log::collect();
+  let values = logs
+    .into_iter()
+    .map(|e| {
+      let utc = e.time.to_offset(UtcOffset::UTC);
+
+      super::log::LogPO {
+        id: 0,
+        env_id: e.env,
+        deploy_seq: e.seq,
+        time: PrimitiveDateTime::new(utc.date(), utc.time()),
+        level: e.level.0,
+        func: e.func,
+        message: e.message,
+      }
+    })
+    .collect::<Vec<_>>();
+
+  super::log::LogPO::save(exe, &values).await
 }
 
 fn add_route(route: RouteDeploy) {

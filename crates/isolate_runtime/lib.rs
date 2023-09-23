@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
 mod db_ops;
+pub mod log;
 mod module_loader;
 mod permissions;
 

@@ -1,4 +1,4 @@
-use crate::EnvId;
+use crate::{DeploySeq, EnvId};
 use anyhow::anyhow;
 use darx_db::{
   add_column_sql, create_table_sql, drop_column_sql, drop_table_sql,
@@ -20,12 +20,13 @@ deno_core::extension!(
     op_db_execute,
     op_ddl,
     op_var_get,
+    op_log,
     // op_select_statement,
     // op_select_from,
     // op_select_columns,
     // op_select_build
   ],
-  esm = ["js/01_db.js"]
+  esm = ["js/01_db.js", "js/02_log.js"]
 );
 
 struct ConnResource(Box<dyn TenantConnPool>);
@@ -101,6 +102,21 @@ pub fn op_var_get(op_state: &mut OpState, key: String) -> Option<String> {
     Some(v) => Some(v.to_string()),
     None => None,
   }
+}
+
+#[op]
+pub async fn op_log(
+  op_state: Rc<RefCell<OpState>>,
+  lvl: i32,
+  stack: String,
+  message: String,
+) {
+  let stat = op_state.borrow();
+  let env = stat.borrow::<EnvId>().0.as_str();
+  let seq = op_state.borrow().borrow::<DeploySeq>().0;
+  crate::log::record(env, seq, lvl, stack, message);
+
+  //TODO flush might needed(that's why this is async). but we need implement the mechanism of calling control plane from isolate first
 }
 
 // struct SelectStatementResource(RefCell<SelectStatement>);

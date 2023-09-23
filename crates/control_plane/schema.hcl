@@ -522,3 +522,58 @@ table "deploy_vars" {
     columns = [column.deploy_id, column.key]
   }
 }
+
+table "deploy_log" {
+  schema  = schema.darx_control
+  collate = "utf8mb4_unicode_ci"
+
+  column "id" {
+    null = false
+    type = bigint
+    auto_increment = true
+  }
+  column "env_id" {
+    null = false
+    type = varchar(255)
+  }
+  column "deploy_seq" {
+    null    = false
+    type    = bigint
+    default = 0
+  }
+  column "time" {
+    null    = false
+    type    = datetime(3)
+  }
+  column "level" {
+    null = false
+    type = int
+  }
+  column "func" {
+    null = false
+    type = varchar(255)
+  }
+  column "message" {
+    null = false
+    type = text
+  }
+
+  primary_key {
+    columns = [column.id]
+  }
+  index "idx_env_deploy_time_func" {
+    on {
+      column = column.env_id
+    }
+    on {
+      column = column.deploy_seq
+    }
+    on {
+      column = column.time
+    }
+    on {
+     column = column.func
+     prefix = 64
+    }
+  }
+}

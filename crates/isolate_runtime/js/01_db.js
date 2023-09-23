@@ -51,21 +51,19 @@ async function useDB() {
   return new DBConn(rid);
 }
 
-let Darx = {};
-Darx.env = new Proxy(
-  {},
-  {
-    get(target, key) {
-      const value = core.ops.op_var_get(`${key}`);
-      if (value === null) {
-        return undefined;
-      } else {
-        return value;
-      }
-    },
-  }
-);
-
 globalThis.useDB = useDB;
 globalThis.select = select;
-globalThis.Darx = Darx;
+
+globalThis.Darx.env = new Proxy(
+    {},
+    {
+      get(target, key) {
+        const value = core.ops.op_var_get(`${key}`);
+        if (value === null) {
+          return undefined;
+        } else {
+          return value;
+        }
+      },
+    }
+);
