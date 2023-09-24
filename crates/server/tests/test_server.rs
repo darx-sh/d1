@@ -1,3 +1,4 @@
+use ::time::{Duration, OffsetDateTime};
 use anyhow::{anyhow, Result};
 use darx_core::api::{
   ApiError, DeployVarReq, ErrorResponse, NewPluginProjectReq, NewProjectRsp,
@@ -7,6 +8,7 @@ use darx_utils::new_nano_id;
 use dotenv::dotenv;
 use reqwest::Client;
 use serde_json::json;
+use sqlx::MySqlPool;
 use std::collections::HashMap;
 use std::env;
 use std::path::PathBuf;
@@ -93,6 +95,33 @@ async fn test_main_process() {
     .await
     .unwrap();
   assert_eq!(resp, "\"Hi 123 from foo, env key1 = value1\"");
+
+  if env::var("DATABASE_URL").is_ok() {
+    let db = MySqlPool::connect(
+      env::var("DATABASE_URL")
+        .expect("DATABASE_URL should be configured")
+        .as_str(),
+    )
+    .await
+    .unwrap();
+    let logs = sqlx::query!(
+      "select * from deploy_log where env_id = ? and time between ? and ?",
+      &env_id,
+      OffsetDateTime::now_utc() - Duration::seconds(5),
+      OffsetDateTime::now_utc()
+    )
+    .fetch_all(&db)
+    .await
+    .unwrap();
+    info!("logs: {:?}", logs);
+    assert_eq!(2, logs.len());
+    assert_eq!(0, logs[0].level);
+    assert_eq!("foo.js:2:Hi", logs[0].func);
+    assert_eq!("this is a debug log", logs[0].message);
+    assert_eq!(5, logs[1].level);
+    assert_eq!("foo.js:3:Hi", logs[1].func);
+    assert_eq!("this is another log", logs[1].message);
+  }
 
   let req = json!({"arr": [1,2,3], "obj":{"msg":"obj"}, "num": 1});
 

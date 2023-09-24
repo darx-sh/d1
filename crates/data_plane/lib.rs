@@ -10,6 +10,7 @@ use darx_core::tenants;
 use darx_core::{api::AddCodeDeployReq, api::AddTenantDBReq, api::ApiError};
 use darx_db;
 use serde_json;
+use sqlx::MySqlPool;
 use std::env;
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -19,9 +20,9 @@ use tracing_actix_web::TracingLogger;
 
 const DARX_ENVS_DIR: &str = "./darx_envs";
 
-#[derive(Clone)]
 struct ServerState {
   envs_dir: PathBuf,
+  control_db: MySqlPool,
 }
 
 pub async fn run_server(
@@ -37,7 +38,7 @@ pub async fn run_server(
   let envs_dir = working_dir.join(DARX_ENVS_DIR);
   fs::create_dir_all(envs_dir.as_path()).await?;
 
-  let db_pool = sqlx::MySqlPool::connect(
+  let db_pool = MySqlPool::connect(
     env::var("DATABASE_URL")
       .expect("DATABASE_URL should be configured")
       .as_str(),
@@ -51,7 +52,10 @@ pub async fn run_server(
 
   info!("listen on {}", socket_addr);
 
-  let server_state = ServerState { envs_dir };
+  let server_state = Data::new(ServerState {
+    envs_dir,
+    control_db: db_pool,
+  });
   Ok(
     HttpServer::new(move || {
       let cors = Cors::default()
@@ -61,7 +65,7 @@ pub async fn run_server(
       App::new()
         .wrap(TracingLogger::default())
         .wrap(cors)
-        .app_data(Data::new(server_state.clone()))
+        .app_data(server_state.clone())
         .route("/", get().to(|| async { "data plane healthy." }))
         .route("/invoke/{func_url:.*}", post().to(invoke_function))
         .route("/add_tenant_db", post().to(add_tenant_db))
@@ -112,6 +116,9 @@ async fn invoke_function(
     &route.func_sig.param_names,
   )
   .await?;
+
+  let _ = tenants::save_log(&server_state.control_db).await; // ignore log error
+
   Ok(Json(ret))
 }
 

@@ -57,3 +57,4 @@ const globalScope = {
 };
 
 ObjectDefineProperties(globalThis, globalScope);
+globalThis.Darx = {};

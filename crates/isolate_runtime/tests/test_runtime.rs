@@ -65,6 +65,33 @@ async fn test_run() {
 }
 
 #[tokio::test]
+async fn test_log() -> Result<()> {
+  let deploy_path = env_deploy_path(TEST_ENV_ID, TEST_DEPLOY_SEQ);
+  let mut darx_runtime = DarxIsolate::new(
+    TEST_ENV_ID,
+    TEST_DEPLOY_SEQ,
+    &Default::default(),
+    deploy_path.as_path(),
+  );
+
+  darx_runtime
+    .load_and_eval_module_file("log.js")
+    .await
+    .expect("log.js should not result an error");
+
+  let logs = darx_isolate_runtime::log::collect();
+  assert_eq!(1, logs.len());
+  let log = &logs[0];
+  assert_eq!(TEST_ENV_ID, log.env);
+  assert_eq!(TEST_DEPLOY_SEQ, log.seq);
+  assert_eq!(darx_isolate_runtime::log::INFO_LEVEL, log.level);
+  assert_eq!("hello", log.message);
+  assert_eq!("log.js:2:test_log", &log.func);
+  println!("{}", log.time);
+  Ok(())
+}
+
+#[tokio::test]
 async fn test_private() {
   let deploy_path = env_deploy_path(TEST_ENV_ID, TEST_DEPLOY_SEQ);
   let mut darx_runtime = DarxIsolate::new(
