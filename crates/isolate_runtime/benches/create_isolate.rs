@@ -42,7 +42,10 @@ fn bench(c: &mut Criterion) {
   group.bench_function(BenchmarkId::new("realm", "realm"), |b| {
     b.to_async(&rt).iter(|| black_box(realm(isolate.clone())))
   });
-
+  group.bench_function(BenchmarkId::new("globalRealm", "globalRealm"), |b| {
+    b.to_async(&rt)
+      .iter(|| black_box(globalRealm(isolate.clone())))
+  });
   group.finish();
 }
 
@@ -89,6 +92,18 @@ async fn realm(isolate: Rc<RefCell<DarxIsolate>>) {
 
   let script_result = realm.execute_script(v8_isolate, "run", "foo()").unwrap();
   let mut handle_scope = realm.handle_scope(v8_isolate);
+  let script_result = v8::Local::new(&mut handle_scope, script_result);
+  let script_result: i32 =
+    serde_v8::from_v8(&mut handle_scope, script_result).unwrap();
+  assert_eq!(2, script_result);
+}
+
+async fn globalRealm(isolate: Rc<RefCell<DarxIsolate>>) {
+  let mut isolate = isolate.borrow_mut();
+  let js_runtime = &mut isolate.js_runtime;
+  let v8_isolate = js_runtime.v8_isolate();
+  let script_result = js_runtime.execute_script("run", "foo()").unwrap();
+  let mut handle_scope = js_runtime.handle_scope();
   let script_result = v8::Local::new(&mut handle_scope, script_result);
   let script_result: i32 =
     serde_v8::from_v8(&mut handle_scope, script_result).unwrap();
