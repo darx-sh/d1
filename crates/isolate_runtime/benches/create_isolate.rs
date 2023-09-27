@@ -7,7 +7,7 @@ use std::rc::Rc;
 use criterion::{
   black_box, criterion_group, criterion_main, BenchmarkId, Criterion,
 };
-use deno_core::{serde_v8, v8};
+use deno_core::{serde_v8, v8, JsRealm};
 use tokio::fs;
 use tokio::time::Instant;
 
@@ -18,7 +18,10 @@ const DEPLOY_SEQ: i64 = 99;
 
 fn bench(c: &mut Criterion) {
   let mut group = c.benchmark_group("create_isolate");
-  let rt = tokio::runtime::Runtime::new().unwrap();
+  let rt = tokio::runtime::Builder::new_current_thread()
+    .enable_all()
+    .build()
+    .unwrap();
   rt.block_on(async {
     build_snapshot().await;
   });
@@ -37,7 +40,7 @@ fn bench(c: &mut Criterion) {
     b.to_async(&rt).iter(|| black_box(snapshot()))
   });
   group.bench_function(BenchmarkId::new("realm", "realm"), |b| {
-    b.iter(|| black_box(realm(isolate.clone())))
+    b.to_async(&rt).iter(|| black_box(realm(isolate.clone())))
   });
 
   group.finish();
@@ -74,11 +77,18 @@ async fn snapshot() {
 async fn realm(isolate: Rc<RefCell<DarxIsolate>>) {
   let mut isolate = isolate.borrow_mut();
   let js_runtime = &mut isolate.js_runtime;
-  let realm = js_runtime.create_realm().unwrap();
-  let v8_isolate = js_runtime.v8_isolate().deref_mut();
+  let v8_isolate = js_runtime.v8_isolate();
+  let realm: JsRealm;
+  {
+    let mut handle_scope = v8::HandleScope::new(v8_isolate);
+    let context = v8::Context::new(&mut handle_scope);
+    let mut context_scope = v8::ContextScope::new(&mut handle_scope, context);
+    let global = v8::Global::new(&mut context_scope, context);
+    realm = JsRealm::new(global);
+  }
+
   let script_result = realm.execute_script(v8_isolate, "run", "foo()").unwrap();
-  let script_result = js_runtime.resolve_value(script_result).await.unwrap();
-  let mut handle_scope = js_runtime.handle_scope();
+  let mut handle_scope = realm.handle_scope(v8_isolate);
   let script_result = v8::Local::new(&mut handle_scope, script_result);
   let script_result: i32 =
     serde_v8::from_v8(&mut handle_scope, script_result).unwrap();
