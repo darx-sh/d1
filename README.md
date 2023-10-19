@@ -1,6 +1,6 @@
-This is our first attempt to build a BaaS. It uses a customized Javascript runtime build for db.
+This is our first attempt to build a BaaS. It uses a customized Javascript runtime built for database.
 
-This project is not maintained anymore. 
+This project is not maintained anymore.
 
 We are working on a new version of Darx.
 
